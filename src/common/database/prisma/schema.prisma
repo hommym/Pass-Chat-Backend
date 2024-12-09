@@ -36,7 +36,9 @@ model User {
   id                Int             @id @default(autoincrement())
   email             String?         @unique
   phone             String?         @unique
+  fullName          String?
   username          String?
+  password          String?
   bio               String?
   profile           String?         @db.LongText
   type              AccountType     @default(user)
