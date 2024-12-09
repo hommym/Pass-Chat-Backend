@@ -19,12 +19,36 @@ enum AccountType{
   user
 }
 
+enum AccountStatus{
+active
+suspend
+blocked
+}
+
+enum AdminRoles{
+  superAdmin
+  manager
+  moderator
+  analyst
+}
 
 model User {
   id                Int             @id @default(autoincrement())
   email             String?         @unique
   phone             String?         @unique
-  accountType       AccountType     @default(user) 
-
+  username          String?
+  bio               String?
+  profile           String?         @db.LongText
+  type              AccountType     @default(user)
+  status            AccountStatus   @default(active)
+  role              AdminRoles?
   @@map("users")
+}
+
+model TwoFactorAuth {
+    id             Int        @id @default(autoincrement())
+    userId         Int        @unique
+    otpCode        String?    // otpCode stored here is encrypted into a jwt token
+
+    @@map("two_factor_auths")
 }
