@@ -1,4 +1,5 @@
 import { Router} from "express";
+import { authRouter } from "../../features/auth/http/authController";
 
 
 
@@ -6,3 +7,5 @@ import { Router} from "express";
 export const httpRouter= Router()
 
 // main routes
+
+httpRouter.use("/auth",authRouter)

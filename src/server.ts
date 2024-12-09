@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import { app, server, ws } from "./common/constants/objects";
 import { httpRouter } from "./common/routers/httpRouter";
 import { checkDbConnection } from "./common/database/checkDbConnection";
+import { errorHandler } from "./common/middlewares/errorHandler";
 dotenv.config();
 
 // middlewares
@@ -12,7 +13,7 @@ app.use(express.json());
 app.use("/api/v1", httpRouter);
 
 // error handling middlware
-// app.use(errorHandler);
+app.use(errorHandler);
 
 const port = process.env.PORT ? process.env.PORT : 8000;
 
