@@ -32,6 +32,12 @@ enum AdminRoles{
   analyst
 }
 
+enum OnlineStatus{
+  online
+  offline
+  call
+}
+
 model User {
   id                Int             @id @default(autoincrement())
   email             String?         @unique
@@ -43,7 +49,11 @@ model User {
   profile           String?         @db.LongText
   type              AccountType     @default(user)
   status            AccountStatus   @default(active)
+  onlineStatus      OnlineStatus    @default(offline)
   role              AdminRoles?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt   // use this get last time user was online
+
   @@map("users")
 }
 
