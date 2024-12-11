@@ -1,6 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
-import { app, server, ws } from "./common/constants/objects";
+import { app, appEvents, server, ws } from "./common/constants/objects";
 import { httpRouter } from "./common/routers/httpRouter";
 import { checkDbConnection } from "./common/database/checkDbConnection";
 import { errorHandler } from "./common/middlewares/errorHandler";
@@ -20,6 +20,7 @@ const port = process.env.PORT ? process.env.PORT : 8000;
 const startServer = async () => {
   try {
     await checkDbConnection();
+    appEvents.setUpAllListners()
     server.listen(port, () => {
       console.log(`Server listening on port ${port}..`);
     });

@@ -10,5 +10,5 @@ export const encryptData = async (rawPassword: string): Promise<string> => {
 
 export const verifyEncryptedData = async (rawData: string, encryptedData: string) => {
   const isPasswordCorrect = await bcrypt.compare(rawData, encryptedData);
-  if (!isPasswordCorrect) throw new AppError("Invalid email and password", 401);
+  if (!isPasswordCorrect) throw new AppError("Invalid password", 401);
 };

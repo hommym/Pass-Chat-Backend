@@ -12,11 +12,20 @@ export const jwtForLogIn = (id: string|number,exp:string|null=null): string => {
   }
 };
 
-export const verifyJwtToken = (token: string): JwtPayload | null | string | any => {
+export const verifyJwtToken = (token: string)=> {
   if (process.env.JwtSecretKey !== undefined) {
     return jwt.verify(token, process.env.JwtSecretKey);
   } else {
     throw new AppError("env variable JwtSecretKey not defined on server", 500);
+  }
+};
+
+export const jwtForOtp = (otpCode: number | string): string => {
+  if (process.env.JwtSecretKey !== undefined) {
+    return jwt.sign({ otpCode }, process.env.JwtSecretKey, { expiresIn: 300000 });
+  } else {
+    console.log("env variable JwtSecretKey not defined on server");
+    throw new AppError("Server errror", 500);
   }
 };
 
