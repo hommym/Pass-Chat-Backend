@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import nodeMailer from "nodemailer";
 import { join } from "path";
+import { compiledHtml } from "../../features/email/compileHtml";
 
 const path = join(__dirname, "..", "..", "/features/email/templates");
 const transporter = nodeMailer.createTransport({
@@ -16,20 +17,9 @@ const transporter = nodeMailer.createTransport({
 });
 
 export const sendEmail = async (emailAddress: string, subject: string, template: string, context: any) => {
-  const nodemailerExpressHandlebars = await import("nodemailer-express-handlebars");
-  transporter.use(
-    "compile",
-    nodemailerExpressHandlebars.default({
-      viewEngine: {
-        extname: ".hbs",
-        layoutsDir: path,
-      },
-      viewPath: path,
-      extName: ".hbs",
-    })
-  );
   // set companyName
   context.companyName = process.env.AppName;
-  const mailObject = { from: process.env.AdminEmailAdress, to: emailAddress, subject, template, context };
+  const html = await compiledHtml(template, context);
+  const mailObject = { from: process.env.AdminEmailAdress, to: emailAddress, subject, html };
   await transporter.sendMail(mailObject);
 };

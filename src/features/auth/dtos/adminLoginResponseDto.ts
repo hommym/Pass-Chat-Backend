@@ -1,13 +1,19 @@
 import { AdminRoles } from "@prisma/client";
 import { Expose } from "class-transformer";
-import { IsEmail, IsEnum } from "class-validator";
 
-export class CreateAdminDto {
+export class AdminLoginResponseDto {
   @Expose()
-  @IsEmail()
   email: string;
 
   @Expose()
-  @IsEnum(AdminRoles)
+  username: string;
+
+  @Expose()
+  fullName: string;
+
+  @Expose()
+  profile: string;
+
+  @Expose()
   role: AdminRoles;
 }

@@ -1,10 +1,13 @@
+import { Expose } from "class-transformer";
 import { IsNotEmpty } from "class-validator";
 
 
 export class ChangePasswordDto {
-    @IsNotEmpty()
-    oldPassword:string;
+  @Expose()
+  @IsNotEmpty()
+  oldPassword: string;
 
-    @IsNotEmpty()
-    newPassword:string;
+  @Expose()
+  @IsNotEmpty()
+  newPassword: string;
 }

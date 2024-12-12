@@ -1,19 +1,24 @@
-import { IsBase64, IsNotEmpty, IsPhoneNumber } from "class-validator";
+import { Expose } from "class-transformer";
+import { IsBase64, IsNotEmpty, IsOptional, IsPhoneNumber } from "class-validator";
 
 export class UpdateUserAccountDto {
-
-  @IsNotEmpty()  
-  fullName:string
-
-  @IsPhoneNumber()
-  phone: string;
-
+  @Expose()
+  @IsOptional()
   @IsNotEmpty()
-  username: string;
+  fullName?: string;
 
+  @Expose()
+  @IsOptional()
   @IsNotEmpty()
-  bio: string;
+  username?: string;
 
+  @Expose()
+  @IsOptional()
+  @IsNotEmpty()
+  bio?: string;
+
+  @Expose()
+  @IsOptional()
   @IsBase64()
-  profile: string;
+  profile?: string;
 }

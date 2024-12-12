@@ -31,7 +31,7 @@ authRouter.post(
   "/user/login",
   bodyValidator(UserLoginDto),
   asyncHandler(async (req: Request, res: Response) => {
-    res.status(201).json(authService.login("user", req.body));
+    res.status(201).json(await authService.login("user", req.body));
   })
 );
 
@@ -39,7 +39,7 @@ authRouter.post(
   "/admin/login",
   bodyValidator(AdminLoginDto),
   asyncHandler(async (req: Request, res: Response) => {
-    res.status(201).json(authService.login("admin", req.body));
+    res.status(201).json(await authService.login("admin", req.body));
   })
 );
 
@@ -60,7 +60,7 @@ authRouter.post(
 );
 
 authRouter.post(
-  "/admin/setup/otp",
+  "/admin/setup/2FA",
   bodyValidator(Setup2FADto),
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {

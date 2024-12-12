@@ -6,7 +6,7 @@ import { verifyJwtToken } from "../libs/jwt";
 import { JwtPayload } from "jsonwebtoken";
 
 export const verifyJwt = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
-  console.log("Jwt verification began....");
+  // console.log("Jwt verification began....");
   if (req.headers !== undefined && req.headers.authorization !== undefined) {
     if (!req.headers.authorization.startsWith("Bearer ")) {
       res.status(400);

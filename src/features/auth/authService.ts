@@ -12,6 +12,7 @@ import { UpdateAdminAccountDto } from "./dtos/updateAdminAccountDto";
 import { ChangePasswordDto } from "./dtos/changePasswordDto";
 import { encryptData, verifyEncryptedData } from "../../common/libs/bcrypt";
 import { CreateAdminDto } from "./dtos/createAdminDto";
+import { AdminLoginResponseDto } from "./dtos/adminLoginResponseDto";
 
 export class AuthService {
   async checkAccount(email: string) {
@@ -48,27 +49,28 @@ export class AuthService {
       const { fullName, phone } = loginDto as UserLoginDto;
       const accountDetails = await this.createUserAccount(phone, fullName);
       return {
-        account: plainToInstance(UserLoginResponseDto, accountDetails),
+        account: plainToInstance(UserLoginResponseDto, accountDetails, { excludeExtraneousValues: true }),
         authToken: jwtForLogIn(accountDetails.id),
       };
     } else {
       const { email, password } = loginDto as AdminLoginDto;
       const accountDetails = await this.checkAccount(email);
       if (!accountDetails) throw new AppError(`No Account with ${email} exist`, 404);
+      await verifyEncryptedData(password, accountDetails.password as string);
 
       if (await this.check2FAuth(accountDetails.id)) {
         return {
-          account: accountDetails,
+          account: plainToInstance(AdminLoginResponseDto, accountDetails, { excludeExtraneousValues: true }),
           is2FAEnabled: true,
         };
       }
 
-      return { account: accountDetails, authToken: jwtForLogIn(accountDetails.id), is2FAEnabled: false };
+      return { account: plainToInstance(AdminLoginResponseDto, accountDetails, { excludeExtraneousValues: true }), authToken: jwtForLogIn(accountDetails.id), is2FAEnabled: false };
     }
   }
 
   async set2FAOtp(otp: number | null, userId: number) {
-    database.twoFactorAuth.upsert({ where: { userId }, create: { userId }, update: { otpCode: otp ? jwtForOtp(otp as number) : null } });
+    await database.twoFactorAuth.upsert({ where: { userId }, create: { userId }, update: { otpCode: otp ? jwtForOtp(otp as number) : null } });
   }
 
   async activateOrDeactivate2FA(action: "activate" | "deactivate", userId: number) {
@@ -115,7 +117,7 @@ export class AuthService {
   async updateAccount(type: AccountType, updatedData: UpdateUserAccountDto | UpdateAdminAccountDto, userId: number) {
     const oldInfo = await database.user.findUnique({ where: { id: userId } });
     if (type === "user" && oldInfo!.type !== "user") throw new AppError("Account been updated must be an user account", 401);
-    else if (oldInfo!.type !== "admin") throw new AppError("Account been updated must be an admin account", 401);
+    else if (type === "admin" && oldInfo!.type !== "admin") throw new AppError("Account been updated must be an admin account", 401);
     await database.user.upsert({ where: { id: userId }, create: {}, update: updatedData });
     return { message: "Account Updated sucessfull" };
   }
