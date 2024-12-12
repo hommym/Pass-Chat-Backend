@@ -18,7 +18,7 @@ export const authRouter = Router();
 // All Auth Endpoints
 
 authRouter.post(
-  "/admin/ceate-account",
+  "/admin/create-account",
   bodyValidator(CreateAdminDto),
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
