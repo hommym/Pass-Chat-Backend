@@ -4,6 +4,8 @@ import asyncHandler from "express-async-handler";
 import { AppError } from "./errorHandler";
 import { verifyJwtToken } from "../libs/jwt";
 import { JwtPayload } from "jsonwebtoken";
+import { Socket } from "socket.io";
+import { chatService} from "../constants/objects";
 
 export const verifyJwt = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   // console.log("Jwt verification began....");
@@ -28,3 +30,22 @@ export const verifyJwt = asyncHandler(async (req: Request, res: Response, next: 
     throw new AppError("Authorization Header not defined", 400);
   }
 });
+
+export const verifyJwtForWs = async (socket: Socket, next: (err?: Error) => void) => {
+  const token = socket.handshake.auth?.token;
+
+  if (!token) {
+    next(new Error("No Auth Token Provided"));
+  }
+
+  try {
+    const jwtData = verifyJwtToken(token) as JwtPayload;
+    // adding usrs to online users
+    const userId = jwtData.userId;
+    await chatService.setUserOnlineStatus("online", userId, socket.id);
+    console.log(`User Verified id=${jwtData.userId}`);
+    next();
+  } catch (error) {
+    next(error as Error);
+  }
+};
