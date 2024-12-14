@@ -50,6 +50,7 @@ model User {
   type              AccountType     @default(user)
   status            AccountStatus   @default(active)
   onlineStatus      OnlineStatus    @default(offline)
+  connectionId      String?         @unique
   role              AdminRoles?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt   // use this get last time user was online
