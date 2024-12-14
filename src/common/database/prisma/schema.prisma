@@ -38,6 +38,24 @@ enum OnlineStatus{
   call
 }
 
+enum RoomType{
+  oneToOne
+  manyToMany
+  oneToMany
+}
+
+enum MessageType{
+  text
+  video
+  audio
+  image
+}
+
+enum NotificationType{
+  text
+  call
+}
+
 model User {
   id                Int             @id @default(autoincrement())
   email             String?         @unique
@@ -52,6 +70,7 @@ model User {
   onlineStatus      OnlineStatus    @default(offline)
   connectionId      String?         @unique
   role              AdminRoles?
+  notifications     Notification[]
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt   // use this get last time user was online
 
@@ -59,9 +78,49 @@ model User {
 }
 
 model TwoFactorAuth {
-    id             Int        @id @default(autoincrement())
-    userId         Int        @unique
-    otpCode        String?    // otpCode stored here is encrypted into a jwt token
+  id             Int        @id @default(autoincrement())
+  userId         Int        @unique
+  otpCode        String?    // otpCode stored here is encrypted into a jwt token
 
-    @@map("two_factor_auths")
+  @@map("two_factor_auths")
 }
+
+model ChatRoom {
+  id             Int        @id @default(autoincrement())
+  type           RoomType   @default(oneToOne)
+  participants   Json
+  createdAt      DateTime   @default(now())
+  messages       Message[]
+
+  @@map("chat_rooms")
+}
+
+
+model Message {
+  id             Int           @id @default(autoincrement())
+  type           MessageType   @default(text)
+  content        Json
+  senderId       Int
+  recipient      Json
+  roomId         Int
+  createdAt      DateTime      @default(now())
+  room           ChatRoom      @relation(fields: [roomId], references: [id])
+
+
+  @@map("mesages")
+}
+
+
+model Notification {
+  id             Int                 @id @default(autoincrement())
+  userId         Int                 @unique
+  type           NotificationType    @default(text)
+  data           Json
+  read           Boolean             @default(false)
+  user           User                @relation(fields: [userId], references: [id])        
+  createdAt      DateTime            @default(now())
+
+  @@map("notifications")
+}
+
+
