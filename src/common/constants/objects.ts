@@ -6,6 +6,7 @@ import { AuthService } from "../../features/auth/authService";
 import { RandomData } from "../helpers/random";
 import { AppEvents } from "../events/applicationEvents";
 import { ChatService } from "../../features/chat/chatService";
+import { ContactsService } from "../../features/contacts/contactsService";
 
 // singletons
 
@@ -23,5 +24,6 @@ export const randomData = new RandomData();
 
 export const appEvents = new AppEvents();
 
+export const chatService = new ChatService();
 
-export const chatService= new ChatService()
+export const contactsService = new ContactsService();
