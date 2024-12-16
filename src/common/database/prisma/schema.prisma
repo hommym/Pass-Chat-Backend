@@ -56,6 +56,11 @@ enum NotificationType{
   call
 }
 
+enum ContactStatus{
+  active
+  blocked
+}
+
 model User {
   id                Int             @id @default(autoincrement())
   email             String?         @unique
@@ -71,6 +76,7 @@ model User {
   connectionId      String?         @unique
   role              AdminRoles?
   notifications     Notification[]
+  contacts          UserContact[]
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt   // use this get last time user was online
 
@@ -121,6 +127,20 @@ model Notification {
   createdAt      DateTime            @default(now())
 
   @@map("notifications")
+}
+
+
+model UserContact {
+   id             Int                 @id @default(autoincrement())
+   ownerId        Int                
+   phone          String
+   profile        String?             @db.LongText
+   status         ContactStatus       @default(active)
+   user           User                @relation(fields: [ownerId], references: [id])  
+
+    @@unique([ownerId,phone])
+    @@map("user_contacts")
+
 }
 
 
