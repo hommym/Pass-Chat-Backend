@@ -107,11 +107,12 @@ model Message {
   type           MessageType   @default(text)
   content        Json
   senderId       Int
-  recipient      Json
+  recipientId    Int?
   roomId         Int
   createdAt      DateTime      @default(now())
+  read           Boolean       @default(false)
+  recieved       Boolean       @default(false) 
   room           ChatRoom      @relation(fields: [roomId], references: [id])
-
 
   @@map("mesages")
 }
