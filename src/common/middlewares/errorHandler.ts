@@ -12,6 +12,15 @@ export class AppError extends Error {
   }
 }
 
+export class WsError extends Error {
+  message: string;
+
+  constructor(message: string) {
+    super(message);
+    this.message = message;
+  }
+}
+
 export const errorHandler = async (err: Error, req: Request, res: Response, next: NextFunction) => {
   if (err instanceof AppError) {
     res.status(err.statusCode).json({ error: err.message });
