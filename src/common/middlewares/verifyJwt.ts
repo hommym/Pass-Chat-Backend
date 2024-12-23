@@ -32,7 +32,7 @@ export const verifyJwt = asyncHandler(async (req: Request, res: Response, next: 
 });
 
 export const verifyJwtForWs = async (socket: Socket, next: (err?: Error) => void) => {
-  const token = socket.handshake.auth?.token;
+  const token = socket.handshake.auth?.token ? socket.handshake.auth?.token : socket.handshake.headers.authorization?.split(" ")[1];
 
   if (!token) {
     next(new Error("No Auth Token Provided"));

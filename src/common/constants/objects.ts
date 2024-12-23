@@ -9,7 +9,6 @@ import { ChatService } from "../../features/chat/chatService";
 import { ContactsService } from "../../features/contacts/contactsService";
 import { FileService } from "../../features/file/fileService";
 
-
 // singletons
 
 export const database = new PrismaClient();

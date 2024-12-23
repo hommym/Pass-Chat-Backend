@@ -14,7 +14,7 @@ export const chatRouterDef = (mainPath: string) => {
     console.log("User On Chat Ws...");
     socket.on("request", async (body) => {
       // socket.emit("response", `Server says: ${body}`);
-      await chatController(socket, body);
+      await chatController(socket, JSON.parse(body));
     });
     // Handle disconnection
     socket.on("disconnect", async () => {
