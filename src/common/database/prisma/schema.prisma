@@ -39,9 +39,9 @@ enum OnlineStatus{
 }
 
 enum RoomType{
-  oneToOne
-  manyToMany
-  oneToMany
+  private
+  channel
+  group
 }
 
 enum MessageType{
@@ -93,11 +93,14 @@ model TwoFactorAuth {
 
 model ChatRoom {
   id             Int        @id @default(autoincrement())
-  type           RoomType   @default(oneToOne)
-  participants   Json
+  type           RoomType   @default(private)
+  user1Id        Int?       // must have value if type is private(ie 1 to 1)      
+  user2Id        Int?       // must have value if type is private(ie 1 to 1) 
+  name           String?    // must have a value if type is group or channel
   createdAt      DateTime   @default(now())
   messages       Message[]
 
+  @@unique([user1Id,user2Id])
   @@map("chat_rooms")
 }
 
