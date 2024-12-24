@@ -2,11 +2,12 @@ import { OnlineStatus, RoomType } from "@prisma/client";
 import { database, ws } from "../../common/constants/objects";
 import { bodyValidatorWs } from "../../common/middlewares/bodyValidator";
 import { MessageDto } from "./dto/messageDto";
-import { WsError } from "../../common/middlewares/errorHandler";
+import { AppError, WsError } from "../../common/middlewares/errorHandler";
 import { Socket } from "socket.io";
 import { NotifySenderDto } from "./dto/notifySenderDto";
 import { CheckStatusDto } from "./dto/checkStatusDto";
 import { SendStatusDto } from "./dto/sendStatusDto";
+import { chatRouterWs } from "./ws/chatHandler";
 
 export class ChatService {
   async setUserOnlineStatus(status: OnlineStatus, userId: number | null, connectionId?: string | undefined) {
@@ -47,7 +48,7 @@ export class ChatService {
     const recipientInfo = await this.checkUsersOnlineStatus(recipientId);
 
     if (recipientInfo) {
-      const recipientConnection = ws.sockets.sockets.get(recipientInfo.connectionId!);
+      const recipientConnection = chatRouterWs.sockets.get(recipientInfo.connectionId!);
       if (recipientConnection) {
         recipientConnection.emit("response", { action: "recieveMessage", data: savedMessage });
       } else {
@@ -101,5 +102,23 @@ export class ChatService {
         recipientConnection.emit("response", { action: "recieveStatus", status });
       }
     }
+  }
+
+  async getChatRoomDeatils(phone1: string, phone2: string) {
+    const user1Details = await database.user.findUnique({ where: { phone: phone1 }, select: { id: true, phone: true } });
+    const user2Details = await database.user.findUnique({ where: { phone: phone2 }, select: { id: true, phone: true } });
+
+    if (!user1Details || !user2Details) {
+      throw new AppError(!user1Details ? `No Account with ${phone1} exist` : `No Account with ${phone2} exist`, 404);
+    }
+
+    const { type, createdAt, id } = await database.chatRoom.upsert({
+      where: { user1Id_user2Id: { user1Id: 1, user2Id: 2 } },
+      create: { user1Id: user1Details.id, user2Id: user2Details.id },
+      update: {},
+      select: { id: true, createdAt: true, type: true },
+    });
+
+    return { roomId: id, createdAt, roomType: type, participants: [user1Details, user2Details] };
   }
 }

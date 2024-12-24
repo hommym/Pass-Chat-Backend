@@ -3,13 +3,13 @@ import { chatService, ws } from "../../../common/constants/objects";
 import { verifyJwtForWs } from "../../../common/middlewares/verifyJwt";
 import { chatController } from "./chatController";
 
-export let chatRouter: Namespace;
+export let chatRouterWs: Namespace;
 
 export const chatRouterDef = (mainPath: string) => {
-  chatRouter = ws.of(`${mainPath}/chat`);
+  chatRouterWs = ws.of(`${mainPath}/chat`);
 
-  chatRouter.use(verifyJwtForWs);
-  chatRouter.on("connection", (socket) => {
+  chatRouterWs.use(verifyJwtForWs);
+  chatRouterWs.on("connection", (socket) => {
     // Respond to a custom event from the client
     console.log("User On Chat Ws...");
     socket.on("request", async (body) => {
@@ -18,7 +18,7 @@ export const chatRouterDef = (mainPath: string) => {
     });
     // Handle disconnection
     socket.on("disconnect", async () => {
-      console.log("User has disconnected");
+      console.log(`User has disconnected, socketId=${socket.id}`);
       await chatService.setUserOnlineStatus("offline", null, socket.id);
     });
   });
