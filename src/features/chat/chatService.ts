@@ -1,13 +1,12 @@
 import { OnlineStatus, RoomType } from "@prisma/client";
-import { database, ws } from "../../common/constants/objects";
-import { bodyValidatorWs } from "../../common/middlewares/bodyValidator";
+import { chatNotificationService, database } from "../../common/constants/objects";
 import { MessageDto } from "./dto/messageDto";
 import { AppError, WsError } from "../../common/middlewares/errorHandler";
 import { Socket } from "socket.io";
-import { NotifySenderDto } from "./dto/notifySenderDto";
 import { CheckStatusDto } from "./dto/checkStatusDto";
-import { SendStatusDto } from "./dto/sendStatusDto";
+import { SetStatusDto } from "./dto/setStatusDto";
 import { chatRouterWs } from "./ws/chatHandler";
+import { SocketV1 } from "../../common/helpers/classes/socketV1";
 
 export class ChatService {
   async setUserOnlineStatus(status: OnlineStatus, userId: number | null, connectionId?: string | undefined) {
@@ -50,41 +49,16 @@ export class ChatService {
     if (recipientInfo) {
       const recipientConnection = chatRouterWs.sockets.get(recipientInfo.connectionId!);
       if (recipientConnection) {
-        recipientConnection.emit("response", { action: "recieveMessage", data: savedMessage });
-      } else {
-        // set  new message notification
+        return recipientConnection.emit("response", { action: "recieveMessage", data: savedMessage });
       }
-    } else {
-      // set new message notification
     }
+    // when user is not online
+    chatNotificationService.saveNotification(savedMessage.id, recipientId);
   }
 
-  async notifySender(socket: Socket, data: NotifySenderDto) {
-    const { action, messageId } = data;
-
-    // update the particular message
-    const updatedMessage = await database.message.update({ where: { id: messageId }, data: { read: action === "read" ? true : false, recieved: action === "recieved" ? true : false } });
-
-    // send the update to client who made this request
-    socket.emit("response", { action: "recieveMessage", data: updatedMessage });
-
-    //if the sender is active send updated data
-    const senderInfo = await this.checkUsersOnlineStatus(updatedMessage.recipientId!);
-    if (senderInfo) {
-      const senderConnection = ws.sockets.sockets.get(senderInfo.connectionId!);
-      if (senderConnection) {
-        senderConnection.emit("response", { action: "recieveMessage", data: updatedMessage });
-      } else {
-        // set update message notification
-      }
-    } else {
-      // set update message notification
-    }
-  }
-
-  async getUsersOnlineStatus(socket: Socket, data: CheckStatusDto) {
-    const { userId } = data;
-    const userInfo = await database.user.findUnique({ where: { id: userId } });
+  async getUserStatus(socket: Socket, data: CheckStatusDto) {
+    const { phone } = data;
+    const userInfo = await database.user.findUnique({ where: { phone } });
 
     if (!userInfo) {
       throw new WsError("No Account with this id exist");
@@ -93,15 +67,10 @@ export class ChatService {
     socket.emit("response", { action: "checkStatus", userStatus: onlineStatus !== "offline" ? onlineStatus : updatedAt });
   }
 
-  async sendStatus(socket: Socket, data: SendStatusDto) {
-    const { recipientId, status } = data;
-    const userInfo = await this.checkUsersOnlineStatus(recipientId);
-    if (userInfo) {
-      const recipientConnection = ws.sockets.sockets.get(userInfo.connectionId!);
-      if (recipientConnection) {
-        recipientConnection.emit("response", { action: "recieveStatus", status });
-      }
-    }
+  async setUserStatus(socket: Socket, data: SetStatusDto) {
+    const { status } = data;
+    const id = (socket as SocketV1).authUserId;
+    await database.user.update({ where: { id }, data: { onlineStatus: status } });
   }
 
   async getChatRoomDeatils(phone1: string, phone2: string) {

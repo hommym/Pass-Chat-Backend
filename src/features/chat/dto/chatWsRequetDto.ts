@@ -3,9 +3,9 @@ import { IsIn, IsNotEmptyObject, IsPositive, IsString } from "class-validator";
 
 export class ChatWsRequestDto {
   @Expose()
-  @IsIn(["sendMessage", "sendStatus", "checkStatus", "notifySender"])
+  @IsIn(["sendMessage", "setStatus", "checkStatus"])
   @IsString()
-  action: "sendMessage" | "sendStatus" | "checkStatus" | "notifySender";
+  action: "sendMessage" | "setStatus" | "checkStatus";
 
   @Expose()
   @IsNotEmptyObject()

@@ -1,11 +1,8 @@
 import { Expose } from "class-transformer";
-import { IsInt } from "class-validator";
+import { IsPhoneNumber } from "class-validator";
 
-
-
-export class CheckStatusDto{
-
-    @Expose()
-    @IsInt()
-    userId:number
+export class CheckStatusDto {
+  @Expose()
+  @IsPhoneNumber()
+  phone: string;
 }

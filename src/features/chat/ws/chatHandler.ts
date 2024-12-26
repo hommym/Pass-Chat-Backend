@@ -14,7 +14,11 @@ export const chatRouterDef = (mainPath: string) => {
     console.log("User On Chat Ws...");
     socket.on("request", async (body) => {
       // socket.emit("response", `Server says: ${body}`);
-      await chatController(socket, JSON.parse(body));
+      try {
+        await chatController(socket, JSON.parse(body));
+      } catch (error:any) {
+        socket.emit("error", { message: error.message });
+      }
     });
     // Handle disconnection
     socket.on("disconnect", async () => {
