@@ -36,6 +36,8 @@ enum OnlineStatus{
   online
   offline
   call
+  typing
+  recording
 }
 
 enum RoomType{
@@ -52,13 +54,19 @@ enum MessageType{
 }
 
 enum NotificationType{
-  text
+  message
+  system
   call
 }
 
 enum ContactStatus{
   active
   blocked
+}
+
+enum Platform{
+  mobile
+  browser
 }
 
 model User {
@@ -73,6 +81,8 @@ model User {
   type              AccountType     @default(user)
   status            AccountStatus   @default(active)
   onlineStatus      OnlineStatus    @default(offline)
+  isWebActive       Boolean         @default(false)
+  webConnectionId   String?
   connectionId      String?         @unique
   role              AdminRoles?
   notifications     Notification[]
@@ -116,20 +126,23 @@ model Message {
   read           Boolean       @default(false)
   recieved       Boolean       @default(false) 
   room           ChatRoom      @relation(fields: [roomId], references: [id])
-
-  @@map("mesages")
+  notifications  Notification[]
+  @@map("messages")
 }
 
 
 model Notification {
   id             Int                 @id @default(autoincrement())
-  userId         Int                 @unique
-  type           NotificationType    @default(text)
-  data           Json
-  read           Boolean             @default(false)
-  user           User                @relation(fields: [userId], references: [id])        
+  userId         Int                 
+  type           NotificationType    @default(message)
+  data           Json?
+  messageId      Int?
+  platform       Platform            @default(mobile)
+  user           User                @relation(fields: [userId], references: [id])
+  message        Message?            @relation(fields:[messageId],references:[id])        
   createdAt      DateTime            @default(now())
 
+  @@unique([userId,messageId,platform])
   @@map("notifications")
 }
 
