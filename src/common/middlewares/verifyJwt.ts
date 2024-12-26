@@ -1,11 +1,11 @@
 // Custom data types
 import { Request, Response, NextFunction } from "express";
 import asyncHandler from "express-async-handler";
-import { AppError } from "./errorHandler";
+import { AppError, WsError } from "./errorHandler";
 import { verifyJwtToken } from "../libs/jwt";
 import { JwtPayload } from "jsonwebtoken";
 import { Socket } from "socket.io";
-import { chatService} from "../constants/objects";
+import { chatService, database } from "../constants/objects";
 import { SocketV1 } from "../helpers/classes/socketV1";
 
 export const verifyJwt = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
@@ -43,6 +43,12 @@ export const verifyJwtForWs = async (socket: Socket, next: (err?: Error) => void
     const jwtData = verifyJwtToken(token) as JwtPayload;
     // adding usrs to online users
     const userId = jwtData.userId;
+
+    // checking if user is already online
+    const userDetails = await database.user.findUnique({ where: { id: userId } });
+
+    if (userDetails!.onlineStatus !== "offline") return next(new WsError("User Already Online"));
+
     await chatService.setUserOnlineStatus("online", userId, socket.id);
     (socket as SocketV1).authUserId = userId;
     console.log(`User Verified id=${jwtData.userId}`);
