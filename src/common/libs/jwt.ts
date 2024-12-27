@@ -3,16 +3,16 @@ dotenv.config();
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { AppError } from "../middlewares/errorHandler";
 
-export const jwtForLogIn = (id: string|number,exp:string|null=null): string => {
+export const jwtForLogIn = (id: string | number, exp: string | null = null): string => {
   if (process.env.JwtSecretKey !== undefined) {
-    return jwt.sign({ userId: id }, process.env.JwtSecretKey, { expiresIn:exp?exp:"36500d" });
+    return jwt.sign({ userId: id }, process.env.JwtSecretKey, { expiresIn: exp ? exp : "36500d" });
   } else {
     console.log("env variable JwtSecretKey not defined on server");
     throw new AppError("Server errror", 500);
   }
 };
 
-export const verifyJwtToken = (token: string)=> {
+export const verifyJwtToken = (token: string) => {
   if (process.env.JwtSecretKey !== undefined) {
     return jwt.verify(token, process.env.JwtSecretKey);
   } else {
@@ -29,4 +29,11 @@ export const jwtForOtp = (otpCode: number | string): string => {
   }
 };
 
-
+export const jwtForWsConnectionId = (connectionId: string) => {
+  if (process.env.JwtSecretKey !== undefined) {
+    return jwt.sign({ connectionId }, process.env.JwtSecretKey, { expiresIn: 300000 });
+  } else {
+    console.log("env variable JwtSecretKey not defined on server");
+    throw new AppError("Server errror", 500);
+  }
+};

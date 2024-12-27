@@ -13,7 +13,7 @@ export const notificationRouterDef = (mainPath: string) => {
       notificationRouterWs.use(verifyJwtForWs);
       notificationRouterWs.on("connection", (socket) => {
         // Respond to a custom event from the client
-        console.log("User On Chat Ws...");
+        console.log("User On Chat-Notification Ws...");
         socket.on("request", async (body) => {
           try {
             await chatNotificationController(socket, JSON.parse(body));

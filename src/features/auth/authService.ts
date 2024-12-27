@@ -5,7 +5,7 @@ import { AdminLoginDto } from "./dtos/adminLoginDto";
 import { AppError } from "../../common/middlewares/errorHandler";
 import { plainToInstance } from "class-transformer";
 import { UserLoginResponseDto } from "./dtos/userLoginResponseDto";
-import { jwtForLogIn, jwtForOtp, verifyJwtToken } from "../../common/libs/jwt";
+import { jwtForLogIn, jwtForOtp, jwtForWsConnectionId, verifyJwtToken } from "../../common/libs/jwt";
 import { JwtPayload } from "jsonwebtoken";
 import { UpdateUserAccountDto } from "./dtos/updateUserAccountDto";
 import { UpdateAdminAccountDto } from "./dtos/updateAdminAccountDto";
@@ -13,6 +13,8 @@ import { ChangePasswordDto } from "./dtos/changePasswordDto";
 import { encryptData, verifyEncryptedData } from "../../common/libs/bcrypt";
 import { CreateAdminDto } from "./dtos/createAdminDto";
 import { AdminLoginResponseDto } from "./dtos/adminLoginResponseDto";
+import { Socket } from "socket.io";
+import qrCodeGen from "qrcode";
 
 export class AuthService {
   async checkAccount(email: string) {
@@ -149,5 +151,10 @@ export class AuthService {
 
     await database.user.upsert({ where: { id: userId }, create: {}, update: { password: await encryptData(newPassword) } });
     return { message: "Password Changed sucessfully" };
+  }
+
+  async createLoginQrCode(socket: Socket) {
+    const qrCode = await qrCodeGen.toDataURL(jwtForWsConnectionId(socket.id));
+    socket.emit("response", { action: "createLoginQrCode", qrCode });
   }
 }
