@@ -85,6 +85,7 @@ model User {
   webConnectionId   String?
   connectionId      String?         @unique
   role              AdminRoles?
+  loggedIn          Boolean         @default(false)
   notifications     Notification[]
   contacts          UserContact[]
   createdAt         DateTime        @default(now())
