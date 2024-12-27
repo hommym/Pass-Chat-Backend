@@ -76,6 +76,18 @@ export class AuthService {
     return { message: "User Logged Out Successfully" };
   }
 
+  async webLogin(loginDto: UserLoginDto) {
+    const { phone } = loginDto;
+
+    const accountDetails = await database.user.findUnique({ where: { phone } });
+    if (!accountDetails) throw new AppError("No Account with this number exist", 404);
+    else if (!accountDetails.isWebActive) await database.user.update({ where: { id: accountDetails.id }, data: { isWebActive: true } });
+    return {
+      account: plainToInstance(UserLoginResponseDto, accountDetails, { excludeExtraneousValues: true }),
+      authToken: jwtForLogIn(accountDetails.id),
+    };
+  }
+
   async set2FAOtp(otp: number | null, userId: number) {
     await database.twoFactorAuth.upsert({ where: { userId }, create: { userId }, update: { otpCode: otp ? jwtForOtp(otp as number) : null } });
   }
