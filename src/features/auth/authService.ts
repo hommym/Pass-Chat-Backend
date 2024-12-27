@@ -48,6 +48,8 @@ export class AuthService {
     if (type === "user") {
       const { phone } = loginDto as UserLoginDto;
       const accountDetails = await this.createUserAccount(phone);
+      if (accountDetails.loggedIn) throw new AppError("User Has Already logged In Another Device", 401);
+      await database.user.update({ where: { phone }, data: { loggedIn: true } });
       return {
         account: plainToInstance(UserLoginResponseDto, accountDetails, { excludeExtraneousValues: true }),
         authToken: jwtForLogIn(accountDetails.id),
@@ -67,6 +69,11 @@ export class AuthService {
 
       return { account: plainToInstance(AdminLoginResponseDto, accountDetails, { excludeExtraneousValues: true }), authToken: jwtForLogIn(accountDetails.id), is2FAEnabled: false };
     }
+  }
+
+  async logout(userId: number) {
+    await database.user.update({ where: { id: userId }, data: { loggedIn: false } });
+    return { message: "User Logged Out Successfully" };
   }
 
   async set2FAOtp(otp: number | null, userId: number) {

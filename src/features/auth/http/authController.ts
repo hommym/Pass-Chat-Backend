@@ -36,6 +36,14 @@ authRouter.post(
 );
 
 authRouter.post(
+  "/user/logout",
+  verifyJwt,
+  asyncHandler(async (req: Request, res: Response) => {
+    res.status(201).json(await authService.logout(req.body.verifiedUserId));
+  })
+);
+
+authRouter.post(
   "/admin/login",
   bodyValidator(AdminLoginDto),
   asyncHandler(async (req: Request, res: Response) => {
