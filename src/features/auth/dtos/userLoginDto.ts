@@ -5,8 +5,4 @@ export class UserLoginDto {
   @Expose()
   @IsPhoneNumber()
   phone: string;
-  
-  @Expose()
-  @IsNotEmpty()
-  fullName: string;
 }

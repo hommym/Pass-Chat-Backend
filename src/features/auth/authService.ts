@@ -19,8 +19,8 @@ export class AuthService {
     return await database.user.findUnique({ where: { email } });
   }
 
-  async createUserAccount(phone: string, fullName: string) {
-    return await database.user.upsert({ where: { phone }, create: { phone, fullName }, update: {} });
+  async createUserAccount(phone: string) {
+    return await database.user.upsert({ where: { phone }, create: { phone }, update: {} });
   }
 
   async check2FAuth(userId: number) {
@@ -46,8 +46,8 @@ export class AuthService {
 
   async login(type: AccountType, loginDto: UserLoginDto | AdminLoginDto) {
     if (type === "user") {
-      const { fullName, phone } = loginDto as UserLoginDto;
-      const accountDetails = await this.createUserAccount(phone, fullName);
+      const { phone } = loginDto as UserLoginDto;
+      const accountDetails = await this.createUserAccount(phone);
       return {
         account: plainToInstance(UserLoginResponseDto, accountDetails, { excludeExtraneousValues: true }),
         authToken: jwtForLogIn(accountDetails.id),
