@@ -12,6 +12,7 @@ import { UpdateUserAccountDto } from "../dtos/updateUserAccountDto";
 import { UpdateAdminAccountDto } from "../dtos/updateAdminAccountDto";
 import { ChangePasswordDto } from "../dtos/changePasswordDto";
 import { CreateAdminDto } from "../dtos/createAdminDto";
+import { AppError } from "../../../common/middlewares/errorHandler";
 
 export const authRouter = Router();
 
@@ -40,6 +41,17 @@ authRouter.post(
   bodyValidator(UserLoginDto),
   asyncHandler(async (req: Request, res: Response) => {
     res.status(201).json(await authService.webLogin(req.body));
+  })
+);
+
+
+authRouter.post(
+  "/user/web/qr-code/login",
+  verifyJwt,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { webClientId,verifiedUserId } = req.body;
+    if(!webClientId) throw new AppError("No Values Passed for webClientId",400)
+    res.status(200).json(await authService.webQrCodeLogin(webClientId,verifiedUserId));
   })
 );
 

@@ -15,6 +15,7 @@ import { CreateAdminDto } from "./dtos/createAdminDto";
 import { AdminLoginResponseDto } from "./dtos/adminLoginResponseDto";
 import { Socket } from "socket.io";
 import qrCodeGen from "qrcode";
+import { authRouterWs } from "./ws/authHandler";
 
 export class AuthService {
   async checkAccount(email: string) {
@@ -88,6 +89,26 @@ export class AuthService {
       account: plainToInstance(UserLoginResponseDto, accountDetails, { excludeExtraneousValues: true }),
       authToken: jwtForLogIn(accountDetails.id),
     };
+  }
+
+  async webQrCodeLogin(encryptId: string, userId: number) {
+    try {
+      const jwtData = verifyJwtToken(encryptId) as JwtPayload;
+      const webClientConnection = authRouterWs.sockets.get(jwtData.connectionId);
+      if (webClientConnection) {
+        const accountDetails = await database.user.findUnique({ where: { id: userId } });
+        webClientConnection.emit("response", {
+          action: "webQrCodeLogin",
+          account: plainToInstance(UserLoginResponseDto, accountDetails, { excludeExtraneousValues: true }),
+          authToken: jwtForLogIn(accountDetails!.id),
+        });
+
+        if (!accountDetails!.isWebActive) await database.user.update({ where: { id: accountDetails!.id }, data: { isWebActive: true } });
+      }
+      return { message: "Login Sucessfull" };
+    } catch (error) {
+      throw new AppError("Web Login Session has expired or is not valid", 401);
+    }
   }
 
   async set2FAOtp(otp: number | null, userId: number) {
