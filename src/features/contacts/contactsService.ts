@@ -37,4 +37,9 @@ export class ContactsService {
 
     return res;
   }
+
+  async getSavedContacts(userId: number) {
+    const { contacts } = (await database.user.findUnique({ where: { id: userId }, select: { contacts: { select: { phone: true, profile: true } } } }))!;
+    return contacts;
+  }
 }

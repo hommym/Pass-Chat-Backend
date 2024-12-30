@@ -17,3 +17,12 @@ contactsRouter.post(
     res.status(201).json(await contactsService.saveContacts(contacts, verifiedUserId));
   })
 );
+
+contactsRouter.get(
+  "/save",
+  verifyJwt,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { verifiedUserId } = req.body;
+    res.status(200).json(await contactsService.getSavedContacts(verifiedUserId));
+  })
+);
