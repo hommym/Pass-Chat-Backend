@@ -88,6 +88,8 @@ model User {
   loggedIn          Boolean         @default(false)
   notifications     Notification[]
   contacts          UserContact[]
+  chatRoomUser1     ChatRoom[]      @relation("User1")
+  chatRoomUser2     ChatRoom[]      @relation("User2")
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt   // use this get last time user was online
 
@@ -108,6 +110,8 @@ model ChatRoom {
   user1Id        Int?       // must have value if type is private(ie 1 to 1)      
   user2Id        Int?       // must have value if type is private(ie 1 to 1) 
   name           String?    // must have a value if type is group or channel
+  user1          User?      @relation("User1",fields: [user1Id], references: [id]) 
+  user2          User?      @relation("User2",fields: [user2Id], references: [id]) 
   createdAt      DateTime   @default(now())
   messages       Message[]
 
