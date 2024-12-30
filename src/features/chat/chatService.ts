@@ -73,7 +73,9 @@ export class ChatService {
     await database.user.update({ where: { id }, data: { onlineStatus: status } });
   }
 
-  async getChatRoomDeatils(phone1: string, phone2: string) {
+  
+  async creatChatRoomDeatils(phone1: string, phone2: string) {
+    // this is for getting chat room details for
     const user1Details = await database.user.findUnique({ where: { phone: phone1 }, select: { id: true, phone: true } });
     const user2Details = await database.user.findUnique({ where: { phone: phone2 }, select: { id: true, phone: true } });
 
@@ -81,13 +83,38 @@ export class ChatService {
       throw new AppError(!user1Details ? `No Account with ${phone1} exist` : `No Account with ${phone2} exist`, 404);
     }
 
-    const { type, createdAt, id } = await database.chatRoom.upsert({
-      where: { user1Id_user2Id: { user1Id: 1, user2Id: 2 } },
-      create: { user1Id: user1Details.id, user2Id: user2Details.id },
-      update: {},
-      select: { id: true, createdAt: true, type: true },
-    });
+    const roomDetails = await database.chatRoom.findUnique({ where: { user1Id_user2Id: { user1Id: user2Details.id, user2Id: user1Details.id } }, select: { id: true, createdAt: true, type: true } });
+
+    const { type, createdAt, id } = roomDetails
+      ? roomDetails
+      : await database.chatRoom.upsert({
+          where: { user1Id_user2Id: { user1Id: user1Details.id, user2Id: user2Details.id } },
+          create: { user1Id: user1Details.id, user2Id: user2Details.id },
+          update: {},
+          select: { id: true, createdAt: true, type: true },
+        });
 
     return { roomId: id, createdAt, roomType: type, participants: [user1Details, user2Details] };
+  }
+
+  async getAllChatRooms(userId: number) {
+    const rooms = await database.chatRoom.findMany({
+      where: { OR: [{ user1Id: userId }, { user2Id: userId }], type: "private" },
+      select: { id: true, type: true, user1: { select: { phone: true, id: true } }, user2: { select: { phone: true, id: true } }, createdAt: true },
+    });
+    const dataToReturn: object[] = [];
+    rooms.forEach((room) => {
+      const { id, createdAt, type, user1, user2 } = room;
+      dataToReturn.push({
+        roomId: id,
+        roomType: type,
+        createdAt,
+        participants: [
+          { id: user1!.id, phone: user1!.phone },
+          { id: user2!.id, phone: user2!.phone },
+        ],
+      });
+    });
+    return dataToReturn;
   }
 }
