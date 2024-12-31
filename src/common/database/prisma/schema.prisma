@@ -127,6 +127,7 @@ model Message {
   senderId       Int
   recipientId    Int?
   roomId         Int
+  replyTo        Int?          // id of message this message is a reply to
   createdAt      DateTime      @default(now())
   read           Boolean       @default(false)
   recieved       Boolean       @default(false) 
