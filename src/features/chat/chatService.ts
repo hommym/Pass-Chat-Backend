@@ -7,7 +7,8 @@ import { CheckStatusDto } from "./dto/checkStatusDto";
 import { SetStatusDto } from "./dto/setStatusDto";
 import { chatRouterWs } from "./ws/chatHandler";
 import { SocketV1 } from "../../common/helpers/classes/socketV1";
-
+import { GetMessagesDto } from "./dto/getMessagesDto";
+import { fromZonedTime } from "date-fns-tz";
 export class ChatService {
   async setUserOnlineStatus(status: OnlineStatus, userId: number | null, connectionId?: string | undefined) {
     if (userId) {
@@ -38,7 +39,7 @@ export class ChatService {
     if (!(await this.checkChatRoom(roomId))) throw new WsError("No ChatRoom with this id exist");
 
     // save th data in database
-    const savedMessage = await database.message.create({ data: { roomId, content, type: dataType, recipientId, senderId} });
+    const savedMessage = await database.message.create({ data: { roomId, content, type: dataType, recipientId, senderId } });
 
     // send the sender a response.
     socket.emit("response", { action: "sendMessage", data: savedMessage });
@@ -73,7 +74,6 @@ export class ChatService {
     await database.user.update({ where: { id }, data: { onlineStatus: status } });
   }
 
-  
   async creatChatRoomDeatils(phone1: string, phone2: string) {
     // this is for getting chat room details for
     const user1Details = await database.user.findUnique({ where: { phone: phone1 }, select: { id: true, phone: true } });
@@ -116,5 +116,15 @@ export class ChatService {
       });
     });
     return dataToReturn;
+  }
+
+  async getMessages(socket: Socket, data: GetMessagesDto) {
+    const { chatRoomId, date, timeZone } = data;
+
+    const startOfDayInUserTimeZone = new Date(`${date}T00:00:00`);
+    const endOfDayInUserTimeZone = new Date(`${date}T23:59:59`);
+
+    const messages = await database.message.findMany({ where: { createdAt: { gte: fromZonedTime(startOfDayInUserTimeZone, timeZone), lt: fromZonedTime(endOfDayInUserTimeZone, timeZone) } },orderBy:{createdAt:"desc"} });
+    socket.emit("response", { action: "getMessages", messages });
   }
 }

@@ -5,6 +5,7 @@ import { MessageDto } from "../dto/messageDto";
 import { chatService } from "../../../common/constants/objects";
 import { CheckStatusDto } from "../dto/checkStatusDto";
 import { SetStatusDto } from "../dto/setStatusDto";
+import { GetMessagesDto } from "../dto/getMessagesDto";
 
 export const chatController = async (socket: Socket, request: ChatWsRequestDto) => {
   // validate request
@@ -20,5 +21,8 @@ export const chatController = async (socket: Socket, request: ChatWsRequestDto) 
   } else if (action === "setStatus") {
     await bodyValidatorWs(SetStatusDto, data);
     await chatService.setUserStatus(socket, data as SetStatusDto);
+  }else{
+    await bodyValidatorWs(GetMessagesDto,data)
+    await chatService.getMessages(socket,data as GetMessagesDto)
   }
 };
