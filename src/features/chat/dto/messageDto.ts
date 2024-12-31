@@ -1,5 +1,5 @@
 import { Expose } from "class-transformer";
-import { IsDateString, IsIn, IsInt, IsNotEmpty, IsPositive } from "class-validator";
+import { IsDateString, IsIn, IsInt, IsNotEmpty, IsOptional, IsPositive } from "class-validator";
 
 export class MessageDto {
   @Expose()
@@ -9,7 +9,7 @@ export class MessageDto {
   @Expose()
   @IsIn(["text", "video", "audio", "image"])
   dataType: "text" | "video" | "audio" | "image";
-  
+
   @Expose()
   @IsInt()
   roomId: number;
@@ -21,4 +21,9 @@ export class MessageDto {
   @Expose()
   @IsPositive()
   recipientId: number;
+
+  @Expose()
+  @IsInt()
+  @IsOptional()
+  replyTo?: number;
 }
