@@ -9,11 +9,7 @@ export class MessageDto {
   @Expose()
   @IsIn(["text", "video", "audio", "image"])
   dataType: "text" | "video" | "audio" | "image";
-
-  @Expose()
-  @IsDateString()
-  createdAt: string;
-
+  
   @Expose()
   @IsInt()
   roomId: number;

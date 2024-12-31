@@ -33,12 +33,12 @@ export class ChatService {
   }
 
   async sendMessage(socket: Socket, message: MessageDto) {
-    const { roomId, content, createdAt, dataType, recipientId, senderId } = message;
+    const { roomId, content, dataType, recipientId, senderId } = message;
 
     if (!(await this.checkChatRoom(roomId))) throw new WsError("No ChatRoom with this id exist");
 
     // save th data in database
-    const savedMessage = await database.message.create({ data: { roomId, content, type: dataType, recipientId, senderId, createdAt } });
+    const savedMessage = await database.message.create({ data: { roomId, content, type: dataType, recipientId, senderId} });
 
     // send the sender a response.
     socket.emit("response", { action: "sendMessage", data: savedMessage });
