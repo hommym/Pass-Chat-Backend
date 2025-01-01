@@ -1,4 +1,4 @@
-import { Message, Platform, RoomType } from "@prisma/client";
+import { Message, NotificationAction, Platform, RoomType } from "@prisma/client";
 import { bodyValidator, bodyValidatorWs } from "../../common/middlewares/bodyValidator";
 import { PrivateChatNotificationDto } from "./dto/privateChatNotficationDto";
 import { database } from "../../common/constants/objects";
@@ -7,8 +7,12 @@ import { Socket } from "socket.io";
 import { SocketV1 } from "../../common/helpers/classes/socketV1";
 
 export class ChatNotificationService {
-  async saveNotification(messageId: number, recipientId: number, platform: Platform = "mobile") {
-    await database.notification.upsert({ where: { userId_messageId_platform: { userId: recipientId, messageId, platform } }, create: { userId: recipientId, messageId, platform }, update: {} });
+  async saveNotification(messageId: number, recipientId: number, platform: Platform = "mobile", action: NotificationAction = "updateMessage") {
+    await database.notification.upsert({
+      where: { userId_messageId_platform: { userId: recipientId, messageId, platform } },
+      create: { userId: recipientId, messageId, platform, action },
+      update: {action},
+    });
   }
 
   async setNotification(chatType: RoomType, data: any) {
@@ -33,15 +37,15 @@ export class ChatNotificationService {
   }
 
   async getNotification(socket: Socket) {
-    const userId= (socket as SocketV1).authUserId
-    const messages: Message[] = [];
+    const userId = (socket as SocketV1).authUserId;
+    const messages: { action: NotificationAction; messages: Message }[] = [];
     const notificationIds: number[] = [];
     // get those notfications and then delete them
-    (await database.notification.findMany({ where: { userId, platform: "mobile", messageId: { not: null } }, include: { message: true } })).forEach((notification) => {
-      messages.push(notification.message!);
+    (await database.notification.findMany({ where: { userId, platform: "mobile", messageId: { not: null }, action: { not: null } }, include: { message: true } })).forEach((notification) => {
+      messages.push({ messages: notification.message!, action: notification.action! });
       notificationIds.push(notification.id);
     });
-
+    console.log(messages);
     socket.emit("response", { action: "getNotification", data: messages });
     await database.notification.deleteMany({ where: { id: { in: notificationIds } } });
   }

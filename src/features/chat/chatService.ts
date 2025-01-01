@@ -9,6 +9,7 @@ import { chatRouterWs } from "./ws/chatHandler";
 import { SocketV1 } from "../../common/helpers/classes/socketV1";
 import { GetMessagesDto } from "./dto/getMessagesDto";
 import { fromZonedTime } from "date-fns-tz";
+import { UpdateMessageDto } from "./dto/updateMessageDto";
 export class ChatService {
   async setUserOnlineStatus(status: OnlineStatus, userId: number | null, connectionId?: string | undefined) {
     if (userId) {
@@ -34,12 +35,12 @@ export class ChatService {
   }
 
   async sendMessage(socket: Socket, message: MessageDto) {
-    const { roomId, content, dataType, recipientId, senderId , replyTo} = message;
+    const { roomId, content, dataType, recipientId, senderId, replyTo } = message;
 
     if (!(await this.checkChatRoom(roomId))) throw new WsError("No ChatRoom with this id exist");
 
     // save th data in database
-    const savedMessage = await database.message.create({ data: { roomId, content, type: dataType, recipientId, senderId ,replyTo} });
+    const savedMessage = await database.message.create({ data: { roomId, content, type: dataType, recipientId, senderId, replyTo } });
 
     // send the sender a response.
     socket.emit("response", { action: "sendMessage", data: savedMessage });
@@ -54,7 +55,7 @@ export class ChatService {
       }
     }
     // when user is not online
-    chatNotificationService.saveNotification(savedMessage.id, recipientId);
+    chatNotificationService.saveNotification(savedMessage.id, recipientId, "mobile", "saveMessage");
   }
 
   async getUserStatus(socket: Socket, data: CheckStatusDto) {
@@ -124,7 +125,37 @@ export class ChatService {
     const startOfDayInUserTimeZone = new Date(`${date}T00:00:00`);
     const endOfDayInUserTimeZone = new Date(`${date}T23:59:59`);
 
-    const messages = await database.message.findMany({ where: { createdAt: { gte: fromZonedTime(startOfDayInUserTimeZone, timeZone), lt: fromZonedTime(endOfDayInUserTimeZone, timeZone) } },orderBy:{createdAt:"desc"} });
+    const messages = await database.message.findMany({
+      where: { createdAt: { gte: fromZonedTime(startOfDayInUserTimeZone, timeZone), lt: fromZonedTime(endOfDayInUserTimeZone, timeZone) }, deleteFlag: false },
+      orderBy: { createdAt: "desc" },
+    });
     socket.emit("response", { action: "getMessages", messages });
+  }
+
+  async updateMessage(userId: number, messageData: UpdateMessageDto) {
+    const { messageId, newMessage } = messageData;
+    const message = await database.message.findUnique({ where: { id: messageId } });
+
+    if (!message) throw new AppError("No message with this id exist", 404);
+    else if (message.senderId !== userId) throw new AppError("You cannot edit messages you did not send", 402);
+    else if (message.type !== "text") throw new AppError("Only messages of type text can be edited", 422);
+
+    await database.message.update({ where: { id: messageId }, data: { content: newMessage } });
+
+    await chatNotificationService.saveNotification(messageId, message.recipientId!);
+  }
+
+  async deleteMessage(messageId: number, userId: number) {
+    const message = await database.message.findUnique({ where: { id: messageId } });
+
+    if (!message) throw new AppError("No message with this id exist", 404);
+    else if (message.senderId !== userId) throw new AppError("You cannot edit messages you did not send", 402);
+
+    if (message.recieved) {
+      await database.message.update({ where: { id: messageId }, data: { deleteFlag: true } });
+      await chatNotificationService.saveNotification(messageId, message.recipientId!, "mobile", "deleteMessage");
+      return;
+    }
+    await database.message.delete({ where: { id: messageId } });
   }
 }

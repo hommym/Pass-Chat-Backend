@@ -34,22 +34,23 @@ export const verifyJwt = asyncHandler(async (req: Request, res: Response, next: 
 
 export const verifyJwtForWs = async (socket: Socket, next: (err?: Error) => void) => {
   const token = socket.handshake.auth?.token ? socket.handshake.auth?.token : socket.handshake.headers.authorization?.split(" ")[1];
-
+  const setOnlineStatus = socket.handshake.query.setOnlineStatus;
   if (!token) {
     next(new Error("No Auth Token Provided"));
   }
-
   try {
     const jwtData = verifyJwtToken(token) as JwtPayload;
     // adding usrs to online users
     const userId = jwtData.userId;
 
     // checking if user is already online
-    const userDetails = await database.user.findUnique({ where: { id: userId } });
+    if (setOnlineStatus) {
+      const userDetails = await database.user.findUnique({ where: { id: userId } });
 
-    if (userDetails!.onlineStatus !== "offline") return next(new WsError("User Already Online"));
+      if (userDetails!.onlineStatus !== "offline") return next(new WsError("User Already Online"));
 
-    await chatService.setUserOnlineStatus("online", userId, socket.id);
+      await chatService.setUserOnlineStatus("online", userId, socket.id);
+    }
     (socket as SocketV1).authUserId = userId;
     console.log(`User Verified id=${jwtData.userId}`);
     next();
