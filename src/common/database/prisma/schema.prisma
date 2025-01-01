@@ -69,6 +69,12 @@ enum Platform{
   browser
 }
 
+enum NotificationAction{
+  updateMessage
+  deleteMessage
+  saveMessage
+}
+
 model User {
   id                Int             @id @default(autoincrement())
   email             String?         @unique
@@ -131,6 +137,7 @@ model Message {
   createdAt      DateTime      @default(now())
   read           Boolean       @default(false)
   recieved       Boolean       @default(false) 
+  deleteFlag     Boolean       @default(false)
   room           ChatRoom      @relation(fields: [roomId], references: [id])
   notifications  Notification[]
   @@map("messages")
@@ -143,6 +150,7 @@ model Notification {
   type           NotificationType    @default(message)
   data           Json?
   messageId      Int?
+  action         NotificationAction?
   platform       Platform            @default(mobile)
   user           User                @relation(fields: [userId], references: [id])
   message        Message?            @relation(fields:[messageId],references:[id])        
