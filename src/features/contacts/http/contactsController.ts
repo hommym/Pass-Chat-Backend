@@ -14,7 +14,8 @@ contactsRouter.post(
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
     const { contacts, verifiedUserId } = req.body;
-    res.status(201).json(await contactsService.saveContacts(contacts, verifiedUserId));
+    await contactsService.saveContacts(contacts, verifiedUserId);
+    res.status(204).end();
   })
 );
 
