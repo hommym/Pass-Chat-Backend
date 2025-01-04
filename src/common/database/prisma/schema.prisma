@@ -51,6 +51,7 @@ enum MessageType{
   video
   audio
   image
+  call
 }
 
 enum NotificationType{
@@ -73,6 +74,11 @@ enum NotificationAction{
   updateMessage
   deleteMessage
   saveMessage
+}
+
+enum CallType{
+  video
+  audio
 }
 
 model User {
@@ -139,6 +145,7 @@ model Message {
   recieved       Boolean       @default(false) 
   deleteFlag     Boolean       @default(false)
   room           ChatRoom      @relation(fields: [roomId], references: [id])
+  callType       CallType?
   notifications  Notification[]
   @@map("messages")
 }
@@ -173,5 +180,7 @@ model UserContact {
     @@map("user_contacts")
 
 }
+
+
 
 
