@@ -9,6 +9,7 @@ import { ChatService } from "../../features/chat/chatService";
 import { ContactsService } from "../../features/contacts/contactsService";
 import { FileService } from "../../features/file/fileService";
 import { ChatNotificationService } from "../../features/chat-notification/chatNotificationService";
+import { CallService } from "../../features/calls/callService";
 
 // singletons
 
@@ -33,3 +34,5 @@ export const contactsService = new ContactsService();
 export const fileService = new FileService();
 
 export const chatNotificationService = new ChatNotificationService();
+
+export const callService= new CallService()
