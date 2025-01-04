@@ -6,8 +6,8 @@
     "build": "tsc",
     "db:generate": "npx prisma generate",
     "db:change": "npx prisma migrate dev --name",
-    "db:deploy": "npx prisma migrate deploy && npx prisma generate",
-    "db:reset": "npx prisma migrate reset",
+    "db:deploy": "npx prisma migrate deploy && npx prisma generate && node ./build/common/database/seed.js",
+    "db:reset": "npx prisma migrate reset && node ./build/common/database/seed.js",
     "seed": "node ./build/common/database/seed.js"
   },
   "dependencies": {
