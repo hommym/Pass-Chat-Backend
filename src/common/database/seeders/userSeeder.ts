@@ -27,6 +27,6 @@ export const UserSeeder = async () => {
   }
 
   for (const user of mobileUsers) {
-     await database.user.upsert({ where: { email: user.phone }, create: user, update: {} });
+     await database.user.upsert({ where: { phone: user.phone }, create: user, update: {} });
   }
 };
