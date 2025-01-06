@@ -81,6 +81,22 @@ enum CallType{
   audio
 }
 
+enum CommunityType{
+  group
+  channel
+}
+
+enum CommunityVisibility{
+  public
+  private
+}
+
+enum CommunityRole{
+  owner
+  admin
+  member
+}
+
 model User {
   id                Int             @id @default(autoincrement())
   email             String?         @unique
@@ -102,6 +118,7 @@ model User {
   contacts          UserContact[]
   chatRoomUser1     ChatRoom[]      @relation("User1")
   chatRoomUser2     ChatRoom[]      @relation("User2")
+  communities       Community[]
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt   // use this get last time user was online
 
@@ -126,6 +143,7 @@ model ChatRoom {
   user2          User?      @relation("User2",fields: [user2Id], references: [id]) 
   createdAt      DateTime   @default(now())
   messages       Message[]
+  community      Community[]
 
   @@unique([user1Id,user2Id])
   @@map("chat_rooms")
@@ -181,6 +199,37 @@ model UserContact {
 
 }
 
+
+
+model Community {
+   id                    Int                   @id @default(autoincrement())
+   type                  CommunityType         @default(group)
+   visibility            CommunityVisibility   @default(public)
+   name                  String                
+   description           String
+   roomId                Int
+   subscriberCount       Int
+   ownerId               Int
+   permissions           Json?
+   members               CommunityMember[]
+   room                  ChatRoom               @relation(fields: [roomId], references: [id])
+   ownerDetails          User                   @relation(fields: [ownerId], references: [id])
+
+  @@unique([type,name])
+  @@map("communities")
+}
+
+
+model CommunityMember{
+  id                    Int                   @id @default(autoincrement())
+  communityId           Int
+  userId                Int
+  role                  CommunityRole         @default(member)
+  community             Community             @relation(fields: [communityId], references: [id])
+
+  @@unique([communityId,userId])
+  @@map("community_members")
+}
 
 
 
