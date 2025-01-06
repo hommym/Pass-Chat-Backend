@@ -20,6 +20,17 @@ export const UserSeeder = async () => {
     { phone: "+233476748734", fullName: "Mavis Dugan" },
     { phone: "+233406728734", fullName: "Charles Lary" },
     { phone: "+233786748734", fullName: "Victoria Arthur" },
+    { phone: "+233550663440", fullName: "Herberth Arthur" },
+    { phone: "+251929241160", fullName: "Joseph Arthur" },
+    { phone: "+233260812576", fullName: "Michael Owusu" },
+    { phone: "+233509860303", fullName: "Sandra Boateng" },
+    { phone: "+233558794823", fullName: "Kwame Asante" },
+    { phone: "+233544959477", fullName: "Grace Amankwa" },
+    { phone: "+233555423936", fullName: "Daniel Mensah" },
+    { phone: "+233558398387", fullName: "Akosua Appiah" },
+    { phone: "+233545871109", fullName: "John Ofori" },
+    { phone: "+233543635743", fullName: "Patricia Nyarko" },
+    { phone: "+233550420120", fullName: "Emmanuel Owusu" },
   ];
 
   for (const user of users) {
@@ -27,6 +38,6 @@ export const UserSeeder = async () => {
   }
 
   for (const user of mobileUsers) {
-     await database.user.upsert({ where: { phone: user.phone }, create: user, update: {} });
+    await database.user.upsert({ where: { phone: user.phone }, create: user, update: {} });
   }
 };
