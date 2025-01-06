@@ -121,12 +121,18 @@ export class ChatService {
 
   async getMessages(socket: Socket, data: GetMessagesDto) {
     const { chatRoomId, date, timeZone } = data;
+    const clientId = (socket as SocketV1).authUserId;
+    const chatRoomDetails = await this.checkChatRoom(chatRoomId);
+
+    if (!chatRoomDetails) throw new WsError("No ChatRoom with this Id exists");
+    if (!(chatRoomDetails.user1Id === clientId || chatRoomDetails.user2Id === clientId)) throw new WsError("Messages does not belong to this account");
+    // add code for checking if the chat room is channel or group and the client is member before message can retrieved(N/A)
 
     const startOfDayInUserTimeZone = new Date(`${date}T00:00:00`);
     const endOfDayInUserTimeZone = new Date(`${date}T23:59:59`);
 
     const messages = await database.message.findMany({
-      where: { createdAt: { gte: fromZonedTime(startOfDayInUserTimeZone, timeZone), lt: fromZonedTime(endOfDayInUserTimeZone, timeZone) }, deleteFlag: false },
+      where: { createdAt: { gte: fromZonedTime(startOfDayInUserTimeZone, timeZone), lt: fromZonedTime(endOfDayInUserTimeZone, timeZone) }, deleteFlag: false, roomId: chatRoomId },
       orderBy: { createdAt: "desc" },
     });
     socket.emit("response", { action: "getMessages", messages });
