@@ -97,6 +97,11 @@ enum CommunityRole{
   member
 }
 
+enum CommunityPermissionsLevels{
+  admins
+  all
+}
+
 model User {
   id                Int             @id @default(autoincrement())
   email             String?         @unique
@@ -208,9 +213,10 @@ model Community {
    name                  String                
    description           String
    roomId                Int
-   subscriberCount       Int
+   subscriberCount       Int                   @default(0)
    ownerId               Int
    permissions           Json?
+   profile               String?                @db.LongText
    members               CommunityMember[]
    room                  ChatRoom               @relation(fields: [roomId], references: [id])
    ownerDetails          User                   @relation(fields: [ownerId], references: [id])
