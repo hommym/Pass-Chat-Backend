@@ -10,6 +10,7 @@ import { ContactsService } from "../../features/contacts/contactsService";
 import { FileService } from "../../features/file/fileService";
 import { ChatNotificationService } from "../../features/chat-notification/chatNotificationService";
 import { CallService } from "../../features/calls/callService";
+import { CommunityService } from "../../features/community/communityService";
 
 // singletons
 
@@ -36,3 +37,5 @@ export const fileService = new FileService();
 export const chatNotificationService = new ChatNotificationService();
 
 export const callService= new CallService()
+
+export const communityService= new CommunityService()
