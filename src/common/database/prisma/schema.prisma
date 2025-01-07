@@ -207,16 +207,17 @@ model UserContact {
 
 
 model Community {
-   id                    Int                   @id @default(autoincrement())
-   type                  CommunityType         @default(group)
-   visibility            CommunityVisibility   @default(public)
+   id                    Int                    @id @default(autoincrement())
+   type                  CommunityType          @default(group)
+   visibility            CommunityVisibility    @default(public)
    name                  String                
    description           String
    roomId                Int
-   subscriberCount       Int                   @default(0)
+   subscriberCount       Int                    @default(0)
    ownerId               Int
    permissions           Json?
    profile               String?                @db.LongText
+   createdAt             DateTime               @default(now())
    members               CommunityMember[]
    room                  ChatRoom               @relation(fields: [roomId], references: [id])
    ownerDetails          User                   @relation(fields: [ownerId], references: [id])
