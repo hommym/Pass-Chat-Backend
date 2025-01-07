@@ -20,3 +20,5 @@ communityRouter.post(
     res.status(201).json(await communityService.createCommunity(type, creatCommunityDto, verifiedUserId));
   })
 );
+
+communityRouter.patch("/")
