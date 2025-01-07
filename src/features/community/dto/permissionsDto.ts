@@ -1,11 +1,13 @@
 import { CommunityPermissionsLevels } from "@prisma/client";
 import { Expose } from "class-transformer";
-import { IsEnum, IsIn } from "class-validator";
+import { IsEnum, IsIn, IsNotEmpty, IsString } from "class-validator";
 
+export class PermissionsDto {
+  @Expose()
+  @IsString()
+  @IsNotEmpty()
+  name: string;
 
-
-
-export class Permissions {
   @Expose()
   @IsEnum(CommunityPermissionsLevels)
   messaging: CommunityPermissionsLevels;
