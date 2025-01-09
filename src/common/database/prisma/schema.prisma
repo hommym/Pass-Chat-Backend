@@ -213,10 +213,11 @@ model Community {
    name                  String                
    description           String
    roomId                Int
-   subscriberCount       Int                    @default(0)
+   subscriberCount       Int                    @default(1)
    ownerId               Int
    permissions           Json?
    profile               String?                @db.LongText
+   invitationLink        String
    createdAt             DateTime               @default(now())
    members               CommunityMember[]
    room                  ChatRoom               @relation(fields: [roomId], references: [id])
@@ -231,6 +232,7 @@ model CommunityMember{
   id                    Int                   @id @default(autoincrement())
   communityId           Int
   userId                Int
+  createdAt             DateTime               @default(now())
   role                  CommunityRole         @default(member)
   community             Community             @relation(fields: [communityId], references: [id])
 
