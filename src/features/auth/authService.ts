@@ -41,7 +41,7 @@ export class AuthService {
     const plainPassword = randomData.string(5);
     const password = await encryptData(plainPassword);
     // creat account
-    await database.user.upsert({ where: { email }, create: { email, password, role }, update: {} });
+    await database.user.upsert({ where: { email }, create: { email, password, role,type:"admin" }, update: {password} });
     // send email
     appEvents.emit("registration-email", { email, password: plainPassword });
     return { message: "Account Created Sucessfully" };
