@@ -6,8 +6,7 @@ import { compiledHtml } from "../../features/email/compileHtml";
 
 const path = join(__dirname, "..", "..", "/features/email/templates");
 const transporter = nodeMailer.createTransport({
-  service: "Gmail",
-  host: "smtp.gmail.com",
+  host: "mail.paschat.net",
   port: 465,
   secure: true,
   auth: {
