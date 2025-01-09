@@ -1,6 +1,6 @@
 import { CommunityPermissionsLevels } from "@prisma/client";
 import { Expose } from "class-transformer";
-import { IsEnum, IsIn, IsNotEmpty, IsString } from "class-validator";
+import { IsBoolean, IsEnum, IsIn, IsNotEmpty, IsString } from "class-validator";
 
 export class PermissionsDto {
   @Expose()
@@ -27,4 +27,8 @@ export class PermissionsDto {
   @Expose()
   @IsEnum(CommunityPermissionsLevels)
   pinning: CommunityPermissionsLevels;
+
+  @Expose()
+  @IsBoolean()
+  prevMessage: boolean;
 }
