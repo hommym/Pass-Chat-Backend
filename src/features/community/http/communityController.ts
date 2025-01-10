@@ -6,7 +6,7 @@ import { AppError } from "../../../common/middlewares/errorHandler";
 import { communityService } from "../../../common/constants/objects";
 import { bodyValidator } from "../../../common/middlewares/bodyValidator";
 import { CreateCommunityDto } from "../dto/createCommunityDto";
-import { PermissionsDto } from "../dto/permissionsDto";
+import { ChannelPermissionDto, GroupPermissionsDto } from "../dto/permissionsDto";
 import { UpdateRoleDto } from "../dto/updateRoleDto";
 
 export const communityRouter = Router();
@@ -64,11 +64,21 @@ communityRouter.patch(
 
 communityRouter.patch(
   "/group/permissions",
-  bodyValidator(PermissionsDto),
+  bodyValidator(GroupPermissionsDto),
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
     const { verifiedUserId, ...updatePermissionsDto } = req.body;
-    res.status(200).json(await communityService.updateGroupPermissions(verifiedUserId, updatePermissionsDto));
+    res.status(200).json(await communityService.updatePermissions(verifiedUserId, updatePermissionsDto, "group"));
+  })
+);
+
+communityRouter.patch(
+  "/channel/permissions",
+  bodyValidator(ChannelPermissionDto),
+  verifyJwt,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { verifiedUserId, ...updatePermissionsDto } = req.body;
+    res.status(200).json(await communityService.updatePermissions(verifiedUserId, updatePermissionsDto, "channel"));
   })
 );
 

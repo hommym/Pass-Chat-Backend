@@ -4,7 +4,7 @@ import { ChatRoom, Community } from "@prisma/client";
 import { CreateCommunityDto } from "./dto/createCommunityDto";
 import { appEvents, authService, database } from "../../common/constants/objects";
 import { AppError } from "../../common/middlewares/errorHandler";
-import { PermissionsDto } from "./dto/permissionsDto";
+import { GroupPermissionsDto } from "./dto/permissionsDto";
 import { UpdateRoleDto } from "./dto/updateRoleDto";
 
 export class CommunityService {
@@ -49,10 +49,10 @@ export class CommunityService {
     return communityDetails;
   }
 
-  async updateGroupPermissions(ownerId: number, permissionsDto: PermissionsDto) {
-    const { communitySharing, mediaSharing, messaging, name, pinning, polls } = permissionsDto;
-    if (!(await this.checkCommunity("group", name, ownerId))) throw new AppError("This account does not own a group with such name", 404);
-    return await database.community.update({ where: { type_name: { type: "group", name }, ownerId }, data: { permissions: { pinning, polls, communitySharing, mediaSharing, messaging } } });
+  async updatePermissions(ownerId: number, permissionsDto: GroupPermissionsDto,type:"group"|"channel") {
+    const { name, ...permissions } = permissionsDto;
+    if (!(await this.checkCommunity(type, name, ownerId))) throw new AppError(`This account does not own a ${type} with such name`, 404);
+    return await database.community.update({ where: { type_name: { type, name }, ownerId }, data: { permissions } });
   }
 
   async search(keyword: string) {
