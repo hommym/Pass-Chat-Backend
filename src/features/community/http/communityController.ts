@@ -83,6 +83,25 @@ communityRouter.patch(
 );
 
 communityRouter.get(
+  "/all/user",
+  verifyJwt,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { verifiedUserId } = req.body;
+    res.status(200).json(await communityService.getAllUsersCommunities(verifiedUserId));
+  })
+);
+
+communityRouter.get(
+  "/details",
+  verifyJwt,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { verifiedUserId, communityId } = req.body;
+    if (!communityId) throw new AppError("No data passed for communityId in body", 400);
+    res.status(200).json(await communityService.getCommunityDetailsForUser(verifiedUserId, communityId));
+  })
+);
+
+communityRouter.get(
   "/search",
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {

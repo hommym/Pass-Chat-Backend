@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
-import { ChatRoom, Community } from "@prisma/client";
+import { ChatRoom, Community, CommunityRole } from "@prisma/client";
 import { CreateCommunityDto } from "./dto/createCommunityDto";
 import { appEvents, authService, database } from "../../common/constants/objects";
 import { AppError } from "../../common/middlewares/errorHandler";
@@ -110,5 +110,31 @@ export class CommunityService {
     else if (!(await this.isMember(communityDetails.id, memberAccount.id))) throw new AppError(`User is not a member of the ${type}`, 404);
 
     await database.communityMember.update({ where: { communityId_userId: { communityId: communityDetails.id, userId: memberAccount.id } }, data: { role: newRole } });
+  }
+
+  async getAllUsersCommunities(userId: number) {
+    // this method gets all communities a user is part of
+    const allJoinedCommunities: { communityDetails: Community; memberShipType: CommunityRole }[] = [];
+
+    const allMemberShipData = await database.communityMember.findMany({ where: { userId } });
+
+    allMemberShipData.forEach(async (memberShipData) => {
+      const communityDetails = await database.community.findUnique({ where: { id: memberShipData.communityId }, include: { members: memberShipData.role === "owner" } });
+      if (communityDetails) allJoinedCommunities.push({ communityDetails, memberShipType: memberShipData.role });
+    });
+    //get all comm membership data
+    //use this data to get their community details
+    //send response
+    return allJoinedCommunities;
+  }
+
+  async getCommunityDetailsForUser(userId: number, communityId: number) {
+    // this method gets details of a specific community a user is a member of
+
+    const memberShipInfo = await this.isMember(communityId, userId);
+    if (!memberShipInfo) throw new AppError("User is not a member", 404);
+    const communityDetails = await database.community.findUnique({ where: { id: memberShipInfo.communityId }, include: { members: memberShipInfo.role === "owner" } });
+
+    return { communityDetails, memberShipType: memberShipInfo.role };
   }
 }
