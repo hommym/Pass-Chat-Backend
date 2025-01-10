@@ -49,7 +49,7 @@ export class CommunityService {
     return communityDetails;
   }
 
-  async updatePermissions(ownerId: number, permissionsDto: GroupPermissionsDto,type:"group"|"channel") {
+  async updatePermissions(ownerId: number, permissionsDto: GroupPermissionsDto, type: "group" | "channel") {
     const { name, ...permissions } = permissionsDto;
     if (!(await this.checkCommunity(type, name, ownerId))) throw new AppError(`This account does not own a ${type} with such name`, 404);
     return await database.community.update({ where: { type_name: { type, name }, ownerId }, data: { permissions } });
@@ -58,7 +58,6 @@ export class CommunityService {
   async search(keyword: string) {
     return await database.community.findMany({
       where: { name: { startsWith: keyword }, visibility: "public" },
-      select: { description: true, name: true, profile: true, subscriberCount: true, type: true },
     });
   }
 
@@ -83,10 +82,10 @@ export class CommunityService {
 
     if (await this.isMember(id, userId)) throw new AppError("User is already a member", 409);
 
-    await database.communityMember.create({ data: { userId, communityId: communityDetails.id } });
+    const clientMembershipInfo = await database.communityMember.create({ data: { userId, communityId: communityDetails.id } });
 
     appEvents.emit("update-community-sub-count", { communityId: id, operation: "add" });
-    return { description, name, profile, subscriberCount: subscriberCount + 1, type };
+    return { communityDetails, memberShipType: clientMembershipInfo.role };
   }
 
   async exitCommunity(type: "channel" | "group", communityName: string, userId: number) {
