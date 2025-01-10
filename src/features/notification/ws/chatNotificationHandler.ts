@@ -9,7 +9,7 @@ export let notificationRouterWs:Namespace;
 
 
 export const notificationRouterDef = (mainPath: string) => {
-    notificationRouterWs=  ws.of(`${mainPath}/notification/chat`);
+    notificationRouterWs=  ws.of(`${mainPath}/notification`);
       notificationRouterWs.use(verifyJwtForWs);
       notificationRouterWs.on("connection", (socket) => {
         // Respond to a custom event from the client

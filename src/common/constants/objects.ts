@@ -8,7 +8,7 @@ import { AppEvents } from "../events/applicationEvents";
 import { ChatService } from "../../features/chat/chatService";
 import { ContactsService } from "../../features/contacts/contactsService";
 import { FileService } from "../../features/file/fileService";
-import { ChatNotificationService } from "../../features/chat-notification/chatNotificationService";
+import { ChatNotificationService } from "../../features/notification/chatNotificationService";
 import { CallService } from "../../features/calls/callService";
 import { CommunityService } from "../../features/community/communityService";
 
@@ -36,6 +36,6 @@ export const fileService = new FileService();
 
 export const chatNotificationService = new ChatNotificationService();
 
-export const callService= new CallService()
+export const callService = new CallService();
 
-export const communityService= new CommunityService()
+export const communityService = new CommunityService();
