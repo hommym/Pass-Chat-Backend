@@ -1,12 +1,14 @@
 import Event from "events";
 import { RegistrationOtpEmailI, sendRegistrationEmail } from "../../features/email/sendRegisterationEmail";
 import { LoginOtpEmailI, sendLogInEmail } from "../../features/email/sendLoginEmail";
-import { communityService } from "../constants/objects";
+import { chatNotificationService, communityService } from "../constants/objects";
+import { NotificationAction, Platform } from "@prisma/client";
 
 type EventName = {
   "login-otp-email": LoginOtpEmailI;
   "registration-email": RegistrationOtpEmailI;
   "update-community-sub-count": { operation: "add" | "sub"; communityId: number };
+  "set-community-members-notifications": { communityId: number; membersIds: number[]; action: NotificationAction; platform: Platform; messageId: number | null };
 };
 
 export class AppEvents {
@@ -21,7 +23,8 @@ export class AppEvents {
     console.log("Setting Up event listeners...");
     this.createListener("registration-email", sendRegistrationEmail);
     this.createListener("login-otp-email", sendLogInEmail);
-    this.createListener("update-community-sub-count",communityService.updateCommunitySubCount);
+    this.createListener("update-community-sub-count", communityService.updateCommunitySubCount);
+    this.createListener("set-community-members-notifications", chatNotificationService.saveCommunityNotifications);
     console.log("Listeners Setup");
   }
 
