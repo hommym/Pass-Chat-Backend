@@ -55,9 +55,10 @@ enum MessageType{
 }
 
 enum NotificationType{
-  message
+  private
   system
   call
+  community
 }
 
 enum ContactStatus{
@@ -74,6 +75,7 @@ enum NotificationAction{
   updateMessage
   deleteMessage
   saveMessage
+  deleteCommunity
 }
 
 enum CallType{
@@ -177,9 +179,10 @@ model Message {
 model Notification {
   id             Int                 @id @default(autoincrement())
   userId         Int                 
-  type           NotificationType    @default(message)
+  type           NotificationType    @default(private)
   data           Json?
   messageId      Int?
+  communityId    Int?
   action         NotificationAction?
   platform       Platform            @default(mobile)
   user           User                @relation(fields: [userId], references: [id])
@@ -187,6 +190,7 @@ model Notification {
   createdAt      DateTime            @default(now())
 
   @@unique([userId,messageId,platform])
+  @@unique([userId,communityId,platform])
   @@map("notifications")
 }
 
@@ -219,6 +223,7 @@ model Community {
    profile               String?                @db.LongText
    invitationLink        String
    createdAt             DateTime               @default(now())
+   deleteFlag            Boolean                @default(false)
    members               CommunityMember[]
    room                  ChatRoom               @relation(fields: [roomId], references: [id])
    ownerDetails          User                   @relation(fields: [ownerId], references: [id])
@@ -232,7 +237,8 @@ model CommunityMember{
   id                    Int                   @id @default(autoincrement())
   communityId           Int
   userId                Int
-  createdAt             DateTime               @default(now())
+  createdAt             DateTime              @default(now())
+  deleteFlag            Boolean               @default(false)
   role                  CommunityRole         @default(member)
   community             Community             @relation(fields: [communityId], references: [id])
 
