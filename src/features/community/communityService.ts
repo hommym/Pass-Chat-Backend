@@ -46,7 +46,7 @@ export class CommunityService {
       update: {},
     });
 
-    return communityDetails;
+    return { communityDetails, memberShipType: "owner" };
   }
 
   async updatePermissions(ownerId: number, permissionsDto: GroupPermissionsDto, type: "group" | "channel") {
@@ -114,18 +114,13 @@ export class CommunityService {
 
   async getAllUsersCommunities(userId: number) {
     // this method gets all communities a user is part of
-    const allJoinedCommunities: { communityDetails: Community; memberShipType: CommunityRole }[] = [];
-
-    const allMemberShipData = await database.communityMember.findMany({ where: { userId } });
-
-    allMemberShipData.forEach(async (memberShipData) => {
-      const communityDetails = await database.community.findUnique({ where: { id: memberShipData.communityId }, include: { members: memberShipData.role === "owner" } });
-      if (communityDetails) allJoinedCommunities.push({ communityDetails, memberShipType: memberShipData.role });
-    });
-    //get all comm membership data
-    //use this data to get their community details
-    //send response
-    return allJoinedCommunities;
+    const allMemberShipData = await database.communityMember.findMany({ where: { userId, deleteFlag: false } });
+    return Promise.all(
+      allMemberShipData.map(async (memberShipData) => {
+        const communityDetails = await database.community.findUnique({ where: { id: memberShipData.communityId }, include: { members: memberShipData.role === "owner" } });
+        return { communityDetails, memberShipType: memberShipData.role };
+      })
+    );
   }
 
   async getCommunityDetailsForUser(userId: number, communityId: number) {
@@ -136,5 +131,19 @@ export class CommunityService {
     const communityDetails = await database.community.findUnique({ where: { id: memberShipInfo.communityId }, include: { members: memberShipInfo.role === "owner" } });
 
     return { communityDetails, memberShipType: memberShipInfo.role };
+  }
+
+  async deleteCommunity(communityId: number, ownerId: number) {
+    const memberShipDetails = await this.isMember(communityId, ownerId);
+    if (!memberShipDetails || memberShipDetails?.role !== "owner") throw new AppError("Deletion Failed User Not Owner", 402);
+
+    await database.community.update({ where: { id: memberShipDetails.communityId }, data: { deleteFlag: true } });
+    await database.communityMember.updateMany({ where: { communityId: memberShipDetails.communityId }, data: { deleteFlag: true } });
+
+    const allMembers = await database.communityMember.findMany({ where: { communityId } });
+
+    const membersIds = allMembers.map((member) => member.userId);
+
+    appEvents.emit("set-community-members-notifications", { action: "deleteCommunity", communityId, membersIds, platform: "mobile", messageId: null });
   }
 }

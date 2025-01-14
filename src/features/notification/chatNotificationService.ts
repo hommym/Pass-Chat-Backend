@@ -8,11 +8,25 @@ import { SocketV1 } from "../../common/helpers/classes/socketV1";
 
 export class ChatNotificationService {
   async saveNotification(messageId: number, recipientId: number, platform: Platform = "mobile", action: NotificationAction = "updateMessage") {
+    // this is for setting messages notifications
     await database.notification.upsert({
       where: { userId_messageId_platform: { userId: recipientId, messageId, platform } },
       create: { userId: recipientId, messageId, platform, action },
-      update: {action},
+      update: { action },
     });
+  }
+
+  async saveCommunityNotifications(communityId: number, membersIds: number[], action: NotificationAction, platform: Platform = "mobile", messageId: number | null = null) {
+    // this a method for setting notifications for all members of a community
+    await Promise.all(
+      membersIds.map(async (memberId) => {
+        await database.notification.upsert({
+          where: { userId_communityId_platform: { userId: memberId, communityId, platform } },
+          create: { userId: memberId, communityId, platform, action, type: "community", messageId },
+          update: { action },
+        });
+      })
+    );
   }
 
   async setNotification(chatType: RoomType, data: any) {

@@ -48,6 +48,17 @@ communityRouter.delete(
   })
 );
 
+communityRouter.delete(
+  "/",
+  verifyJwt,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { verifiedUserId,communityId } = req.body;
+    await communityService.deleteCommunity(communityId,verifiedUserId)
+    res.status(204).end();
+  })
+);
+
+
 communityRouter.patch(
   "/:type/:name/role",
   bodyValidator(UpdateRoleDto),
