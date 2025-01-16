@@ -163,17 +163,25 @@ model Message {
   content        Json
   senderId       Int
   recipientId    Int?
+  communityId    Int?
   roomId         Int
   replyTo        Int?          // id of message this message is a reply to
   createdAt      DateTime      @default(now())
   read           Boolean       @default(false)
   recieved       Boolean       @default(false) 
   deleteFlag     Boolean       @default(false)
+  views          Int           @default(0)   // this should only be used in community kinds of chats
+  comments       Json?         // array of strings
+  reactions      Json?         // array of strings
   room           ChatRoom      @relation(fields: [roomId], references: [id])
   callType       CallType?
   notifications  Notification[]
   @@map("messages")
 }
+
+
+
+
 
 
 model Notification {
