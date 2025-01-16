@@ -1,10 +1,11 @@
 import { Message, NotificationAction, Platform, RoomType } from "@prisma/client";
 import { bodyValidator, bodyValidatorWs } from "../../common/middlewares/bodyValidator";
 import { PrivateChatNotificationDto } from "./dto/privateChatNotficationDto";
-import { database } from "../../common/constants/objects";
+import { appEvents, database } from "../../common/constants/objects";
 import { WsError } from "../../common/middlewares/errorHandler";
 import { Socket } from "socket.io";
 import { SocketV1 } from "../../common/helpers/classes/socketV1";
+import { CommunityChatNotificationDto } from "./dto/communityChatNotificationsDto";
 
 export class ChatNotificationService {
   async saveNotification(messageId: number, recipientId: number, platform: Platform = "mobile", action: NotificationAction = "updateMessage") {
@@ -32,21 +33,39 @@ export class ChatNotificationService {
   async setNotification(chatType: RoomType, data: any) {
     if (chatType === "private") {
       await bodyValidatorWs(PrivateChatNotificationDto, data);
-      const { messageAction, messageId, recipientId } = data as PrivateChatNotificationDto;
+      const { messageAction, messageId, recipientId, reaction } = data as PrivateChatNotificationDto;
 
       const message = await database.message.findUnique({ where: { id: messageId } });
       if (!message) throw new WsError("No message with this id exist");
       else if (messageAction === "read") {
         await database.message.update({ where: { id: messageId }, data: { read: true } });
+      } else if (messageAction === "reaction") {
+        if (!reaction) throw new WsError("No Value passed for reaction");
+        await database.message.update({ where: { id: messageId }, data: { reactions: message.reactions ? (message.reactions as string[]).push(reaction!) : undefined } });
       } else {
         await database.message.update({ where: { id: messageId }, data: { recieved: true } });
       }
       await this.saveNotification(messageId, recipientId);
-    } else if (chatType === "channel") {
-      // N/A
     } else {
-      // group
-      // N/A
+      // group or channel
+      await bodyValidatorWs(CommunityChatNotificationDto, data);
+      const { communityId, messageAction, messageId, reaction, comment } = data as CommunityChatNotificationDto;
+
+      const message = await database.message.findUnique({ where: { id: messageId } });
+      const communityMembers = await database.communityMember.findMany({ where: { communityId } });
+
+      if (!message) throw new WsError("No message with this id exist");
+      else if (messageAction === "read") {
+        await database.message.update({ where: { id: messageId }, data: { views: { increment: 1 }, recieved: true } });
+      } else if (messageAction === "comment") {
+        if (!comment) throw new WsError("No Value passed for comment");
+        await database.message.update({ where: { id: messageId }, data: { comments: message.comments ? (message.comments as string[]).push(comment!) : undefined } });
+      } else {
+        if (!reaction) throw new WsError("No Value passed for reaction");
+        await database.message.update({ where: { id: messageId }, data: { reactions: message.reactions ? (message.reactions as string[]).push(reaction!) : undefined } });
+      }
+      const membersIds = communityMembers.map((member) => member.userId);
+      appEvents.emit("set-community-members-notifications", { action: "updateMessage", communityId, membersIds, messageId, platform: "mobile" });
     }
   }
 

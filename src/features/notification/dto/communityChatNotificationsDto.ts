@@ -1,21 +1,25 @@
 import { Expose } from "class-transformer";
 import { IsIn, IsInt, IsOptional, IsString } from "class-validator";
-
-export class PrivateChatNotificationDto {
+export class CommunityChatNotificationDto {
   @Expose()
   @IsInt()
   messageId: number;
 
   @Expose()
-  @IsIn(["recieve", "read", "reaction"])
-  messageAction: "recieve" | "read" | "reaction";
+  @IsIn(["read", "comment", "reaction"])
+  messageAction: "read" | "comment" | "reaction";
 
   @Expose()
   @IsInt()
-  recipientId: number;
+  communityId: number;
 
   @Expose()
   @IsOptional()
   @IsString()
   reaction?: string;
+
+  @Expose()
+  @IsOptional()
+  @IsString()
+  comment?: string;
 }
