@@ -1,5 +1,6 @@
+import { RoomType } from "@prisma/client";
 import { Expose } from "class-transformer";
-import { IsDateString, IsIn, IsInt, IsNotEmpty, IsOptional, IsPositive } from "class-validator";
+import { IsDateString, IsEnum, IsIn, IsInt, IsNotEmpty, IsOptional, IsPositive } from "class-validator";
 
 export class MessageDto {
   @Expose()
@@ -15,15 +16,26 @@ export class MessageDto {
   roomId: number;
 
   @Expose()
+  @IsOptional()
+  @IsEnum(RoomType)
+  roomType?:RoomType;
+
+  @Expose()
   @IsPositive()
   senderId: number;
 
   @Expose()
   @IsPositive()
-  recipientId: number;
+  @IsOptional()
+  recipientId?: number;
 
   @Expose()
   @IsInt()
   @IsOptional()
   replyTo?: number;
+
+  @Expose()
+  @IsInt()
+  @IsOptional()
+  communityId?:number
 }

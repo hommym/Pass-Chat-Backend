@@ -1,5 +1,5 @@
 import { OnlineStatus, RoomType } from "@prisma/client";
-import { chatNotificationService, database } from "../../common/constants/objects";
+import { appEvents, chatNotificationService, communityService, database } from "../../common/constants/objects";
 import { MessageDto } from "./dto/messageDto";
 import { AppError, WsError } from "../../common/middlewares/errorHandler";
 import { Socket } from "socket.io";
@@ -35,27 +35,43 @@ export class ChatService {
   }
 
   async sendMessage(socket: Socket, message: MessageDto) {
-    const { roomId, content, dataType, recipientId, senderId, replyTo } = message;
+    const { roomId, content, dataType, recipientId, senderId, replyTo, roomType, communityId } = message;
 
     if (!(await this.checkChatRoom(roomId))) throw new WsError("No ChatRoom with this id exist");
+    else if (!roomType || roomType === "private") {
+      if (!recipientId) throw new WsError("No value passed for recipientId");
 
-    // save th data in database
-    const savedMessage = await database.message.create({ data: { roomId, content, type: dataType, recipientId, senderId, replyTo } });
+      // save th data in database
+      const savedMessage = await database.message.create({ data: { roomId, content, type: dataType, recipientId, senderId, replyTo } });
 
-    // send the sender a response.
-    socket.emit("response", { action: "sendMessage", data: savedMessage });
+      // send the sender a response.
+      socket.emit("response", { action: "sendMessage", data: savedMessage });
 
-    // check if recipient is online
-    const recipientInfo = await this.checkUsersOnlineStatus(recipientId);
+      // check if recipient is online
+      const recipientInfo = await this.checkUsersOnlineStatus(recipientId!);
 
-    if (recipientInfo) {
-      const recipientConnection = chatRouterWs.sockets.get(recipientInfo.connectionId!);
-      if (recipientConnection) {
-        return recipientConnection.emit("response", { action: "recieveMessage", data: savedMessage });
+      if (recipientInfo) {
+        const recipientConnection = chatRouterWs.sockets.get(recipientInfo.connectionId!);
+        if (recipientConnection) {
+          return recipientConnection.emit("response", { action: "recieveMessage", data: savedMessage });
+        }
       }
+      // when user is not online
+      chatNotificationService.saveNotification(savedMessage.id, recipientId!, "mobile", "saveMessage");
+    } else {
+      // for commnunity chat
+      if (!communityId) throw new WsError("No value passed for communityId");
+
+      if (!(await communityService.isMember(communityId, senderId))) throw new WsError("Sender is not a member");
+      const savedMessage = await database.message.create({ data: { roomId, content, type: dataType, senderId, communityId, replyTo } });
+      // send the sender a response.
+      socket.emit("response", { action: "sendMessage", data: savedMessage });
+
+      const allMembers = await database.communityMember.findMany({ where: { communityId } });
+
+      const membersIds = allMembers.map((member) => member.userId);
+      appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId: savedMessage.id });
     }
-    // when user is not online
-    chatNotificationService.saveNotification(savedMessage.id, recipientId, "mobile", "saveMessage");
   }
 
   async getUserStatus(socket: Socket, data: CheckStatusDto) {
