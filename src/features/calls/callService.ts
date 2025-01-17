@@ -5,37 +5,45 @@ import { WsError } from "../../common/middlewares/errorHandler";
 import { chatRouterWs } from "../chat/ws/chatHandler";
 import { SendIceDetailsDto } from "./dto/sendIceDetailsDto";
 import { SendSdpAnswerDto } from "./dto/sendSdpAnwerDto";
-import { SendSpdOfferDto } from "./dto/sendSdpOfferDto";
+import { SendSdpOfferDto } from "./dto/sendSdpOfferDto";
 
 export class CallService {
-  async sendSpdOffer(socket: SocketV1, details: SendSpdOfferDto) {
-    await bodyValidatorWs(SendSpdOfferDto, details);
-    const { recipientPhone, sdpOffer, roomId, callType } = details as SendSpdOfferDto;
+  async sendSdpOffer(socket: SocketV1, details: SendSdpOfferDto) {
+    await bodyValidatorWs(SendSdpOfferDto, details);
+    const { recipientPhone, sdpOffer, roomId, callType } = details as SendSdpOfferDto;
     const recipientDetails = await database.user.findUnique({ where: { phone: recipientPhone } });
     const roomDeatials = await chatService.checkChatRoom(roomId);
     const callerId = socket.authUserId;
 
+    // update caller online status to call
+
+    await database.user.update({ where: { id: callerId }, data: { onlineStatus: "call" } });
+
     if (!recipientDetails) throw new WsError("No account with this phone numeber exist");
-    else if (roomDeatials) throw new WsError("No ChatRoom with this id exist");
+    else if (!roomDeatials) throw new WsError("No ChatRoom with this id exist");
 
     const message = await database.message.create({ data: { senderId: callerId, recipientId: recipientDetails.id, content: callType, type: "call", roomId, callType } });
 
-    if (recipientDetails.onlineStatus !== "offline" && recipientDetails.onlineStatus!=="call") {
+    socket.emit("response", { action: "call", callAction: "sendSDPOffer", message });
+
+    if (recipientDetails.onlineStatus !== "offline" && recipientDetails.onlineStatus !== "call") {
+      console.log("Setting Call Notification");
       const recipientConnection = chatRouterWs.sockets.get(recipientDetails.connectionId!);
       if (recipientConnection) {
         recipientConnection.emit("callResponse", { type: "spdOffer", sdpOffer, message });
-      } else {
-        await chatNotificationService.saveNotification(message.id, recipientDetails.id, "mobile", "saveMessage");
+        return;
       }
     }
-    socket.emit("response", { action: "call", callAction: "sendSDPOffer", message });
+    await chatNotificationService.saveNotification(message.id, recipientDetails.id, "mobile", "saveMessage");
   }
 
-  async sendSpdAnswer(socket: SocketV1, details: SendSdpAnswerDto) {
+  async sendSdpAnswer(socket: SocketV1, details: SendSdpAnswerDto) {
     await bodyValidatorWs(SendSdpAnswerDto, details);
     const { callerId, sdpAnswer } = details;
     const callerDetails = await database.user.findUnique({ where: { id: callerId } });
+    const calleeId = socket.authUserId;
 
+    await database.user.update({ where: { id: calleeId }, data: { onlineStatus: "call" } });
     if (!callerDetails) throw new WsError("No Account with this id exist");
 
     if (callerDetails.onlineStatus === "call") {
@@ -61,5 +69,10 @@ export class CallService {
         callerConnection.emit("callResponse", { type: "iceDetails", iceDetails });
       }
     }
+  }
+
+  async cancelCall(socket: SocketV1) {
+    const callCancellerId= socket.authUserId;
+    await database.user.update({ where: { id: callCancellerId }, data: { onlineStatus: "online" } });
   }
 }

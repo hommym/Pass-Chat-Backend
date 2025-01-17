@@ -5,18 +5,22 @@ import { WsError } from "../../../common/middlewares/errorHandler";
 import { CallWsRequestDto } from "../dto/callWsRequestDto";
 import { SendIceDetailsDto } from "../dto/sendIceDetailsDto";
 import { SendSdpAnswerDto } from "../dto/sendSdpAnwerDto";
-import { SendSpdOfferDto } from "../dto/sendSdpOfferDto";
+import { SendSdpOfferDto } from "../dto/sendSdpOfferDto";
 
 export const callController = async (socket: SocketV1, request: CallWsRequestDto) => {
   const { details, callAction } = request;
 
   if (callAction === "sendSDPOffer") {
-    await callService.sendSpdOffer(socket, details as SendSpdOfferDto);
+    await callService.sendSdpOffer(socket, details as SendSdpOfferDto);
   } else if (callAction === "sendSDPAnswer") {
-    await callService.sendSpdAnswer(socket, details as SendSdpAnswerDto);
+    await callService.sendSdpAnswer(socket, details as SendSdpAnswerDto);
   } else if (callAction === "sendICEDetails") {
     await callService.sendIceDetails(socket, details as SendIceDetailsDto);
   } else if (callAction === "startGroupCall") {
+  } else if (callAction === "cancelPrivateCall") {
+    await callService.cancelCall(socket);
+  } else if (callAction === "leaveGroupCall") {
   } else {
+    // join group call
   }
 };

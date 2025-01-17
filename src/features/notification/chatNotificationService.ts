@@ -78,7 +78,7 @@ export class ChatNotificationService {
       messages.push({ messages: notification.message!, action: notification.action! });
       notificationIds.push(notification.id);
     });
-    console.log(messages);
+    // console.log(messages);
     socket.emit("response", { action: "getNotification", data: messages });
     await database.notification.deleteMany({ where: { id: { in: notificationIds } } });
   }
