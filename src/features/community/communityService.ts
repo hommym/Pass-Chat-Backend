@@ -9,14 +9,15 @@ import { UpdateRoleDto } from "./dto/updateRoleDto";
 
 export class CommunityService {
   async checkCommunity(type: "channel" | "group", name: string, ownerId: number) {
-    return await database.community.findUnique({ where: { type_name: { name, type }, ownerId } });
+    return await database.community.findUnique({ where: { type_name: { name, type }, ownerId} });
   }
 
   async createCommunity(type: "channel" | "group", communityDto: CreateCommunityDto, ownerId: number) {
     const { name, description, visibility, profile } = communityDto;
     let permissions: any;
     let chatRoom: ChatRoom;
-    if (!(await this.checkCommunity(type, name, ownerId))) {
+    const community = await this.checkCommunity(type, name, ownerId);
+    if (!community || community?.deleteFlag) {
       chatRoom = await database.chatRoom.create({ data: { type, name } });
       if (type === "group") {
         permissions = {
@@ -37,13 +38,13 @@ export class CommunityService {
     const communityDetails = await database.community.upsert({
       where: { type_name: { name, type }, ownerId },
       create: { name, type, description, visibility, permissions, profile, roomId: chatRoom! ? chatRoom.id : 0, ownerId, invitationLink: `${process.env.BackendUrl}/community/${type}/${name}/join` },
-      update: { name, type, description, visibility, profile },
+      update: community?.deleteFlag ? { name, type, description, visibility, profile, deleteFlag: false, permissions } : { name, type, description, visibility, profile },
     });
 
     await database.communityMember.upsert({
       where: { communityId_userId: { communityId: communityDetails.id, userId: ownerId } },
       create: { communityId: communityDetails.id, userId: ownerId, role: "owner" },
-      update: {},
+      update: { deleteFlag: false },
     });
 
     return { communityDetails, memberShipType: "owner" };
@@ -71,7 +72,7 @@ export class CommunityService {
   }
 
   async isMember(communityId: number, userId: number) {
-    return await database.communityMember.findUnique({ where: { communityId_userId: { communityId, userId } } });
+    return await database.communityMember.findUnique({ where: { communityId_userId: { communityId, userId }, deleteFlag: false } });
   }
 
   async joinCommunity(type: "channel" | "group", communityName: string, userId: number) {
@@ -144,6 +145,6 @@ export class CommunityService {
 
     const membersIds = allMembers.map((member) => member.userId);
 
-    appEvents.emit("set-community-members-notifications", { action: "deleteCommunity", communityId, membersIds, platform: "mobile", messageId: null });
+    appEvents.emit("set-community-members-notifications", { communityId, membersIds, action: "deleteCommunity", platform: "mobile", messageId: null });
   }
 }

@@ -6,6 +6,7 @@ import { WsError } from "../../common/middlewares/errorHandler";
 import { Socket } from "socket.io";
 import { SocketV1 } from "../../common/helpers/classes/socketV1";
 import { CommunityChatNotificationDto } from "./dto/communityChatNotificationsDto";
+import { SaveCommunityNotificationsArgs } from "../community/dto/saveCommunityNotificationsArgs";
 
 export class ChatNotificationService {
   async saveNotification(messageId: number, recipientId: number, platform: Platform = "mobile", action: NotificationAction = "updateMessage") {
@@ -17,8 +18,9 @@ export class ChatNotificationService {
     });
   }
 
-  async saveCommunityNotifications(communityId: number, membersIds: number[], action: NotificationAction, platform: Platform = "mobile", messageId: number | null = null) {
+  async saveCommunityNotifications(args: SaveCommunityNotificationsArgs) {
     // this a method for setting notifications for all members of a community
+    const { action, communityId, membersIds, messageId, platform } = args;
     await Promise.all(
       membersIds.map(async (memberId) => {
         await database.notification.upsert({
@@ -71,11 +73,21 @@ export class ChatNotificationService {
 
   async getNotification(socket: Socket) {
     const userId = (socket as SocketV1).authUserId;
-    const messages: { action: NotificationAction; messages: Message }[] = [];
+    const messages: { action: NotificationAction; messages: Message | null; communityId:number|null }[] = [];
     const notificationIds: number[] = [];
     // get those notfications and then delete them
-    (await database.notification.findMany({ where: { userId, platform: "mobile", messageId: { not: null }, action: { not: null } }, include: { message: true } })).forEach((notification) => {
-      messages.push({ messages: notification.message!, action: notification.action! });
+    (
+      await database.notification.findMany({
+        where: {
+          OR: [
+            { userId, platform: "mobile", messageId: { not: null }, action: { not: null } },
+            { userId, platform: "mobile", action: { not: null },communityId:{not:null} },
+          ],
+        },
+        include: { message: true },
+      })
+    ).forEach((notification) => {
+      messages.push({ messages: notification.message, action: notification.action! ,communityId:notification.communityId});
       notificationIds.push(notification.id);
     });
     // console.log(messages);
