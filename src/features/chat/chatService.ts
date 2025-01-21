@@ -23,7 +23,7 @@ export class ChatService {
 
   async checkChatRoom(roomId: number) {
     // this method checks for a chat room exist
-    return await database.chatRoom.findUnique({ where: { id: roomId } });
+    return await database.chatRoom.findUnique({ where: { id: roomId }, include: { community: true } });
   }
 
   private async checkUsersOnlineStatus(userId: number) {
@@ -36,8 +36,8 @@ export class ChatService {
 
   async sendMessage(socket: Socket, message: MessageDto) {
     const { roomId, content, dataType, recipientId, senderId, replyTo, roomType, communityId } = message;
-
-    if (!(await this.checkChatRoom(roomId))) throw new WsError("No ChatRoom with this id exist");
+    const roomDetails = await this.checkChatRoom(roomId);
+    if (!roomDetails) throw new WsError("No ChatRoom with this id exist");
     else if (!roomType || roomType === "private") {
       if (!recipientId) throw new WsError("No value passed for recipientId");
 
@@ -60,10 +60,11 @@ export class ChatService {
       chatNotificationService.saveNotification(savedMessage.id, recipientId!, "mobile", "saveMessage");
     } else {
       // for commnunity chat
-      if (!communityId) throw new WsError("No value passed for communityId");
+      if (!communityId) throw new WsError(`No value passed for communityId`);
+      else if (communityId !== roomDetails.community[0]?.id) throw new WsError(`roomId used does not belong to this ${roomType}`);
 
       if (!(await communityService.isMember(communityId, senderId))) throw new WsError("Sender is not a member");
-      const savedMessage = await database.message.create({ data: { roomId, content, type: dataType, senderId, communityId, replyTo } });
+      const savedMessage = await database.message.create({ data: { roomId, content, type: dataType, senderId, communityId, replyTo, read: true, recieved: true } });
       // send the sender a response.
       socket.emit("response", { action: "sendMessage", data: savedMessage });
 

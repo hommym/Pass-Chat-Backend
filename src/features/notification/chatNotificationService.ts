@@ -7,6 +7,7 @@ import { Socket } from "socket.io";
 import { SocketV1 } from "../../common/helpers/classes/socketV1";
 import { CommunityChatNotificationDto } from "./dto/communityChatNotificationsDto";
 import { SaveCommunityNotificationsArgs } from "../community/dto/saveCommunityNotificationsArgs";
+import { JsonArray } from "@prisma/client/runtime/library";
 
 export class ChatNotificationService {
   async saveNotification(messageId: number, recipientId: number, platform: Platform = "mobile", action: NotificationAction = "updateMessage") {
@@ -53,18 +54,26 @@ export class ChatNotificationService {
       await bodyValidatorWs(CommunityChatNotificationDto, data);
       const { communityId, messageAction, messageId, reaction, comment } = data as CommunityChatNotificationDto;
 
-      const message = await database.message.findUnique({ where: { id: messageId } });
+      const message = await database.message.findUnique({ where: { id: messageId, communityId } });
       const communityMembers = await database.communityMember.findMany({ where: { communityId } });
 
-      if (!message) throw new WsError("No message with this id exist");
+      if (!message) throw new WsError(`No message with this id exist in this ${chatType}`);
       else if (messageAction === "read") {
         await database.message.update({ where: { id: messageId }, data: { views: { increment: 1 }, recieved: true } });
       } else if (messageAction === "comment") {
         if (!comment) throw new WsError("No Value passed for comment");
-        await database.message.update({ where: { id: messageId }, data: { comments: message.comments ? (message.comments as string[]).push(comment!) : undefined } });
+        let comments = message.reactions ? (message.reactions as string[]) : [comment];
+        if (comments.length >= 1) {
+          comments.push(comment);
+        }
+        await database.message.update({ where: { id: messageId }, data: { comments } });
       } else {
         if (!reaction) throw new WsError("No Value passed for reaction");
-        await database.message.update({ where: { id: messageId }, data: { reactions: message.reactions ? (message.reactions as string[]).push(reaction!) : undefined } });
+        let reactions = message.reactions ? (message.reactions as string[]) : [reaction];
+        if (reactions.length >= 1) {
+          reactions.push(reaction);
+        }
+        await database.message.update({ where: { id: messageId }, data: { reactions } });
       }
       const membersIds = communityMembers.map((member) => member.userId);
       appEvents.emit("set-community-members-notifications", { action: "updateMessage", communityId, membersIds, messageId, platform: "mobile" });
@@ -73,7 +82,7 @@ export class ChatNotificationService {
 
   async getNotification(socket: Socket) {
     const userId = (socket as SocketV1).authUserId;
-    const messages: { action: NotificationAction; messages: Message | null; communityId:number|null }[] = [];
+    const messages: { action: NotificationAction; messages: Message | null; communityId: number | null }[] = [];
     const notificationIds: number[] = [];
     // get those notfications and then delete them
     (
@@ -81,13 +90,13 @@ export class ChatNotificationService {
         where: {
           OR: [
             { userId, platform: "mobile", messageId: { not: null }, action: { not: null } },
-            { userId, platform: "mobile", action: { not: null },communityId:{not:null} },
+            { userId, platform: "mobile", action: { not: null }, communityId: { not: null } },
           ],
         },
         include: { message: true },
       })
     ).forEach((notification) => {
-      messages.push({ messages: notification.message, action: notification.action! ,communityId:notification.communityId});
+      messages.push({ messages: notification.message, action: notification.action!, communityId: notification.communityId });
       notificationIds.push(notification.id);
     });
     // console.log(messages);
