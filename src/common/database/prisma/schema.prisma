@@ -229,14 +229,14 @@ model Community {
    ownerId               Int
    permissions           Json?
    profile               String?                @db.LongText
-   invitationLink        String
+   invitationLink        String?
    createdAt             DateTime               @default(now())
    deleteFlag            Boolean                @default(false)
    members               CommunityMember[]
    room                  ChatRoom               @relation(fields: [roomId], references: [id])
    ownerDetails          User                   @relation(fields: [ownerId], references: [id])
 
-  @@unique([type,name])
+  @@unique([type,ownerId,name])
   @@map("communities")
 }
 
