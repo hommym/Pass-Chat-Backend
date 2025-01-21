@@ -24,27 +24,31 @@ communityRouter.post(
 );
 
 communityRouter.post(
-  "/:type/:name/join",
+  "/:communityId/join",
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
-    const { type, name } = req.params;
-    if (!(type === "channel" || type === "group")) throw new AppError("Valid values for type url parameter should be channel or group", 400);
-    else if (!name) throw new AppError("No value passed for the url parameter name", 400);
+    const { communityId } = req.params;
     const { verifiedUserId } = req.body;
-    res.status(201).json(await communityService.joinCommunity(type, name, verifiedUserId));
+    try {
+      res.status(201).json(await communityService.joinCommunity(+communityId, verifiedUserId));
+    } catch (error) {
+      throw new AppError("Url parameter communityId must be an integer", 400);
+    }
   })
 );
 
 communityRouter.delete(
-  "/:type/:name/exit",
+  "/:communityId/exit",
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
-    const { type, name } = req.params;
-    if (!(type === "channel" || type === "group")) throw new AppError("Valid values for type url parameter should be channel or group", 400);
-    else if (!name) throw new AppError("No value passed for the url parameter name", 400);
+    const { communityId } = req.params;
     const { verifiedUserId } = req.body;
-    await communityService.exitCommunity(type, name, verifiedUserId);
-    res.status(204).end();
+    try {
+      await communityService.exitCommunity(+communityId, verifiedUserId);
+      res.status(204).end();
+    } catch (error) {
+      throw new AppError("Url parameter communityId must be an integer", 400);
+    }
   })
 );
 
@@ -52,12 +56,11 @@ communityRouter.delete(
   "/",
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
-    const { verifiedUserId,communityId } = req.body;
-    await communityService.deleteCommunity(communityId,verifiedUserId)
+    const { verifiedUserId, communityId } = req.body;
+    await communityService.deleteCommunity(communityId, verifiedUserId);
     res.status(204).end();
   })
 );
-
 
 communityRouter.patch(
   "/:type/:name/role",

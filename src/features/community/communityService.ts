@@ -9,7 +9,7 @@ import { UpdateRoleDto } from "./dto/updateRoleDto";
 
 export class CommunityService {
   async checkCommunity(type: "channel" | "group", name: string, ownerId: number) {
-    return await database.community.findUnique({ where: { type_name: { name, type }, ownerId} });
+    return await database.community.findUnique({ where: { type_ownerId_name: { name, type, ownerId } } });
   }
 
   async createCommunity(type: "channel" | "group", communityDto: CreateCommunityDto, ownerId: number) {
@@ -36,10 +36,12 @@ export class CommunityService {
       }
     }
     const communityDetails = await database.community.upsert({
-      where: { type_name: { name, type }, ownerId },
-      create: { name, type, description, visibility, permissions, profile, roomId: chatRoom! ? chatRoom.id : 0, ownerId, invitationLink: `${process.env.BackendUrl}/community/${type}/${name}/join` },
+      where: { type_ownerId_name: { name, type, ownerId } },
+      create: { name, type, description, visibility, permissions, profile, roomId: chatRoom! ? chatRoom.id : 0, ownerId },
       update: community?.deleteFlag ? { name, type, description, visibility, profile, deleteFlag: false, permissions } : { name, type, description, visibility, profile },
     });
+
+    await database.community.update({ where: { id: communityDetails.id }, data: { invitationLink: `${process.env.BackendUrl}/community/${communityDetails.id}/join` } });
 
     await database.communityMember.upsert({
       where: { communityId_userId: { communityId: communityDetails.id, userId: ownerId } },
@@ -53,7 +55,7 @@ export class CommunityService {
   async updatePermissions(ownerId: number, permissionsDto: GroupPermissionsDto, type: "group" | "channel") {
     const { name, ...permissions } = permissionsDto;
     if (!(await this.checkCommunity(type, name, ownerId))) throw new AppError(`This account does not own a ${type} with such name`, 404);
-    return await database.community.update({ where: { type_name: { type, name }, ownerId }, data: { permissions } });
+    return await database.community.update({ where: { type_ownerId_name: { type, name, ownerId } }, data: { permissions } });
   }
 
   async search(keyword: string) {
@@ -75,31 +77,31 @@ export class CommunityService {
     return await database.communityMember.findUnique({ where: { communityId_userId: { communityId, userId }, deleteFlag: false } });
   }
 
-  async joinCommunity(type: "channel" | "group", communityName: string, userId: number) {
-    const communityDetails = await database.community.findUnique({ where: { type_name: { type, name: communityName } } });
+  async joinCommunity(communityId: number, userId: number) {
+    const communityDetails = await database.community.findUnique({ where: { id: communityId } });
 
-    if (!communityDetails) throw new AppError(`No ${type} with this name exist`, 404);
-    const { id, description, name, profile, subscriberCount } = communityDetails;
+    if (!communityDetails) throw new AppError(`No group or channel with this id exist`, 404);
+    const { id } = communityDetails;
 
     if (await this.isMember(id, userId)) throw new AppError("User is already a member", 409);
 
     const clientMembershipInfo = await database.communityMember.create({ data: { userId, communityId: communityDetails.id } });
 
-    appEvents.emit("update-community-sub-count", { communityId: id, operation: "add" });
+    appEvents.emit("update-community-sub-count", { communityId, operation: "add" });
     return { communityDetails, memberShipType: clientMembershipInfo.role };
   }
 
-  async exitCommunity(type: "channel" | "group", communityName: string, userId: number) {
-    const communityDetails = await database.community.findUnique({ where: { type_name: { type, name: communityName } } });
-    if (!communityDetails) throw new AppError(`No ${type} with this name exist`, 404);
-    const { id } = communityDetails;
-    await database.communityMember.delete({ where: { communityId_userId: { communityId: id, userId } } });
-    appEvents.emit("update-community-sub-count", { communityId: id, operation: "sub" });
+  async exitCommunity(communityId: number, userId: number) {
+    const communityDetails = await database.community.findUnique({ where: { id: communityId } });
+    if (!communityDetails) throw new AppError(`No group or channel with this id exist`, 404);
+    else if (!(await this.isMember(communityId, userId))) throw new AppError("User is not a member", 409);
+    await database.communityMember.delete({ where: { communityId_userId: { communityId, userId } } });
+    appEvents.emit("update-community-sub-count", { communityId, operation: "sub" });
   }
 
   async updateMemberRole(type: "channel" | "group", communityName: string, ownerId: number, updatedData: UpdateRoleDto) {
     const { memberPhone, newRole } = updatedData;
-    const communityDetails = await database.community.findUnique({ where: { type_name: { type, name: communityName } } });
+    const communityDetails = await database.community.findUnique({ where: { type_ownerId_name: { type, name: communityName, ownerId } } });
 
     if (!communityDetails) throw new AppError(`No ${type} with this name exist`, 404);
     else if (ownerId !== communityDetails.ownerId) throw new AppError(`Only the owner of the ${type} can change members roles`, 402);
