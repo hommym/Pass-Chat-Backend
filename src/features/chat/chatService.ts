@@ -142,9 +142,9 @@ export class ChatService {
     const chatRoomDetails = await this.checkChatRoom(chatRoomId);
 
     if (!chatRoomDetails) throw new WsError("No ChatRoom with this Id exists");
-    if (!(chatRoomDetails.user1Id === clientId || chatRoomDetails.user2Id === clientId)) throw new WsError("Messages does not belong to this account");
-    // add code for checking if the chat room is channel or group and the client is member before message can retrieved(N/A)
-
+    else if (chatRoomDetails.type === "private" && !(chatRoomDetails.user1Id === clientId || chatRoomDetails.user2Id === clientId)) throw new WsError("Messages does not belong to this account");
+    else if (!(await communityService.isMember(chatRoomDetails.community[0]?.id, clientId))) throw new WsError(`Messages cannot be retrived, client not a member of ${chatRoomDetails.type}`);
+   
     const startOfDayInUserTimeZone = new Date(`${date}T00:00:00`);
     const endOfDayInUserTimeZone = new Date(`${date}T23:59:59`);
 
