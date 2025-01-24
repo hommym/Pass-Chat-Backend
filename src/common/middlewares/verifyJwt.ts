@@ -5,8 +5,9 @@ import { AppError, WsError } from "./errorHandler";
 import { verifyJwtToken } from "../libs/jwt";
 import { JwtPayload } from "jsonwebtoken";
 import { Socket } from "socket.io";
-import { chatService, database } from "../constants/objects";
+import { appEvents, chatService, database } from "../constants/objects";
 import { SocketV1 } from "../helpers/classes/socketV1";
+import { OS } from "@prisma/client";
 
 export const verifyJwt = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   // console.log("Jwt verification began....");
@@ -35,6 +36,7 @@ export const verifyJwt = asyncHandler(async (req: Request, res: Response, next: 
 export const verifyJwtForWs = async (socket: Socket, next: (err?: Error) => void) => {
   const token = socket.handshake.auth?.token ? socket.handshake.auth?.token : socket.handshake.headers.authorization?.split(" ")[1];
   const setOnlineStatus = socket.handshake.query.setOnlineStatus;
+  const platform = socket.handshake.query.platform && ["ios", "desktop", "android"].includes(socket.handshake.query.platform as string) ? (socket.handshake.query.platform as OS) : "android";
   if (!token) {
     next(new Error("No Auth Token Provided"));
   }
@@ -46,10 +48,9 @@ export const verifyJwtForWs = async (socket: Socket, next: (err?: Error) => void
     // checking if user is already online
     if (setOnlineStatus) {
       const userDetails = await database.user.findUnique({ where: { id: userId } });
-
       if (userDetails!.onlineStatus !== "offline") return next(new WsError("User Already Online"));
-
       await chatService.setUserOnlineStatus("online", userId, socket.id);
+      appEvents.emit("add-to-daily-users", { userId, platform });
     }
     (socket as SocketV1).authUserId = userId;
     console.log(`User Verified id=${jwtData.userId}`);

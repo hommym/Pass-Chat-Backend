@@ -11,6 +11,7 @@ import { FileService } from "../../features/file/fileService";
 import { ChatNotificationService } from "../../features/notification/chatNotificationService";
 import { CallService } from "../../features/calls/callService";
 import { CommunityService } from "../../features/community/communityService";
+import { DashboardService } from "../../features/dashboard/dashboardService";
 
 // singletons
 
@@ -39,3 +40,5 @@ export const chatNotificationService = new ChatNotificationService();
 export const callService = new CallService();
 
 export const communityService = new CommunityService();
+
+export const dashboardService = new DashboardService();

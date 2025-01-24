@@ -64,6 +64,8 @@ export class ChatService {
       else if (communityId !== roomDetails.community[0]?.id) throw new WsError(`roomId used does not belong to this ${roomType}`);
 
       if (!(await communityService.isMember(communityId, senderId))) throw new WsError("Sender is not a member");
+      appEvents.emit("add-to-active-communities", { communityId });
+
       const savedMessage = await database.message.create({ data: { roomId, content, type: dataType, senderId, communityId, replyTo, read: true, recieved: true } });
       // send the sender a response.
       socket.emit("response", { action: "sendMessage", data: savedMessage });
@@ -144,7 +146,7 @@ export class ChatService {
     if (!chatRoomDetails) throw new WsError("No ChatRoom with this Id exists");
     else if (chatRoomDetails.type === "private" && !(chatRoomDetails.user1Id === clientId || chatRoomDetails.user2Id === clientId)) throw new WsError("Messages does not belong to this account");
     else if (!(await communityService.isMember(chatRoomDetails.community[0]?.id, clientId))) throw new WsError(`Messages cannot be retrived, client not a member of ${chatRoomDetails.type}`);
-   
+
     const startOfDayInUserTimeZone = new Date(`${date}T00:00:00`);
     const endOfDayInUserTimeZone = new Date(`${date}T23:59:59`);
 
