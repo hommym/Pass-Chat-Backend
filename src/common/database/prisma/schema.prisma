@@ -104,6 +104,12 @@ enum CommunityPermissionsLevels{
   all
 }
 
+enum OS{
+  android 
+  ios
+  desktop  // this encapsulates all pc oprating systems
+}
+
 model User {
   id                Int             @id @default(autoincrement())
   email             String?         @unique
@@ -254,5 +260,25 @@ model CommunityMember{
   @@map("community_members")
 }
 
+
+model DailyUser {
+   id                    Int                   @id @default(autoincrement())
+   userId                Int
+   platform              OS
+   date                  String
+
+   @@unique([userId,date])
+   @@map("daily_users")
+}
+
+
+model ActiveCommunity {
+  id                    Int                   @id @default(autoincrement())
+  communityId           Int
+  date                  String                         
+
+  @@unique([communityId,date])
+  @@map("active_communities")
+}
 
 
