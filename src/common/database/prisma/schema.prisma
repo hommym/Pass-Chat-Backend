@@ -114,6 +114,7 @@ enum OS{
 enum flaggedContent{
   message
   account
+  community
 }
 
 enum flaggedBy {
@@ -315,6 +316,6 @@ model flaggedData{
  status                flagStatus            @default(pending)
  messageId             Int?
  userId                Int?
-
+ communityId           Int?
  @@map("flagged_data")
 }
