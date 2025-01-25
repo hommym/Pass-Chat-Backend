@@ -110,6 +110,30 @@ enum OS{
   desktop  // this encapsulates all pc oprating systems
 }
 
+
+enum flaggedContent{
+  message
+  account
+}
+
+enum flaggedBy {
+  user
+  system
+}
+
+enum flagStatus{
+  pending
+  declined
+  approved
+}
+
+enum flagReason {
+  spam
+  violence
+  hateSpeech
+  pornography
+}
+
 model User {
   id                Int             @id @default(autoincrement())
   email             String?         @unique
@@ -176,6 +200,7 @@ model Message {
   read           Boolean       @default(false)
   recieved       Boolean       @default(false) 
   deleteFlag     Boolean       @default(false)
+  reportFlag     Boolean       @default(false)
   views          Int           @default(0)   // this should only be used in community kinds of chats
   comments       Json?         // array of strings
   reactions      Json?         // array of strings
@@ -282,3 +307,14 @@ model ActiveCommunity {
 }
 
 
+model flaggedData{
+ id                    Int                   @id @default(autoincrement())
+ type                  flaggedContent        @default(message)
+ flagger               flaggedBy             @default(user)
+ reason                flagReason            @default(spam)
+ status                flagStatus            @default(pending)
+ messageId             Int?
+ userId                Int?
+
+ @@map("flagged_data")
+}
