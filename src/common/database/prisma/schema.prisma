@@ -262,6 +262,7 @@ model Community {
    permissions           Json?
    profile               String?                @db.LongText
    invitationLink        String?
+   status                AccountStatus          @default(active)
    createdAt             DateTime               @default(now())
    deleteFlag            Boolean                @default(false)
    members               CommunityMember[]
@@ -317,5 +318,7 @@ model flaggedData{
  messageId             Int?
  userId                Int?
  communityId           Int?
+ date                  String
+ timeStamp             DateTime              @default(now())
  @@map("flagged_data")
 }
