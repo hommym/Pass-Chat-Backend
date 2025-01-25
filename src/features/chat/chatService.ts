@@ -151,7 +151,7 @@ export class ChatService {
     const endOfDayInUserTimeZone = new Date(`${date}T23:59:59`);
 
     const messages = await database.message.findMany({
-      where: { createdAt: { gte: fromZonedTime(startOfDayInUserTimeZone, timeZone), lt: fromZonedTime(endOfDayInUserTimeZone, timeZone) }, deleteFlag: false, roomId: chatRoomId },
+      where: { createdAt: { gte: fromZonedTime(startOfDayInUserTimeZone, timeZone), lt: fromZonedTime(endOfDayInUserTimeZone, timeZone) }, deleteFlag: false, roomId: chatRoomId,reportFlag:false },
       orderBy: { createdAt: "desc" },
     });
     socket.emit("response", { action: "getMessages", messages });
