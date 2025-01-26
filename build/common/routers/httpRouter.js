@@ -1,0 +1,18 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.httpRouter = void 0;
+const express_1 = require("express");
+const authController_1 = require("../../features/auth/http/authController");
+const contactsController_1 = require("../../features/contacts/http/contactsController");
+const fileController_1 = require("../../features/file/http/fileController");
+const chatController_1 = require("../../features/chat/http/chatController");
+const communityController_1 = require("../../features/community/http/communityController");
+const dashboardController_1 = require("../../features/dashboard/http/dashboardController");
+exports.httpRouter = (0, express_1.Router)();
+// main routes
+exports.httpRouter.use("/auth", authController_1.authRouter);
+exports.httpRouter.use("/contacts", contactsController_1.contactsRouter);
+exports.httpRouter.use("/file", fileController_1.fileRouter);
+exports.httpRouter.use("/chat", chatController_1.chatRouter);
+exports.httpRouter.use("/community", communityController_1.communityRouter);
+exports.httpRouter.use("/dashboard", dashboardController_1.dashboardRouter);

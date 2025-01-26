@@ -1,0 +1,17 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const chatRoomSeeder_1 = require("./seeders/chatRoomSeeder");
+const communitySeeder_1 = require("./seeders/communitySeeder");
+const contactSeeder_1 = require("./seeders/contactSeeder");
+const messageSeeder_1 = require("./seeders/messageSeeder");
+const userSeeder_1 = require("./seeders/userSeeder");
+const initialiseSeeders = async () => {
+    console.log("Setting Up Seeders...");
+    await (0, userSeeder_1.UserSeeder)();
+    await (0, contactSeeder_1.ContactSeeder)();
+    await (0, chatRoomSeeder_1.ChatRoomSeeder)();
+    await (0, messageSeeder_1.MessageSeeder)();
+    await (0, communitySeeder_1.CommunitySeeder)();
+    console.log("Setup Finished");
+};
+initialiseSeeders();

@@ -75,7 +75,7 @@ export class AuthService {
   }
 
   async logout(userId: number) {
-    await database.user.update({ where: { id: userId }, data: { loggedIn: false } });
+    await database.user.update({ where: { id: userId }, data: { loggedIn: false,onlineStatus:"offline" } });
     return { message: "User Logged Out Successfully" };
   }
 
