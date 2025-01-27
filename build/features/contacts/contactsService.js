@@ -32,8 +32,15 @@ class ContactsService {
         }));
     }
     async getSavedContacts(userId) {
-        const { contacts } = (await objects_1.database.user.findUnique({ where: { id: userId }, select: { contacts: { select: { phone: true, profile: true } } } }));
+        const { contacts } = (await objects_1.database.user.findUnique({ where: { id: userId }, select: { contacts: { select: { phone: true, profile: true, roomId: true } } } }));
         return contacts;
+    }
+    async updateContactsRommId(args) {
+        const { contacts, roomId } = args;
+        await Promise.all(contacts.map(async (item) => {
+            const { contact, ownerId } = item;
+            await objects_1.database.userContact.upsert({ where: { ownerId_phone: { ownerId, phone: contact } }, create: { ownerId, phone: contact, roomId }, update: { roomId } });
+        }));
     }
 }
 exports.ContactsService = ContactsService;

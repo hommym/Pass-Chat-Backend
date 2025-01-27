@@ -1,11 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const objects_1 = require("../constants/objects");
 const chatRoomSeeder_1 = require("./seeders/chatRoomSeeder");
 const communitySeeder_1 = require("./seeders/communitySeeder");
 const contactSeeder_1 = require("./seeders/contactSeeder");
 const messageSeeder_1 = require("./seeders/messageSeeder");
 const userSeeder_1 = require("./seeders/userSeeder");
 const initialiseSeeders = async () => {
+    objects_1.appEvents.setUpAllListners();
     console.log("Setting Up Seeders...");
     await (0, userSeeder_1.UserSeeder)();
     await (0, contactSeeder_1.ContactSeeder)();

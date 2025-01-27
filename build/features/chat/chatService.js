@@ -99,6 +99,13 @@ class ChatService {
                 update: {},
                 select: { id: true, createdAt: true, type: true },
             });
+        objects_1.appEvents.emit("update-contacts-roomIds", {
+            roomId: id,
+            contacts: [
+                { ownerId: user1Details.id, contact: phone2 },
+                { ownerId: user2Details.id, contact: phone1 },
+            ],
+        });
         return { roomId: id, createdAt, roomType: type, participants: [user1Details, user2Details] };
     }
     async getAllChatRooms(userId) {

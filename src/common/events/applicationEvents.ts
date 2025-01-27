@@ -1,7 +1,7 @@
 import Event from "events";
 import { RegistrationOtpEmailI, sendRegistrationEmail } from "../../features/email/sendRegisterationEmail";
 import { LoginOtpEmailI, sendLogInEmail } from "../../features/email/sendLoginEmail";
-import { chatNotificationService, communityService, dashboardService } from "../constants/objects";
+import { chatNotificationService, communityService, contactsService, dashboardService } from "../constants/objects";
 import { NotificationAction, OS, Platform } from "@prisma/client";
 import { SaveCommunityNotificationsArgs } from "../../features/community/dto/saveCommunityNotificationsArgs";
 
@@ -10,8 +10,9 @@ type EventName = {
   "registration-email": RegistrationOtpEmailI;
   "update-community-sub-count": { operation: "add" | "sub"; communityId: number };
   "set-community-members-notifications": SaveCommunityNotificationsArgs;
-  "add-to-daily-users":{userId: number, platform:OS };
-  "add-to-active-communities":{communityId:number}
+  "add-to-daily-users": { userId: number; platform: OS };
+  "add-to-active-communities": { communityId: number };
+  "update-contacts-roomIds": { roomId: number; contacts: { contact: string; ownerId: number }[] };
 };
 
 export class AppEvents {
@@ -30,6 +31,7 @@ export class AppEvents {
     this.createListener("set-community-members-notifications", chatNotificationService.saveCommunityNotifications);
     this.createListener("add-to-daily-users",dashboardService.addToDailyUsers);
     this.createListener("add-to-active-communities",dashboardService.addToActiveCommunities);
+    this.createListener("update-contacts-roomIds",contactsService.updateContactsRommId);
     console.log("Listeners Setup");
   }
 

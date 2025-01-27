@@ -19,7 +19,7 @@ export const CommunitySeeder = async () => {
         allMobileUsers.map(async (user) => {
           if (user.id !== ownersId) {
             await communityService.joinCommunity(savedCommunity.id, user.id);
-            await communityService.updateCommunitySubCount({communityId:savedCommunity.id,operation:"add"})
+            // await communityService.updateCommunitySubCount({communityId:savedCommunity.id,operation:"add"})
           }
         })
       );

@@ -114,6 +114,13 @@ export class ChatService {
           select: { id: true, createdAt: true, type: true },
         });
 
+    appEvents.emit("update-contacts-roomIds", {
+      roomId: id,
+      contacts: [
+        { ownerId: user1Details.id, contact: phone2 },
+        { ownerId: user2Details.id, contact: phone1 },
+      ],
+    });
     return { roomId: id, createdAt, roomType: type, participants: [user1Details, user2Details] };
   }
 
@@ -151,7 +158,7 @@ export class ChatService {
     const endOfDayInUserTimeZone = new Date(`${date}T23:59:59`);
 
     const messages = await database.message.findMany({
-      where: { createdAt: { gte: fromZonedTime(startOfDayInUserTimeZone, timeZone), lt: fromZonedTime(endOfDayInUserTimeZone, timeZone) }, deleteFlag: false, roomId: chatRoomId,reportFlag:false },
+      where: { createdAt: { gte: fromZonedTime(startOfDayInUserTimeZone, timeZone), lt: fromZonedTime(endOfDayInUserTimeZone, timeZone) }, deleteFlag: false, roomId: chatRoomId, reportFlag: false },
       orderBy: { createdAt: "desc" },
     });
     socket.emit("response", { action: "getMessages", messages });

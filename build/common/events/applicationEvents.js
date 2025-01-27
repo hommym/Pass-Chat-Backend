@@ -24,6 +24,7 @@ class AppEvents {
         this.createListener("set-community-members-notifications", objects_1.chatNotificationService.saveCommunityNotifications);
         this.createListener("add-to-daily-users", objects_1.dashboardService.addToDailyUsers);
         this.createListener("add-to-active-communities", objects_1.dashboardService.addToActiveCommunities);
+        this.createListener("update-contacts-roomIds", objects_1.contactsService.updateContactsRommId);
         console.log("Listeners Setup");
     }
     emit(eventName, data) {
