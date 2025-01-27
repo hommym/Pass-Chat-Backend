@@ -241,6 +241,7 @@ model UserContact {
    phone          String
    profile        String?             @db.LongText
    status         ContactStatus       @default(active)
+   roomId         Int?
    user           User                @relation(fields: [ownerId], references: [id])  
 
     @@unique([ownerId,phone])
