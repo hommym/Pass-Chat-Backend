@@ -5,6 +5,7 @@ import { fileRouter } from "../../features/file/http/fileController";
 import { chatRouter } from "../../features/chat/http/chatController";
 import { communityRouter } from "../../features/community/http/communityController";
 import { dashboardRouter } from "../../features/dashboard/http/dashboardController";
+import { reportRouter } from "../../features/report/http/reportController";
 
 
 
@@ -19,3 +20,4 @@ httpRouter.use("/file",fileRouter)
 httpRouter.use("/chat",chatRouter)
 httpRouter.use("/community",communityRouter)
 httpRouter.use("/dashboard",dashboardRouter)
+httpRouter.use("/report",reportRouter)

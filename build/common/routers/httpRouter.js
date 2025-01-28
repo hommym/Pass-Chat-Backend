@@ -8,6 +8,7 @@ const fileController_1 = require("../../features/file/http/fileController");
 const chatController_1 = require("../../features/chat/http/chatController");
 const communityController_1 = require("../../features/community/http/communityController");
 const dashboardController_1 = require("../../features/dashboard/http/dashboardController");
+const reportController_1 = require("../../features/report/http/reportController");
 exports.httpRouter = (0, express_1.Router)();
 // main routes
 exports.httpRouter.use("/auth", authController_1.authRouter);
@@ -16,3 +17,4 @@ exports.httpRouter.use("/file", fileController_1.fileRouter);
 exports.httpRouter.use("/chat", chatController_1.chatRouter);
 exports.httpRouter.use("/community", communityController_1.communityRouter);
 exports.httpRouter.use("/dashboard", dashboardController_1.dashboardRouter);
+exports.httpRouter.use("/report", reportController_1.reportRouter);

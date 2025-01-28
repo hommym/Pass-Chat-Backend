@@ -47,12 +47,29 @@ class ReportService {
         if (type === "message" && action === "approved") {
             //update the message data
             // notify participants of
+            const { room, recipientId, senderId, id } = await objects_1.database.message.update({
+                where: { id: flaggedData.messageId },
+                data: { reportFlag: true },
+                select: { room: { select: { type: true, community: true } }, senderId: true, recipientId: true, id: true },
+            });
+            if (room.type === "private") {
+                await objects_1.chatNotificationService.saveNotification(id, senderId);
+                await objects_1.chatNotificationService.saveNotification(id, recipientId);
+            }
+            else {
+                const communityId = room.community[0].id;
+                const communityMembers = await objects_1.database.communityMember.findMany({ where: { communityId } });
+                const membersIds = communityMembers.map((member) => member.userId);
+                objects_1.appEvents.emit("set-community-members-notifications", { action: "updateMessage", communityId, membersIds, messageId: flaggedData.messageId, platform: "mobile" });
+            }
         }
         else if (type === "account" && action === "approved") {
             // ban account
+            await objects_1.database.user.update({ where: { id: flaggedData.userId }, data: { status: "blocked" } });
         }
         else if (type === "community" && action === "approved") {
             //ban community
+            await objects_1.database.community.update({ where: { id: flaggedData.communityId }, data: { status: "blocked" } });
         }
     }
 }

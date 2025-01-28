@@ -12,6 +12,7 @@ import { ChatNotificationService } from "../../features/notification/chatNotific
 import { CallService } from "../../features/calls/callService";
 import { CommunityService } from "../../features/community/communityService";
 import { DashboardService } from "../../features/dashboard/dashboardService";
+import { ReportService } from "../../features/report/reportService";
 
 // singletons
 
@@ -42,3 +43,5 @@ export const callService = new CallService();
 export const communityService = new CommunityService();
 
 export const dashboardService = new DashboardService();
+
+export const reportService = new ReportService();
