@@ -60,7 +60,7 @@ export class CommunityService {
 
   async search(keyword: string) {
     return await database.community.findMany({
-      where: { name: { startsWith: keyword }, visibility: "public" },
+      where: { name: { startsWith: keyword }, visibility: "public", status: "active" },
     });
   }
 
@@ -84,6 +84,7 @@ export class CommunityService {
     const { id } = communityDetails;
 
     if (await this.isMember(id, userId)) throw new AppError("User is already a member", 409);
+    else if (communityDetails.status !== "active") throw new AppError(`Cannot Join Banned or Suspended ${communityDetails.type}`, 401);
 
     const clientMembershipInfo = await database.communityMember.create({ data: { userId, communityId: communityDetails.id } });
 

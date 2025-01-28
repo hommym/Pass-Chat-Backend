@@ -49,6 +49,7 @@ export const verifyJwtForWs = async (socket: Socket, next: (err?: Error) => void
     if (setOnlineStatus) {
       const userDetails = await database.user.findUnique({ where: { id: userId } });
       if (userDetails!.onlineStatus !== "offline") return next(new WsError("User Already Online"));
+      else if (userDetails!.status !== "active") return next(new WsError(`Account has been ${userDetails!.status}`));
       await chatService.setUserOnlineStatus("online", userId, socket.id);
       appEvents.emit("add-to-daily-users", { userId, platform });
     }

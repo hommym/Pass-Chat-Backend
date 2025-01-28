@@ -68,7 +68,7 @@ class CommunityService {
     }
     async search(keyword) {
         return await objects_1.database.community.findMany({
-            where: { name: { startsWith: keyword }, visibility: "public" },
+            where: { name: { startsWith: keyword }, visibility: "public", status: "active" },
         });
     }
     async updateCommunitySubCount(arg) {
@@ -90,6 +90,8 @@ class CommunityService {
         const { id } = communityDetails;
         if (await this.isMember(id, userId))
             throw new errorHandler_1.AppError("User is already a member", 409);
+        else if (communityDetails.status !== "active")
+            throw new errorHandler_1.AppError(`Cannot Join Banned or Suspended ${communityDetails.type}`, 401);
         const clientMembershipInfo = await objects_1.database.communityMember.create({ data: { userId, communityId: communityDetails.id } });
         objects_1.appEvents.emit("update-community-sub-count", { communityId, operation: "add" });
         return { communityDetails, memberShipType: clientMembershipInfo.role };
