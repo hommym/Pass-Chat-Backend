@@ -17,7 +17,13 @@ class DashboardService {
     async getNumberOfDailyData(dataType) {
         const currentDate = (0, date_1.getCurrentDate)();
         const yesterdayDate = (0, date_1.getYesterdayDate)(currentDate);
-        const currentDailyData = dataType === "users" ? (await objects_1.database.dailyUser.findMany({ where: { date: currentDate } })).length : (await objects_1.database.activeCommunity.findMany({ where: { date: currentDate } })).length;
+        const currentDailyData = dataType === "users"
+            ? (await objects_1.database.dailyUser.findMany({ where: { date: currentDate } })).length
+            : dataType === "flaggedMessage"
+                ? (await objects_1.database.flaggedData.findMany({ where: { date: currentDate, type: "message" } })).length
+                : dataType === "bannedAccounts"
+                    ? (await objects_1.database.flaggedData.findMany({ where: { date: currentDate, type: "account" } })).length
+                    : (await objects_1.database.activeCommunity.findMany({ where: { date: currentDate } })).length;
         const yesterdayDailyData = dataType === "users" ? (await objects_1.database.dailyUser.findMany({ where: { date: yesterdayDate } })).length : (await objects_1.database.activeCommunity.findMany({ where: { date: yesterdayDate } })).length;
         if (yesterdayDailyData === 0) {
             // Handle the case where yesterday's data is 0
@@ -26,6 +32,8 @@ class DashboardService {
                     dailyTotal: currentDailyData,
                     percentageChange: "100%",
                     increment: true,
+                    decrement: false,
+                    same: false,
                 };
             }
             else if (currentDailyData < 0) {
@@ -33,6 +41,8 @@ class DashboardService {
                     dailyTotal: currentDailyData,
                     percentageChange: "100%",
                     decrement: true,
+                    same: false,
+                    increment: false,
                 };
             }
             else {
@@ -40,6 +50,8 @@ class DashboardService {
                     dailyTotal: currentDailyData,
                     percentageChange: "0%",
                     same: true,
+                    increment: false,
+                    decrement: false,
                 };
             }
         }
@@ -51,6 +63,8 @@ class DashboardService {
                     dailyTotal: currentDailyData,
                     percentageChange: `${percentageChange.toFixed(2)}%`,
                     increment: true,
+                    decrement: false,
+                    same: false,
                 };
             }
             else if (percentageChange < 0) {
@@ -58,6 +72,8 @@ class DashboardService {
                     dailyTotal: currentDailyData,
                     percentageChange: `${Math.abs(percentageChange).toFixed(2)}%`,
                     decrement: true,
+                    same: false,
+                    increment: false,
                 };
             }
             else {
@@ -65,9 +81,14 @@ class DashboardService {
                     dailyTotal: currentDailyData,
                     percentageChange: "0%",
                     same: true,
+                    increment: false,
+                    decrement: false,
                 };
             }
         }
+    }
+    async getUserGrowthTrend(year) {
+        return await objects_1.database.dailyUser.findMany({ where: { date: { startsWith: `${year}` } } });
     }
 }
 exports.DashboardService = DashboardService;

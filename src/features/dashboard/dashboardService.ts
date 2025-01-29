@@ -15,12 +15,18 @@ export class DashboardService {
     await database.activeCommunity.upsert({ where: { communityId_date: { communityId, date: currentDate } }, create: { communityId, date: currentDate }, update: {} });
   }
 
-  async getNumberOfDailyData(dataType: "users" | "activeCommunities") {
+  async getNumberOfDailyData(dataType: "users" | "activeCommunities" | "flaggedMessage" | "bannedAccounts") {
     const currentDate = getCurrentDate();
     const yesterdayDate = getYesterdayDate(currentDate);
 
     const currentDailyData =
-      dataType === "users" ? (await database.dailyUser.findMany({ where: { date: currentDate } })).length : (await database.activeCommunity.findMany({ where: { date: currentDate } })).length;
+      dataType === "users"
+        ? (await database.dailyUser.findMany({ where: { date: currentDate } })).length
+        : dataType === "flaggedMessage"
+        ? (await database.flaggedData.findMany({ where: { date: currentDate, type: "message" } })).length
+        : dataType === "bannedAccounts"
+        ? (await database.flaggedData.findMany({ where: { date: currentDate, type: "account" } })).length
+        : (await database.activeCommunity.findMany({ where: { date: currentDate } })).length;
     const yesterdayDailyData =
       dataType === "users" ? (await database.dailyUser.findMany({ where: { date: yesterdayDate } })).length : (await database.activeCommunity.findMany({ where: { date: yesterdayDate } })).length;
 
@@ -31,18 +37,24 @@ export class DashboardService {
           dailyTotal: currentDailyData,
           percentageChange: "100%",
           increment: true,
+          decrement: false,
+          same: false,
         };
       } else if (currentDailyData < 0) {
         return {
           dailyTotal: currentDailyData,
           percentageChange: "100%",
           decrement: true,
+          same: false,
+          increment: false,
         };
       } else {
         return {
           dailyTotal: currentDailyData,
           percentageChange: "0%",
           same: true,
+          increment: false,
+          decrement: false,
         };
       }
     } else {
@@ -53,20 +65,30 @@ export class DashboardService {
           dailyTotal: currentDailyData,
           percentageChange: `${percentageChange.toFixed(2)}%`,
           increment: true,
+          decrement: false,
+          same: false,
         };
       } else if (percentageChange < 0) {
         return {
           dailyTotal: currentDailyData,
           percentageChange: `${Math.abs(percentageChange).toFixed(2)}%`,
           decrement: true,
+          same: false,
+          increment: false,
         };
       } else {
         return {
           dailyTotal: currentDailyData,
           percentageChange: "0%",
           same: true,
+          increment: false,
+          decrement: false,
         };
       }
     }
+  }
+
+  async getUserGrowthTrend(year:number) {
+    return await database.dailyUser.findMany({ where: { date: { startsWith: `${year}` } } });
   }
 }
