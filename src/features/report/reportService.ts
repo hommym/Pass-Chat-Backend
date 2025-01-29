@@ -27,7 +27,7 @@ export class ReportService {
     return { message: "Report Submitted Successfully" };
   }
   async getAllReports() {
-    return await database.flaggedData.findMany({ orderBy: { timeStamp: "desc" } });
+    return await database.flaggedData.findMany({ orderBy: { timeStamp: "desc" }, where: { status: { notIn: ["approved", "declined"] } } });
   }
 
   async resolveReport(resolveDto: ResolveReportDto) {
