@@ -1,12 +1,14 @@
 import { OS } from "@prisma/client";
-import { database } from "../../common/constants/objects";
+import { appEvents, database } from "../../common/constants/objects";
 import { getCurrentDate, getYesterdayDate } from "../../common/helpers/date";
+import { UpdateCommunityVerificationStatus } from "./dto/updateCommunityVerficationStatusDto";
+import { AppError } from "../../common/middlewares/errorHandler";
 
 export class DashboardService {
-  async addToDailyUsers(args: { userId: number; platform: OS,timezone:string }) {
-    const { userId, platform,timezone } = args;
+  async addToDailyUsers(args: { userId: number; platform: OS; timezone: string }) {
+    const { userId, platform, timezone } = args;
     const currentDate = getCurrentDate();
-    await database.dailyUser.upsert({ where: { userId_date: { userId, date: currentDate } }, create: { userId, date: currentDate, platform ,timezone}, update: {} });
+    await database.dailyUser.upsert({ where: { userId_date: { userId, date: currentDate } }, create: { userId, date: currentDate, platform, timezone }, update: {} });
   }
 
   async addToActiveCommunities(args: { communityId: number }) {
@@ -88,7 +90,32 @@ export class DashboardService {
     }
   }
 
-  async getUserGrowthTrend(year:number) {
+  async getUserGrowthTrend(year: number) {
     return await database.dailyUser.findMany({ where: { date: { startsWith: `${year}` } } });
+  }
+
+  async getAllPendingComunityVerfRequests() {
+    return await database.communityVerification.findMany({});
+  }
+
+  async updateCommunityVerificationStatus(data: UpdateCommunityVerificationStatus) {
+    const { action, verificationRequestId, reason } = data;
+
+    const verificationRequest = await database.communityVerification.findUnique({ where: { id: verificationRequestId }, include: { community: true } });
+
+    if (!verificationRequest) throw new AppError("No Verification Request with this Id exist", 404);
+
+    const { community, contact } = verificationRequest;
+    if (action === "accept") {
+      await database.community.update({ where: { id: verificationRequest.communityId }, data: { isVerified: true } });
+      //send congratulation email
+      appEvents.emit("community-verification-email", { action: "accepted", communityName: community.name, email: contact, reason });
+    } else {
+      // send apologetic email
+      appEvents.emit("community-verification-email", { action: "declined", communityName: community.name, email: contact, reason });
+    }
+
+    await database.communityVerification.update({ where: { id: verificationRequestId }, data: { status: "reviewed" } });
+    return { message: action === "accept" ? `Request successfully ${action}ed` : `Request successfully ${action}d` };
   }
 }

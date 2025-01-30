@@ -5,6 +5,8 @@ import asyncHandler from "express-async-handler";
 import { dashboardService } from "../../../common/constants/objects";
 import { checkAccountType } from "../../../common/middlewares/checkAccountType";
 import { AppError } from "../../../common/middlewares/errorHandler";
+import { bodyValidator } from "../../../common/middlewares/bodyValidator";
+import { UpdateCommunityVerificationStatus } from "../dto/updateCommunityVerficationStatusDto";
 
 export const dashboardRouter = Router();
 
@@ -55,5 +57,24 @@ dashboardRouter.get(
     } catch (error) {
       throw new AppError("Url parameter year must be a valid year", 400);
     }
+  })
+);
+
+dashboardRouter.get(
+  "/community-verfication/applications",
+  verifyJwt,
+  checkAccountType("admin"),
+  asyncHandler(async (req: Request, res: Response) => {
+    res.status(200).json(await dashboardService.getAllPendingComunityVerfRequests());
+  })
+);
+
+dashboardRouter.patch(
+  "/community-verfication/application/review",
+  verifyJwt,
+  checkAccountType("admin"),
+  bodyValidator(UpdateCommunityVerificationStatus),
+  asyncHandler(async (req: Request, res: Response) => {
+    res.status(200).json(await dashboardService.updateCommunityVerificationStatus(req.body));
   })
 );

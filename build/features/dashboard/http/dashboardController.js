@@ -10,6 +10,8 @@ const express_async_handler_1 = __importDefault(require("express-async-handler")
 const objects_1 = require("../../../common/constants/objects");
 const checkAccountType_1 = require("../../../common/middlewares/checkAccountType");
 const errorHandler_1 = require("../../../common/middlewares/errorHandler");
+const bodyValidator_1 = require("../../../common/middlewares/bodyValidator");
+const updateCommunityVerficationStatusDto_1 = require("../dto/updateCommunityVerficationStatusDto");
 exports.dashboardRouter = (0, express_1.Router)();
 exports.dashboardRouter.get("/daily/users", verifyJwt_1.verifyJwt, (0, checkAccountType_1.checkAccountType)("admin"), (0, express_async_handler_1.default)(async (req, res) => {
     res.status(200).json(await objects_1.dashboardService.getNumberOfDailyData("users"));
@@ -31,4 +33,10 @@ exports.dashboardRouter.get("/user-growth-trend/:year", verifyJwt_1.verifyJwt, (
     catch (error) {
         throw new errorHandler_1.AppError("Url parameter year must be a valid year", 400);
     }
+}));
+exports.dashboardRouter.get("/community-verfication/applications", verifyJwt_1.verifyJwt, (0, checkAccountType_1.checkAccountType)("admin"), (0, express_async_handler_1.default)(async (req, res) => {
+    res.status(200).json(await objects_1.dashboardService.getAllPendingComunityVerfRequests());
+}));
+exports.dashboardRouter.patch("/community-verfication/application/review", verifyJwt_1.verifyJwt, (0, checkAccountType_1.checkAccountType)("admin"), (0, bodyValidator_1.bodyValidator)(updateCommunityVerficationStatusDto_1.UpdateCommunityVerificationStatus), (0, express_async_handler_1.default)(async (req, res) => {
+    res.status(200).json(await objects_1.dashboardService.updateCommunityVerificationStatus(req.body));
 }));

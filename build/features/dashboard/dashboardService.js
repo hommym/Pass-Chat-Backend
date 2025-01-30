@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DashboardService = void 0;
 const objects_1 = require("../../common/constants/objects");
 const date_1 = require("../../common/helpers/date");
+const errorHandler_1 = require("../../common/middlewares/errorHandler");
 class DashboardService {
     async addToDailyUsers(args) {
         const { userId, platform, timezone } = args;
@@ -89,6 +90,27 @@ class DashboardService {
     }
     async getUserGrowthTrend(year) {
         return await objects_1.database.dailyUser.findMany({ where: { date: { startsWith: `${year}` } } });
+    }
+    async getAllPendingComunityVerfRequests() {
+        return await objects_1.database.communityVerification.findMany({});
+    }
+    async updateCommunityVerificationStatus(data) {
+        const { action, verificationRequestId, reason } = data;
+        const verificationRequest = await objects_1.database.communityVerification.findUnique({ where: { id: verificationRequestId }, include: { community: true } });
+        if (!verificationRequest)
+            throw new errorHandler_1.AppError("No Verification Request with this Id exist", 404);
+        const { community, contact } = verificationRequest;
+        if (action === "accept") {
+            await objects_1.database.community.update({ where: { id: verificationRequest.communityId }, data: { isVerified: true } });
+            //send congratulation email
+            objects_1.appEvents.emit("community-verification-email", { action: "accepted", communityName: community.name, email: contact, reason });
+        }
+        else {
+            // send apologetic email
+            objects_1.appEvents.emit("community-verification-email", { action: "declined", communityName: community.name, email: contact, reason });
+        }
+        await objects_1.database.communityVerification.update({ where: { id: verificationRequestId }, data: { status: "reviewed" } });
+        return { message: action === "accept" ? `Request successfully ${action}ed` : `Request successfully ${action}d` };
     }
 }
 exports.DashboardService = DashboardService;
