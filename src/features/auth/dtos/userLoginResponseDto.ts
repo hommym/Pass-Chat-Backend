@@ -16,4 +16,7 @@ export class UserLoginResponseDto {
 
   @Expose()
   profile?: string;
+
+  @Expose()
+  email:string;
 }

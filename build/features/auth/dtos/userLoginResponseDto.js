@@ -34,3 +34,7 @@ __decorate([
     (0, class_transformer_1.Expose)(),
     __metadata("design:type", String)
 ], UserLoginResponseDto.prototype, "profile", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
+    __metadata("design:type", String)
+], UserLoginResponseDto.prototype, "email", void 0);

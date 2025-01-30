@@ -41,7 +41,7 @@ export class AuthService {
     const plainPassword = randomData.string(5);
     const password = await encryptData(plainPassword);
     // creat account
-    await database.user.upsert({ where: { email }, create: { email, password, role,type:"admin" }, update: {password} });
+    await database.user.upsert({ where: { email }, create: { email, password, role, type: "admin" }, update: { password } });
     // send email
     appEvents.emit("registration-email", { email, password: plainPassword });
     return { message: "Account Created Sucessfully" };
@@ -75,7 +75,7 @@ export class AuthService {
   }
 
   async logout(userId: number) {
-    await database.user.update({ where: { id: userId }, data: { loggedIn: false,onlineStatus:"offline" } });
+    await database.user.update({ where: { id: userId }, data: { loggedIn: false, onlineStatus: "offline" } });
     return { message: "User Logged Out Successfully" };
   }
 
@@ -159,7 +159,10 @@ export class AuthService {
   async updateAccount(type: AccountType, updatedData: UpdateUserAccountDto | UpdateAdminAccountDto, userId: number) {
     const oldInfo = await database.user.findUnique({ where: { id: userId } });
     if (type === "user" && oldInfo!.type !== "user") throw new AppError("Account been updated must be an user account", 401);
-    else if (type === "admin" && oldInfo!.type !== "admin") throw new AppError("Account been updated must be an admin account", 401);
+    else if (type === "user" && (updatedData as UpdateUserAccountDto).email) {
+      const details = await database.user.findUnique({ where: { email: (updatedData as UpdateUserAccountDto).email } });
+      if (details) throw new AppError("An Account with this email exist", 404);
+    } else if (type === "admin" && oldInfo!.type !== "admin") throw new AppError("Account been updated must be an admin account", 401);
     await database.user.upsert({ where: { id: userId }, create: {}, update: updatedData });
     return { message: "Account Updated sucessfull" };
   }

@@ -5,9 +5,9 @@ const objects_1 = require("../../common/constants/objects");
 const date_1 = require("../../common/helpers/date");
 class DashboardService {
     async addToDailyUsers(args) {
-        const { userId, platform } = args;
+        const { userId, platform, timezone } = args;
         const currentDate = (0, date_1.getCurrentDate)();
-        await objects_1.database.dailyUser.upsert({ where: { userId_date: { userId, date: currentDate } }, create: { userId, date: currentDate, platform }, update: {} });
+        await objects_1.database.dailyUser.upsert({ where: { userId_date: { userId, date: currentDate } }, create: { userId, date: currentDate, platform, timezone }, update: {} });
     }
     async addToActiveCommunities(args) {
         const { communityId } = args;

@@ -151,6 +151,11 @@ class AuthService {
         const oldInfo = await objects_1.database.user.findUnique({ where: { id: userId } });
         if (type === "user" && oldInfo.type !== "user")
             throw new errorHandler_1.AppError("Account been updated must be an user account", 401);
+        else if (type === "user" && updatedData.email) {
+            const details = await objects_1.database.user.findUnique({ where: { email: updatedData.email } });
+            if (details)
+                throw new errorHandler_1.AppError("An Account with this email exist", 404);
+        }
         else if (type === "admin" && oldInfo.type !== "admin")
             throw new errorHandler_1.AppError("Account been updated must be an admin account", 401);
         await objects_1.database.user.upsert({ where: { id: userId }, create: {}, update: updatedData });

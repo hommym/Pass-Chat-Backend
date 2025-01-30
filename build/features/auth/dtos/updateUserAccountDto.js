@@ -39,3 +39,9 @@ __decorate([
     (0, class_validator_1.IsBase64)(),
     __metadata("design:type", String)
 ], UpdateUserAccountDto.prototype, "profile", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEmail)(),
+    __metadata("design:type", String)
+], UpdateUserAccountDto.prototype, "email", void 0);

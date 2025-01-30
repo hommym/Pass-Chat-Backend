@@ -1,5 +1,5 @@
 import { Expose } from "class-transformer";
-import { IsBase64, IsNotEmpty, IsOptional, IsPhoneNumber } from "class-validator";
+import { IsBase64, IsEmail, IsNotEmpty, IsOptional, IsPhoneNumber } from "class-validator";
 
 export class UpdateUserAccountDto {
   @Expose()
@@ -21,4 +21,9 @@ export class UpdateUserAccountDto {
   @IsOptional()
   @IsBase64()
   profile?: string;
+
+  @Expose()
+  @IsOptional()
+  @IsEmail()
+  email?: string;
 }

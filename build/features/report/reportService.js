@@ -35,7 +35,7 @@ class ReportService {
         return { message: "Report Submitted Successfully" };
     }
     async getAllReports() {
-        return await objects_1.database.flaggedData.findMany({ orderBy: { timeStamp: "desc" } });
+        return await objects_1.database.flaggedData.findMany({ orderBy: { timeStamp: "desc" }, where: { status: { notIn: ["approved", "declined"] } } });
     }
     async resolveReport(resolveDto) {
         const { action, flaggedDataId } = resolveDto;
