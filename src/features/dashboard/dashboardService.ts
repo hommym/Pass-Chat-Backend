@@ -3,10 +3,10 @@ import { database } from "../../common/constants/objects";
 import { getCurrentDate, getYesterdayDate } from "../../common/helpers/date";
 
 export class DashboardService {
-  async addToDailyUsers(args: { userId: number; platform: OS }) {
-    const { userId, platform } = args;
+  async addToDailyUsers(args: { userId: number; platform: OS,timezone:string }) {
+    const { userId, platform,timezone } = args;
     const currentDate = getCurrentDate();
-    await database.dailyUser.upsert({ where: { userId_date: { userId, date: currentDate } }, create: { userId, date: currentDate, platform }, update: {} });
+    await database.dailyUser.upsert({ where: { userId_date: { userId, date: currentDate } }, create: { userId, date: currentDate, platform ,timezone}, update: {} });
   }
 
   async addToActiveCommunities(args: { communityId: number }) {
