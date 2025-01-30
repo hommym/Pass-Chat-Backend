@@ -294,6 +294,7 @@ model DailyUser {
    userId                Int
    platform              OS
    date                  String
+   timezone              String               
 
    @@unique([userId,date])
    @@map("daily_users")
