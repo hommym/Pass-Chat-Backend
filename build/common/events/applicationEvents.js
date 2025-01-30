@@ -8,6 +8,7 @@ const events_1 = __importDefault(require("events"));
 const sendRegisterationEmail_1 = require("../../features/email/sendRegisterationEmail");
 const sendLoginEmail_1 = require("../../features/email/sendLoginEmail");
 const objects_1 = require("../constants/objects");
+const sendCommunityVerificationEmail_1 = require("../../features/email/sendCommunityVerificationEmail");
 class AppEvents {
     constructor() {
         this.event = new events_1.default();
@@ -25,6 +26,7 @@ class AppEvents {
         this.createListener("add-to-daily-users", objects_1.dashboardService.addToDailyUsers);
         this.createListener("add-to-active-communities", objects_1.dashboardService.addToActiveCommunities);
         this.createListener("update-contacts-roomIds", objects_1.contactsService.updateContactsRommId);
+        this.createListener("community-verification-email", sendCommunityVerificationEmail_1.sendCommunityVerificationEmail);
         console.log("Listeners Setup");
     }
     emit(eventName, data) {

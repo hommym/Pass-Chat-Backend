@@ -4,6 +4,7 @@ import { LoginOtpEmailI, sendLogInEmail } from "../../features/email/sendLoginEm
 import { chatNotificationService, communityService, contactsService, dashboardService } from "../constants/objects";
 import { NotificationAction, OS, Platform } from "@prisma/client";
 import { SaveCommunityNotificationsArgs } from "../../features/community/dto/saveCommunityNotificationsArgs";
+import { CommunityVerificationEmail, sendCommunityVerificationEmail } from "../../features/email/sendCommunityVerificationEmail";
 
 type EventName = {
   "login-otp-email": LoginOtpEmailI;
@@ -13,6 +14,7 @@ type EventName = {
   "add-to-daily-users": { userId: number; platform: OS,timezone:string };
   "add-to-active-communities": { communityId: number };
   "update-contacts-roomIds": { roomId: number; contacts: { contact: string; ownerId: number }[] };
+  "community-verification-email":CommunityVerificationEmail
 };
 
 export class AppEvents {
@@ -32,6 +34,7 @@ export class AppEvents {
     this.createListener("add-to-daily-users",dashboardService.addToDailyUsers);
     this.createListener("add-to-active-communities",dashboardService.addToActiveCommunities);
     this.createListener("update-contacts-roomIds",contactsService.updateContactsRommId);
+    this.createListener("community-verification-email",sendCommunityVerificationEmail);
     console.log("Listeners Setup");
   }
 

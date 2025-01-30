@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PasChat Community Verification Request 🚀</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #ffe6e9;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: #ffccd5;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #d6336c;
+        }
+        .message {
+            font-size: 16px;
+            color: #6c757d;
+            margin-top: 10px;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #a94442;
+        }
+        img {
+            max-width: 150px;
+            margin-bottom: 20px;
+        }
+        @media (max-width: 600px) {
+            .container {
+                width: 90%;
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="https://via.placeholder.com/150" alt="PasChat Logo">
+        <h1>PasChat Community Verification Request 🚀</h1>
+        <p class="message">
+            Hello,
+            <br><br>
+            Your verification request for <strong>{{communityName}}</strong> ({{type}}) has been <strong>{{action}}</strong>.
+            <br><br>
+            {% if action == "declined" %}
+            ❌ Unfortunately, your request was not approved due to the following reason:
+            <br>
+            <em>{{reason}}</em>
+            <br><br>
+            You may reapply after addressing the issue.
+            {% else %}
+            🎉 Congratulations! Your community is now verified on PasChat. Your members can now see the verification badge and enjoy the benefits of a trusted status.
+            {% endif %}
+        </p>
+        <p class="footer">Thank you for being a part of PasChat! 💖</p>
+    </div>
+</body>
+</html>
