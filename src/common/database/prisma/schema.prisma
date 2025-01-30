@@ -135,6 +135,11 @@ enum flagReason {
   pornography
 }
 
+enum CommunityVerificationStatus{
+  pending
+  reviewed
+}
+
 model User {
   id                Int             @id @default(autoincrement())
   email             String?         @unique
@@ -268,8 +273,10 @@ model Community {
    createdAt             DateTime               @default(now())
    deleteFlag            Boolean                @default(false)
    members               CommunityMember[]
+   communityVerf         CommunityVerification[]
    room                  ChatRoom               @relation(fields: [roomId], references: [id])
    ownerDetails          User                   @relation(fields: [ownerId], references: [id])
+ 
 
   @@unique([type,ownerId,name])
   @@map("communities")
@@ -324,4 +331,20 @@ model flaggedData{
  date                  String
  timeStamp             DateTime              @default(now())
  @@map("flagged_data")
+}
+
+
+model CommunityVerification {
+   id                    Int                         @id @default(autoincrement())
+   communityId           Int
+   websiteUrl            String?
+   otherSocials          Json                        //list of social media handles(links) with verified status
+   supportingDocs        Json
+   reason                String
+   contact               String                      //email address to send results to after review
+   status                CommunityVerificationStatus @default(pending)
+   community             Community                   @relation(fields: [communityId], references: [id])
+   createdAt             DateTime                    @default(now())
+
+   @@map("community_verfications")
 }
