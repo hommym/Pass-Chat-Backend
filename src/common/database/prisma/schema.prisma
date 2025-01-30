@@ -264,6 +264,7 @@ model Community {
    profile               String?                @db.LongText
    invitationLink        String?
    status                AccountStatus          @default(active)
+   isVerified            Boolean                @default(false)
    createdAt             DateTime               @default(now())
    deleteFlag            Boolean                @default(false)
    members               CommunityMember[]
