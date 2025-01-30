@@ -10,7 +10,7 @@ type EventName = {
   "registration-email": RegistrationOtpEmailI;
   "update-community-sub-count": { operation: "add" | "sub"; communityId: number };
   "set-community-members-notifications": SaveCommunityNotificationsArgs;
-  "add-to-daily-users": { userId: number; platform: OS };
+  "add-to-daily-users": { userId: number; platform: OS,timzone:string };
   "add-to-active-communities": { communityId: number };
   "update-contacts-roomIds": { roomId: number; contacts: { contact: string; ownerId: number }[] };
 };

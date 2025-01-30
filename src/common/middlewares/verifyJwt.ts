@@ -37,6 +37,7 @@ export const verifyJwtForWs = async (socket: Socket, next: (err?: Error) => void
   const token = socket.handshake.auth?.token ? socket.handshake.auth?.token : socket.handshake.headers.authorization?.split(" ")[1];
   const setOnlineStatus = socket.handshake.query.setOnlineStatus;
   const platform = socket.handshake.query.platform && ["ios", "desktop", "android"].includes(socket.handshake.query.platform as string) ? (socket.handshake.query.platform as OS) : "android";
+  const timzone = socket.handshake.query.platform ? (socket.handshake.query.timezone as string) : "Africa/Acrra";
   if (!token) {
     next(new Error("No Auth Token Provided"));
   }
@@ -51,7 +52,7 @@ export const verifyJwtForWs = async (socket: Socket, next: (err?: Error) => void
       if (userDetails!.onlineStatus !== "offline") return next(new WsError("User Already Online"));
       else if (userDetails!.status !== "active") return next(new WsError(`Account has been ${userDetails!.status}`));
       await chatService.setUserOnlineStatus("online", userId, socket.id);
-      appEvents.emit("add-to-daily-users", { userId, platform });
+      appEvents.emit("add-to-daily-users", { userId, platform, timzone });
     }
     (socket as SocketV1).authUserId = userId;
     console.log(`User Verified id=${jwtData.userId}`);
