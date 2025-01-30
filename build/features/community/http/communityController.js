@@ -24,6 +24,7 @@ const bodyValidator_1 = require("../../../common/middlewares/bodyValidator");
 const createCommunityDto_1 = require("../dto/createCommunityDto");
 const permissionsDto_1 = require("../dto/permissionsDto");
 const updateRoleDto_1 = require("../dto/updateRoleDto");
+const verifyCommunityDto_1 = require("../dto/verifyCommunityDto");
 exports.communityRouter = (0, express_1.Router)();
 exports.communityRouter.post("/:type", (0, bodyValidator_1.bodyValidator)(createCommunityDto_1.CreateCommunityDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
     const { type } = req.params;
@@ -91,4 +92,8 @@ exports.communityRouter.get("/search", verifyJwt_1.verifyJwt, (0, express_async_
     if (!keyword)
         throw new errorHandler_1.AppError("No Value passed for group or channel name", 400);
     res.status(200).json(await objects_1.communityService.search(keyword));
+}));
+exports.communityRouter.post("/apply/verification", (0, bodyValidator_1.bodyValidator)(verifyCommunityDto_1.VerifyCommunityDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
+    const _a = req.body, { verifiedUserId } = _a, dataForVerification = __rest(_a, ["verifiedUserId"]);
+    res.status(201).json(await objects_1.communityService.verifyCommunity(verifiedUserId, dataForVerification));
 }));

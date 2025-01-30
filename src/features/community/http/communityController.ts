@@ -8,6 +8,7 @@ import { bodyValidator } from "../../../common/middlewares/bodyValidator";
 import { CreateCommunityDto } from "../dto/createCommunityDto";
 import { ChannelPermissionDto, GroupPermissionsDto } from "../dto/permissionsDto";
 import { UpdateRoleDto } from "../dto/updateRoleDto";
+import { VerifyCommunityDto } from "../dto/verifyCommunityDto";
 
 export const communityRouter = Router();
 
@@ -122,5 +123,15 @@ communityRouter.get(
     const { verifiedUserId, keyword } = req.body;
     if (!keyword) throw new AppError("No Value passed for group or channel name", 400);
     res.status(200).json(await communityService.search(keyword));
+  })
+);
+
+communityRouter.post(
+  "/apply/verification",
+  bodyValidator(VerifyCommunityDto),
+  verifyJwt,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { verifiedUserId, ...dataForVerification } = req.body;
+    res.status(201).json(await communityService.verifyCommunity(verifiedUserId, dataForVerification));
   })
 );

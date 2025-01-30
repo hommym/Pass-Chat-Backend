@@ -146,5 +146,19 @@ class CommunityService {
         const membersIds = allMembers.map((member) => member.userId);
         objects_1.appEvents.emit("set-community-members-notifications", { communityId, membersIds, action: "deleteCommunity", platform: "mobile", messageId: null });
     }
+    async verifyCommunity(ownerId, verificationData) {
+        const { communityId } = verificationData;
+        const communityDetails = await objects_1.database.community.findUnique({ where: { id: communityId, ownerId } });
+        if (!communityDetails)
+            throw new errorHandler_1.AppError("No Community with such id exist or User is not the creator of this community", 404);
+        else if (communityDetails.subscriberCount < 5000 && communityDetails.type === "group")
+            throw new errorHandler_1.AppError("This Group does not meet the minimum members requirement", 401);
+        else if (communityDetails.subscriberCount < 20000 && communityDetails.type === "channel")
+            throw new errorHandler_1.AppError("This Channel does not meet the minimum members requirement", 401);
+        else if ((await objects_1.database.communityVerification.findMany({ where: { communityId, status: "pending" } })).length !== 0)
+            throw new errorHandler_1.AppError(`This ${communityDetails.type} is already under review for verification,cannot submit another until review process is done.`, 409);
+        await objects_1.database.communityVerification.create({ data: verificationData });
+        return { message: "Data Submited Successfully,Review Process takes 3 to 5 days to complete.An email will be sent to you after the decision is made." };
+    }
 }
 exports.CommunityService = CommunityService;
