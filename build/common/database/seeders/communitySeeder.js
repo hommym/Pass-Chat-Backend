@@ -15,7 +15,12 @@ const CommunitySeeder = async () => {
         const savedCommunity = (await objects_1.communityService.createCommunity(objects_1.randomData.num(0, 1) === 0 ? "channel" : "group", community, ownersId)).communityDetails;
         await Promise.all(allMobileUsers.map(async (user) => {
             if (user.id !== ownersId) {
-                await objects_1.communityService.joinCommunity(savedCommunity.id, user.id);
+                try {
+                    await objects_1.communityService.joinCommunity(savedCommunity.id, user.id);
+                }
+                catch (error) {
+                    //logs
+                }
                 // await communityService.updateCommunitySubCount({communityId:savedCommunity.id,operation:"add"})
             }
         }));
