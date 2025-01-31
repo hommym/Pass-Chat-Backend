@@ -5,7 +5,7 @@ import { AppError, WsError } from "./errorHandler";
 import { verifyJwtToken } from "../libs/jwt";
 import { JwtPayload } from "jsonwebtoken";
 import { Socket } from "socket.io";
-import { appEvents, chatService, database } from "../constants/objects";
+import { appEvents, authService, chatService, database } from "../constants/objects";
 import { SocketV1 } from "../helpers/classes/socketV1";
 import { OS } from "@prisma/client";
 
@@ -23,6 +23,9 @@ export const verifyJwt = asyncHandler(async (req: Request, res: Response, next: 
       //    throw new AppError("Token has expired or is not valid", 401);
       //  }
       //  console.log("Jwt token Verified");
+
+      // the if statement is temporary
+      if (!(await database.user.findUnique({ where: { id: jwtData.userId } }))) throw new AppError("", 404);
       req.body.verifiedUserId = jwtData.userId;
       next();
     } catch (error) {

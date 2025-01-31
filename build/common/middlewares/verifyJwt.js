@@ -21,6 +21,9 @@ exports.verifyJwt = (0, express_async_handler_1.default)(async (req, res, next) 
             //    throw new AppError("Token has expired or is not valid", 401);
             //  }
             //  console.log("Jwt token Verified");
+            // the if statement is temporary
+            if (!(await objects_1.database.user.findUnique({ where: { id: jwtData.userId } })))
+                throw new errorHandler_1.AppError("", 404);
             req.body.verifiedUserId = jwtData.userId;
             next();
         }
