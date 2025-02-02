@@ -76,6 +76,7 @@ enum NotificationAction{
   deleteMessage
   saveMessage
   deleteCommunity
+  phoneChange
 }
 
 enum CallType{
