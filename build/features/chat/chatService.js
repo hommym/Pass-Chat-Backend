@@ -41,16 +41,19 @@ class ChatService {
             const savedMessage = await objects_1.database.message.create({ data: { roomId, content, type: dataType, recipientId, senderId, replyTo } });
             // send the sender a response.
             socket.emit("response", { action: "sendMessage", data: savedMessage });
-            // check if recipient is online
-            const recipientInfo = await this.checkUsersOnlineStatus(recipientId);
-            if (recipientInfo) {
-                const recipientConnection = chatHandler_1.chatRouterWs.sockets.get(recipientInfo.connectionId);
-                if (recipientConnection) {
-                    return recipientConnection.emit("response", { action: "recieveMessage", data: savedMessage });
+            //checking if recipient has blocked sender
+            if (roomDetails.status === "active") {
+                // check if recipient is online
+                const recipientInfo = await this.checkUsersOnlineStatus(recipientId);
+                if (recipientInfo) {
+                    const recipientConnection = chatHandler_1.chatRouterWs.sockets.get(recipientInfo.connectionId);
+                    if (recipientConnection) {
+                        return recipientConnection.emit("response", { action: "recieveMessage", data: savedMessage });
+                    }
                 }
+                // when user is not online
+                objects_1.chatNotificationService.saveNotification(savedMessage.id, recipientId, "mobile", "saveMessage");
             }
-            // when user is not online
-            objects_1.chatNotificationService.saveNotification(savedMessage.id, recipientId, "mobile", "saveMessage");
         }
         else {
             // for commnunity chat
@@ -95,7 +98,7 @@ class ChatService {
             ? roomDetails
             : await objects_1.database.chatRoom.upsert({
                 where: { user1Id_user2Id: { user1Id: user1Details.id, user2Id: user2Details.id } },
-                create: { user1Id: user1Details.id, user2Id: user2Details.id },
+                create: { user1Id: user1Details.id, user2Id: user2Details.id, status: "active" },
                 update: {},
                 select: { id: true, createdAt: true, type: true },
             });
