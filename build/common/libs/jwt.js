@@ -10,7 +10,7 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const errorHandler_1 = require("../middlewares/errorHandler");
 const jwtForLogIn = (id, exp = null) => {
     if (process.env.JwtSecretKey !== undefined) {
-        return jsonwebtoken_1.default.sign({ userId: id }, process.env.JwtSecretKey, { expiresIn: exp ? exp : "36500d" });
+        return jsonwebtoken_1.default.sign({ userId: id }, process.env.JwtSecretKey, { expiresIn: "36500d" });
     }
     else {
         console.log("env variable JwtSecretKey not defined on server");

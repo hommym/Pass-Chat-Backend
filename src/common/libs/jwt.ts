@@ -5,7 +5,7 @@ import { AppError } from "../middlewares/errorHandler";
 
 export const jwtForLogIn = (id: string | number, exp: string | null = null): string => {
   if (process.env.JwtSecretKey !== undefined) {
-    return jwt.sign({ userId: id }, process.env.JwtSecretKey, { expiresIn: exp ? exp : "36500d" });
+    return jwt.sign({ userId: id }, process.env.JwtSecretKey, { expiresIn:"36500d" });
   } else {
     console.log("env variable JwtSecretKey not defined on server");
     throw new AppError("Server errror", 500);
