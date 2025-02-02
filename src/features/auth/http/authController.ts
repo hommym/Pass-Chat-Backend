@@ -13,6 +13,7 @@ import { UpdateAdminAccountDto } from "../dtos/updateAdminAccountDto";
 import { ChangePasswordDto } from "../dtos/changePasswordDto";
 import { CreateAdminDto } from "../dtos/createAdminDto";
 import { AppError } from "../../../common/middlewares/errorHandler";
+import { ChangePhoneDto } from "../dtos/changePhoneDto";
 
 export const authRouter = Router();
 
@@ -44,14 +45,13 @@ authRouter.post(
   })
 );
 
-
 authRouter.post(
   "/user/web/qr-code/login",
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
-    const { webClientId,verifiedUserId } = req.body;
-    if(!webClientId) throw new AppError("No Values Passed for webClientId",400)
-    res.status(200).json(await authService.webQrCodeLogin(webClientId,verifiedUserId));
+    const { webClientId, verifiedUserId } = req.body;
+    if (!webClientId) throw new AppError("No Values Passed for webClientId", 400);
+    res.status(200).json(await authService.webQrCodeLogin(webClientId, verifiedUserId));
   })
 );
 
@@ -104,6 +104,16 @@ authRouter.patch(
   asyncHandler(async (req: Request, res: Response) => {
     const { verifiedUserId, ...updatedData } = req.body;
     res.status(200).json(await authService.updateAccount("user", updatedData, verifiedUserId));
+  })
+);
+
+authRouter.patch(
+  "/user/change-phone",
+  bodyValidator(ChangePhoneDto),
+  verifyJwt,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { verifiedUserId, ...changePhoneDto } = req.body;
+    res.status(200).json(await authService.changePhoneNumber(verifiedUserId, changePhoneDto as ChangePhoneDto));
   })
 );
 

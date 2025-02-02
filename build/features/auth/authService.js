@@ -170,6 +170,23 @@ class AuthService {
         await objects_1.database.user.upsert({ where: { id: userId }, create: {}, update: { password: await (0, bcrypt_1.encryptData)(newPassword) } });
         return { message: "Password Changed sucessfully" };
     }
+    async changePhoneNumber(userId, changePhoneDto) {
+        const { newPhone, oldPhone } = changePhoneDto;
+        const isThereAccountWithNewPhone = await objects_1.database.user.findUnique({ where: { phone: newPhone } });
+        if (isThereAccountWithNewPhone)
+            throw new errorHandler_1.AppError(`This phone ${newPhone} is already associated with account,please change the new phone number and try again`, 409);
+        const account = await objects_1.database.user.findUnique({ where: { id: userId, phone: oldPhone } });
+        if (!account)
+            throw new errorHandler_1.AppError(`This phone ${oldPhone} is not associated with this account`, 404);
+        await objects_1.database.user.update({ where: { id: userId, phone: oldPhone }, data: { phone: newPhone } });
+        const usersWithOldContact = await objects_1.database.userContact.findMany({ where: { phone: oldPhone } });
+        await objects_1.database.userContact.updateMany({ where: { phone: oldPhone }, data: { phone: newPhone } });
+        const notificationsData = usersWithOldContact.map((contact) => {
+            return { userId: contact.ownerId, data: { newPhone, oldPhone }, action: "phoneChange" };
+        });
+        await objects_1.database.notification.createMany({ data: notificationsData });
+        return { nessage: `Phone has beeen changed sucessfully from ${oldPhone} to ${newPhone}` };
+    }
     async createLoginQrCode(socket) {
         const qrCode = await qrcode_1.default.toDataURL((0, jwt_1.jwtForWsConnectionId)(socket.id));
         socket.emit("response", { action: "createLoginQrCode", qrCode });

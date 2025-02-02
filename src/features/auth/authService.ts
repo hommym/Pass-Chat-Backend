@@ -1,4 +1,4 @@
-import { AccountType } from "@prisma/client";
+import { AccountType, NotificationAction } from "@prisma/client";
 import { appEvents, database, randomData } from "../../common/constants/objects";
 import { UserLoginDto } from "./dtos/userLoginDto";
 import { AdminLoginDto } from "./dtos/adminLoginDto";
@@ -16,6 +16,7 @@ import { AdminLoginResponseDto } from "./dtos/adminLoginResponseDto";
 import { Socket } from "socket.io";
 import qrCodeGen from "qrcode";
 import { authRouterWs } from "./ws/authHandler";
+import { ChangePhoneDto } from "./dtos/changePhoneDto";
 
 export class AuthService {
   async checkAccount(email: string) {
@@ -175,6 +176,29 @@ export class AuthService {
 
     await database.user.upsert({ where: { id: userId }, create: {}, update: { password: await encryptData(newPassword) } });
     return { message: "Password Changed sucessfully" };
+  }
+
+  async changePhoneNumber(userId: number, changePhoneDto: ChangePhoneDto) {
+    const { newPhone, oldPhone } = changePhoneDto;
+
+    const isThereAccountWithNewPhone = await database.user.findUnique({ where: { phone: newPhone } });
+
+    if (isThereAccountWithNewPhone) throw new AppError(`This phone ${newPhone} is already associated with account,please change the new phone number and try again`, 409);
+
+    const account = await database.user.findUnique({ where: { id: userId, phone: oldPhone } });
+
+    if (!account) throw new AppError(`This phone ${oldPhone} is not associated with this account`, 404);
+
+    await database.user.update({ where: { id: userId, phone: oldPhone }, data: { phone: newPhone } });
+
+    const usersWithOldContact = await database.userContact.findMany({ where: { phone: oldPhone } });
+    await database.userContact.updateMany({ where: { phone: oldPhone }, data: { phone: newPhone } });
+
+    const notificationsData = usersWithOldContact.map((contact) => {
+      return { userId: contact.ownerId, data: { newPhone, oldPhone }, action: "phoneChange" as NotificationAction };
+    });
+    await database.notification.createMany({ data: notificationsData });
+    return { nessage: `Phone has beeen changed sucessfully from ${oldPhone} to ${newPhone}` };
   }
 
   async createLoginQrCode(socket: Socket) {

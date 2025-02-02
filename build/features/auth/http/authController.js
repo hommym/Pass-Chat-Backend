@@ -29,6 +29,7 @@ const updateAdminAccountDto_1 = require("../dtos/updateAdminAccountDto");
 const changePasswordDto_1 = require("../dtos/changePasswordDto");
 const createAdminDto_1 = require("../dtos/createAdminDto");
 const errorHandler_1 = require("../../../common/middlewares/errorHandler");
+const changePhoneDto_1 = require("../dtos/changePhoneDto");
 exports.authRouter = (0, express_1.Router)();
 // All Auth Endpoints
 exports.authRouter.post("/admin/create-account", (0, bodyValidator_1.bodyValidator)(createAdminDto_1.CreateAdminDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
@@ -67,6 +68,10 @@ exports.authRouter.post("/admin/setup/2FA", (0, bodyValidator_1.bodyValidator)(s
 exports.authRouter.patch("/user/account", (0, bodyValidator_1.bodyValidator)(updateUserAccountDto_1.UpdateUserAccountDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
     const _a = req.body, { verifiedUserId } = _a, updatedData = __rest(_a, ["verifiedUserId"]);
     res.status(200).json(await objects_1.authService.updateAccount("user", updatedData, verifiedUserId));
+}));
+exports.authRouter.patch("/user/change-phone", (0, bodyValidator_1.bodyValidator)(changePhoneDto_1.ChangePhoneDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
+    const _a = req.body, { verifiedUserId } = _a, changePhoneDto = __rest(_a, ["verifiedUserId"]);
+    res.status(200).json(await objects_1.authService.changePhoneNumber(verifiedUserId, changePhoneDto));
 }));
 exports.authRouter.patch("/admin/account", (0, bodyValidator_1.bodyValidator)(updateAdminAccountDto_1.UpdateAdminAccountDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
     const _a = req.body, { verifiedUserId } = _a, updatedData = __rest(_a, ["verifiedUserId"]);

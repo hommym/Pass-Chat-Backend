@@ -82,7 +82,7 @@ export class ChatNotificationService {
 
   async getNotification(socket: Socket) {
     const userId = (socket as SocketV1).authUserId;
-    const messages: { action: NotificationAction; messages: Message | null; communityId: number | null }[] = [];
+    const messages: { action: NotificationAction; messages: Message | null; communityId: number | null; phones: { oldPhone: string; newPhone: string } | null }[] = [];
     const notificationIds: number[] = [];
     // get those notfications and then delete them
     (
@@ -91,12 +91,13 @@ export class ChatNotificationService {
           OR: [
             { userId, platform: "mobile", messageId: { not: null }, action: { not: null } },
             { userId, platform: "mobile", action: { not: null }, communityId: { not: null } },
+            { userId, platform: "mobile", action: "phoneChange" },
           ],
         },
         include: { message: true },
       })
     ).forEach((notification) => {
-      messages.push({ messages: notification.message, action: notification.action!, communityId: notification.communityId });
+      messages.push({ messages: notification.message, action: notification.action!, communityId: notification.communityId, phones: notification.data as any });
       notificationIds.push(notification.id);
     });
     // console.log(messages);
