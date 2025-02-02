@@ -178,14 +178,15 @@ model TwoFactorAuth {
 }
 
 model ChatRoom {
-  id             Int        @id @default(autoincrement())
-  type           RoomType   @default(private)
-  user1Id        Int?       // must have value if type is private(ie 1 to 1)      
-  user2Id        Int?       // must have value if type is private(ie 1 to 1) 
-  name           String?    // must have a value if type is group or channel
-  user1          User?      @relation("User1",fields: [user1Id], references: [id]) 
-  user2          User?      @relation("User2",fields: [user2Id], references: [id]) 
-  createdAt      DateTime   @default(now())
+  id             Int              @id @default(autoincrement())
+  type           RoomType         @default(private)
+  user1Id        Int?             // must have value if type is private(ie 1 to 1)      
+  user2Id        Int?             // must have value if type is private(ie 1 to 1) 
+  name           String?          // must have a value if type is group or channel
+  user1          User?            @relation("User1",fields: [user1Id], references: [id]) 
+  user2          User?            @relation("User2",fields: [user2Id], references: [id]) 
+  status         ContactStatus?   // this only avialable for private chatRooms
+  createdAt      DateTime         @default(now())
   messages       Message[]
   community      Community[]
 
