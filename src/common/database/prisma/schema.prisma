@@ -77,6 +77,7 @@ enum NotificationAction{
   saveMessage
   deleteCommunity
   phoneChange
+  showOtpCode
 }
 
 enum CallType{
@@ -224,17 +225,18 @@ model Message {
 
 
 model Notification {
-  id             Int                 @id @default(autoincrement())
-  userId         Int                 
-  type           NotificationType    @default(private)
-  data           Json?
-  messageId      Int?
-  communityId    Int?
-  action         NotificationAction?
-  platform       Platform            @default(mobile)
-  user           User                @relation(fields: [userId], references: [id])
-  message        Message?            @relation(fields:[messageId],references:[id])        
-  createdAt      DateTime            @default(now())
+  id                Int                 @id @default(autoincrement())
+  userId            Int                 
+  type              NotificationType    @default(private)
+  data              Json?
+  messageId         Int?
+  communityId       Int?
+  twoFactorAuthId   Int?                @unique
+  action            NotificationAction?
+  platform          Platform            @default(mobile)
+  user              User                @relation(fields: [userId], references: [id])
+  message           Message?            @relation(fields:[messageId],references:[id])        
+  createdAt         DateTime            @default(now())
 
   @@unique([userId,messageId,platform])
   @@unique([userId,communityId,platform])
