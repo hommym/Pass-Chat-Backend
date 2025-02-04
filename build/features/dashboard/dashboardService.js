@@ -92,7 +92,7 @@ class DashboardService {
         return await objects_1.database.dailyUser.findMany({ where: { date: { startsWith: `${year}` } } });
     }
     async getAllPendingComunityVerfRequests() {
-        return await objects_1.database.communityVerification.findMany({});
+        return await objects_1.database.communityVerification.findMany({ where: { status: "pending" } });
     }
     async updateCommunityVerificationStatus(data) {
         const { action, verificationRequestId, reason } = data;
@@ -103,11 +103,11 @@ class DashboardService {
         if (action === "accept") {
             await objects_1.database.community.update({ where: { id: verificationRequest.communityId }, data: { isVerified: true } });
             //send congratulation email
-            objects_1.appEvents.emit("community-verification-email", { action: "accepted", communityName: community.name, email: contact, reason });
+            objects_1.appEvents.emit("community-verification-email", { action: "accepted", communityName: community.name, email: contact, reason, type: community.type });
         }
         else {
             // send apologetic email
-            objects_1.appEvents.emit("community-verification-email", { action: "declined", communityName: community.name, email: contact, reason });
+            objects_1.appEvents.emit("community-verification-email", { action: "declined", communityName: community.name, email: contact, reason, type: community.type });
         }
         await objects_1.database.communityVerification.update({ where: { id: verificationRequestId }, data: { status: "reviewed" } });
         return { message: action === "accept" ? `Request successfully ${action}ed` : `Request successfully ${action}d` };

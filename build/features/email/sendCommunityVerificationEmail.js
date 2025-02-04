@@ -15,6 +15,11 @@ exports.sendCommunityVerificationEmail = void 0;
 const nodeMailer_1 = require("../../common/libs/nodeMailer");
 const sendCommunityVerificationEmail = async (data) => {
     const { email } = data, placeHolders = __rest(data, ["email"]);
-    await (0, nodeMailer_1.sendEmail)(email, "PasChat Community Verification Request 🚀", "community-verification-email", placeHolders);
+    if (placeHolders.action === "accepted") {
+        await (0, nodeMailer_1.sendEmail)(email, "PasChat Community Verification Request 🚀", "community-verification-email", placeHolders);
+    }
+    else {
+        await (0, nodeMailer_1.sendEmail)(email, "PasChat Community Verification Request 🚀", "community-verification-email-declined", placeHolders);
+    }
 };
 exports.sendCommunityVerificationEmail = sendCommunityVerificationEmail;

@@ -46,22 +46,14 @@
 </head>
 <body>
     <div class="container">
-        <img src="https://via.placeholder.com/150" alt="PasChat Logo">
+        <img src="https://paschat.net/static/media/passChatLogo.0066a9284b1bef113044.png" alt="PasChat Logo">
         <h1>PasChat Community Verification Request 🚀</h1>
         <p class="message">
             Hello,
             <br><br>
-            Your verification request for <strong>{{communityName}}</strong> ({{type}}) has been <strong>{{action}}</strong>.
+            Your verification request for <strong>{{communityName}}</strong> {{type}} has been <strong>{{action}}</strong>.
             <br><br>
-            {% if action == "declined" %}
-            ❌ Unfortunately, your request was not approved due to the following reason:
-            <br>
-            <em>{{reason}}</em>
-            <br><br>
-            You may reapply after addressing the issue.
-            {% else %}
             🎉 Congratulations! Your community is now verified on PasChat. Your members can now see the verification badge and enjoy the benefits of a trusted status.
-            {% endif %}
         </p>
         <p class="footer">Thank you for being a part of PasChat! 💖</p>
     </div>

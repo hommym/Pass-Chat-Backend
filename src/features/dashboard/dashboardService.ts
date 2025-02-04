@@ -95,7 +95,7 @@ export class DashboardService {
   }
 
   async getAllPendingComunityVerfRequests() {
-    return await database.communityVerification.findMany({});
+    return await database.communityVerification.findMany({where:{status:"pending"}});
   }
 
   async updateCommunityVerificationStatus(data: UpdateCommunityVerificationStatus) {
@@ -109,10 +109,10 @@ export class DashboardService {
     if (action === "accept") {
       await database.community.update({ where: { id: verificationRequest.communityId }, data: { isVerified: true } });
       //send congratulation email
-      appEvents.emit("community-verification-email", { action: "accepted", communityName: community.name, email: contact, reason });
+      appEvents.emit("community-verification-email", { action: "accepted", communityName: community.name, email: contact, reason ,type:community.type});
     } else {
       // send apologetic email
-      appEvents.emit("community-verification-email", { action: "declined", communityName: community.name, email: contact, reason });
+      appEvents.emit("community-verification-email", { action: "declined", communityName: community.name, email: contact, reason,type:community.type });
     }
 
     await database.communityVerification.update({ where: { id: verificationRequestId }, data: { status: "reviewed" } });

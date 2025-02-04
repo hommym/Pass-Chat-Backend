@@ -1,22 +1,18 @@
 import { Expose } from "class-transformer";
-import { IsIn, IsInt, IsNotEmpty, IsString } from "class-validator";
-
-
-
-
+import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export class UpdateCommunityVerificationStatus {
-
-  @Expose()  
+  @Expose()
   @IsInt()
   verificationRequestId: number;
 
   @Expose()
-  @IsIn(["accept","decline"])
+  @IsIn(["accept", "decline"])
   action: "accept" | "decline";
 
   @Expose()
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  reason:string
+  reason: string;
 }
