@@ -90,11 +90,27 @@ class ChatNotificationService {
                     { userId, platform: "mobile", messageId: { not: null }, action: { not: null } },
                     { userId, platform: "mobile", action: { not: null }, communityId: { not: null } },
                     { userId, platform: "mobile", action: "phoneChange" },
+                    { userId, platform: "mobile", action: "showOtpCode" },
                 ],
             },
             include: { message: true },
         })).forEach((notification) => {
-            messages.push({ messages: notification.message, action: notification.action, communityId: notification.communityId, phones: notification.data });
+            const dataToSend = notification.data.otpCode
+                ? {
+                    messages: notification.message,
+                    action: notification.action,
+                    communityId: notification.communityId,
+                    phones: null,
+                    otpCode: notification.data.otpCode,
+                }
+                : {
+                    messages: notification.message,
+                    action: notification.action,
+                    communityId: notification.communityId,
+                    phones: notification.data,
+                    otpCode: null,
+                };
+            messages.push(dataToSend);
             notificationIds.push(notification.id);
         });
         // console.log(messages);

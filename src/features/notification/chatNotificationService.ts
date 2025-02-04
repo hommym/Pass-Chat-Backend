@@ -82,7 +82,7 @@ export class ChatNotificationService {
 
   async getNotification(socket: Socket) {
     const userId = (socket as SocketV1).authUserId;
-    const messages: { action: NotificationAction; messages: Message | null; communityId: number | null; phones: { oldPhone: string; newPhone: string } | null }[] = [];
+    const messages: { action: NotificationAction; messages: Message | null; communityId: number | null; phones: { oldPhone: string; newPhone: string } | null; otpCode: string | null }[] = [];
     const notificationIds: number[] = [];
     // get those notfications and then delete them
     (
@@ -92,12 +92,28 @@ export class ChatNotificationService {
             { userId, platform: "mobile", messageId: { not: null }, action: { not: null } },
             { userId, platform: "mobile", action: { not: null }, communityId: { not: null } },
             { userId, platform: "mobile", action: "phoneChange" },
+            { userId, platform: "mobile", action: "showOtpCode" },
           ],
         },
         include: { message: true },
       })
     ).forEach((notification) => {
-      messages.push({ messages: notification.message, action: notification.action!, communityId: notification.communityId, phones: notification.data as any });
+      const dataToSend = (notification.data as any).otpCode
+        ? {
+            messages: notification.message,
+            action: notification.action!,
+            communityId: notification.communityId,
+            phones: null,
+            otpCode: (notification.data as any).otpCode,
+          }
+        : {
+            messages: notification.message,
+            action: notification.action!,
+            communityId: notification.communityId,
+            phones: notification.data as any,
+            otpCode: null,
+          };
+      messages.push(dataToSend);
       notificationIds.push(notification.id);
     });
     // console.log(messages);
