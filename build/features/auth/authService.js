@@ -13,6 +13,7 @@ const bcrypt_1 = require("../../common/libs/bcrypt");
 const adminLoginResponseDto_1 = require("./dtos/adminLoginResponseDto");
 const qrcode_1 = __importDefault(require("qrcode"));
 const authHandler_1 = require("./ws/authHandler");
+const chatHandler_1 = require("../chat/ws/chatHandler");
 class AuthService {
     async checkAccount(email) {
         return await objects_1.database.user.findUnique({ where: { email } });
@@ -76,9 +77,10 @@ class AuthService {
             throw new errorHandler_1.AppError("No Account with this number exist", 404);
         else if (!accountDetails.isWebActive)
             await objects_1.database.user.update({ where: { id: accountDetails.id }, data: { isWebActive: true } });
+        await this.sendOtpForWeb(accountDetails);
         return {
             account: (0, class_transformer_1.plainToInstance)(userLoginResponseDto_1.UserLoginResponseDto, accountDetails, { excludeExtraneousValues: true }),
-            authToken: (0, jwt_1.jwtForLogIn)(accountDetails.id),
+            message: "Enter the Otp code sent to your mobile paschat app.",
         };
     }
     async webQrCodeLogin(encryptId, userId) {
@@ -102,7 +104,7 @@ class AuthService {
         }
     }
     async set2FAOtp(otp, userId) {
-        await objects_1.database.twoFactorAuth.upsert({ where: { userId }, create: { userId }, update: { otpCode: otp ? (0, jwt_1.jwtForOtp)(otp) : null } });
+        return await objects_1.database.twoFactorAuth.upsert({ where: { userId }, create: { userId }, update: { otpCode: otp ? (0, jwt_1.jwtForOtp)(otp) : null } });
     }
     async activateOrDeactivate2FA(action, userId) {
         if (action === "activate") {
@@ -128,23 +130,57 @@ class AuthService {
         objects_1.appEvents.emit("login-otp-email", { email: accountDetails.email, expiryTime: "3", otpCode: otp, username: accountDetails.username });
         return { message: "Otp code sent" };
     }
-    async verify2FAOtp(otp, email) {
-        const accountDetails = await this.checkAccount(email);
-        if (!accountDetails)
-            throw new errorHandler_1.AppError(`No account with ${email} exist`, 404);
+    async sendOtpForWeb(accountDetails, phone = undefined) {
+        // set for otp for account
+        const otpCode = objects_1.randomData.num(1000, 9999);
+        const account = accountDetails ? accountDetails : await objects_1.database.user.findUnique({ where: { phone } });
+        if (!account)
+            throw new errorHandler_1.AppError("No account with this phone exist", 404);
+        const twoAuthDetails = await this.set2FAOtp(otpCode, account.id);
+        //send otp in app
+        if (account.onlineStatus === "online") {
+            const userConnection = chatHandler_1.chatRouterWs.sockets.get(account.connectionId);
+            if (userConnection) {
+                userConnection.emit("response", { action: "recieveOtp", otpCode });
+                return { message: "OtpCode sent sucessfully , check paschat app for otp." };
+            }
+        }
+        // for when user is offline set notification
+        await objects_1.database.notification.upsert({
+            where: { twoFactorAuthId: twoAuthDetails.id },
+            create: { platform: "mobile", twoFactorAuthId: twoAuthDetails.id, data: { otpCode }, userId: account.id, action: "showOtpCode" },
+            update: { data: { otpCode } },
+        });
+        return { message: "OtpCode sent sucessfully , check paschat app for otp." };
+    }
+    async verify2FAOtp(verify2FADto, type = "admin") {
+        const { email, phone } = verify2FADto;
+        let accountDetails;
+        if (type === "admin") {
+            accountDetails = await this.checkAccount(email);
+            if (!accountDetails)
+                throw new errorHandler_1.AppError(`No account with ${email} exist`, 404);
+        }
+        else {
+            accountDetails = await objects_1.database.user.findUnique({ where: { phone } });
+            if (!accountDetails)
+                throw new errorHandler_1.AppError(`No account with ${phone} exist`, 404);
+        }
         const otpInfo = await this.check2FAuth(accountDetails.id);
         if (!otpInfo)
-            throw new errorHandler_1.AppError(`This account does not have 2FA activated`, 402);
+            throw new errorHandler_1.AppError(`This account does not have 2FA activated`, 401);
         else if (!otpInfo.otpCode)
-            throw new errorHandler_1.AppError("No otp code has been sent", 402);
+            throw new errorHandler_1.AppError("No otp code has been sent", 401);
         try {
             const { otpCode } = (0, jwt_1.verifyJwtToken)(otpInfo.otpCode);
-            if (otpCode !== otp)
-                throw new errorHandler_1.AppError("Wrong Otp code entered,check code", 402);
+            if (otpCode !== verify2FADto.otpCode)
+                throw new errorHandler_1.AppError("Wrong Otp code entered,check code", 401);
+            if (type === "user")
+                await objects_1.database.twoFactorAuth.update({ where: { id: otpInfo.id }, data: { otpCode: null } });
             return { authToken: (0, jwt_1.jwtForLogIn)(accountDetails.id) };
         }
         catch (error) {
-            throw new errorHandler_1.AppError("Otp code has expired ,please request for another code", 402);
+            throw new errorHandler_1.AppError(error instanceof errorHandler_1.AppError ? error.message : "Otp code has expired ,please request for another code", 401);
         }
     }
     async updateAccount(type, updatedData, userId) {

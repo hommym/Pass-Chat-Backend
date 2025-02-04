@@ -46,6 +46,21 @@ authRouter.post(
 );
 
 authRouter.post(
+  "/user/web/sendOtp/:phone",
+  asyncHandler(async (req: Request, res: Response) => {
+    res.status(201).json(await authService.sendOtpForWeb(null, req.params.phone));
+  })
+);
+
+authRouter.post(
+  "/user/web/verify/otp",
+  bodyValidator(Verify2FAOtpDto),
+  asyncHandler(async (req: Request, res: Response) => {
+    res.status(201).json(await authService.verify2FAOtp(req.body as Verify2FAOtpDto,"user"));
+  })
+);
+
+authRouter.post(
   "/user/web/qr-code/login",
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
@@ -82,8 +97,7 @@ authRouter.post(
   "/admin/verify/otp",
   bodyValidator(Verify2FAOtpDto),
   asyncHandler(async (req: Request, res: Response) => {
-    const { email, otpCode } = req.body as Verify2FAOtpDto;
-    res.status(201).json(await authService.verify2FAOtp(otpCode, email));
+    res.status(201).json(await authService.verify2FAOtp(req.body as Verify2FAOtpDto));
   })
 );
 

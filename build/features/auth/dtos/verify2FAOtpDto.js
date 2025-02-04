@@ -17,9 +17,16 @@ class Verify2FAOtpDto {
 exports.Verify2FAOtpDto = Verify2FAOtpDto;
 __decorate([
     (0, class_transformer_1.Expose)(),
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsEmail)(),
     __metadata("design:type", String)
 ], Verify2FAOtpDto.prototype, "email", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsPhoneNumber)(),
+    __metadata("design:type", String)
+], Verify2FAOtpDto.prototype, "phone", void 0);
 __decorate([
     (0, class_transformer_1.Expose)(),
     (0, class_validator_1.IsInt)(),

@@ -42,6 +42,12 @@ exports.authRouter.post("/user/login", (0, bodyValidator_1.bodyValidator)(userLo
 exports.authRouter.post("/user/web/login", (0, bodyValidator_1.bodyValidator)(userLoginDto_1.UserLoginDto), (0, express_async_handler_1.default)(async (req, res) => {
     res.status(201).json(await objects_1.authService.webLogin(req.body));
 }));
+exports.authRouter.post("/user/web/sendOtp/:phone", (0, express_async_handler_1.default)(async (req, res) => {
+    res.status(201).json(await objects_1.authService.sendOtpForWeb(null, req.params.phone));
+}));
+exports.authRouter.post("/user/web/verify/otp", (0, bodyValidator_1.bodyValidator)(verify2FAOtpDto_1.Verify2FAOtpDto), (0, express_async_handler_1.default)(async (req, res) => {
+    res.status(201).json(await objects_1.authService.verify2FAOtp(req.body, "user"));
+}));
 exports.authRouter.post("/user/web/qr-code/login", verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
     const { webClientId, verifiedUserId } = req.body;
     if (!webClientId)
@@ -58,8 +64,7 @@ exports.authRouter.post("/admin/send/otp/:email", (0, express_async_handler_1.de
     res.status(201).json(await objects_1.authService.send2FAOtp(req.params.email));
 }));
 exports.authRouter.post("/admin/verify/otp", (0, bodyValidator_1.bodyValidator)(verify2FAOtpDto_1.Verify2FAOtpDto), (0, express_async_handler_1.default)(async (req, res) => {
-    const { email, otpCode } = req.body;
-    res.status(201).json(await objects_1.authService.verify2FAOtp(otpCode, email));
+    res.status(201).json(await objects_1.authService.verify2FAOtp(req.body));
 }));
 exports.authRouter.post("/admin/setup/2FA", (0, bodyValidator_1.bodyValidator)(setUp2FADto_1.Setup2FADto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
     const { action, verifiedUserId } = req.body;
