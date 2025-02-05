@@ -10,6 +10,7 @@ import { SocketV1 } from "../../common/helpers/classes/socketV1";
 import { GetMessagesDto } from "./dto/getMessagesDto";
 import { fromZonedTime } from "date-fns-tz";
 import { UpdateMessageDto } from "./dto/updateMessageDto";
+import { GetAllMessagesDto } from "./dto/getAllMesaagesDto";
 export class ChatService {
   async setUserOnlineStatus(status: OnlineStatus, userId: number | null, connectionId?: string | undefined) {
     if (userId) {
@@ -148,23 +149,43 @@ export class ChatService {
     return dataToReturn;
   }
 
-  async getMessages(socket: Socket, data: GetMessagesDto) {
-    const { chatRoomId, date, timeZone } = data;
+  async getMessages(socket: Socket, data: GetMessagesDto | GetAllMessagesDto, all: boolean = false) {
+    const { chatRoomId } = data;
     const clientId = (socket as SocketV1).authUserId;
     const chatRoomDetails = await this.checkChatRoom(chatRoomId);
 
     if (!chatRoomDetails) throw new WsError("No ChatRoom with this Id exists");
     else if (chatRoomDetails.type === "private" && !(chatRoomDetails.user1Id === clientId || chatRoomDetails.user2Id === clientId)) throw new WsError("Messages does not belong to this account");
-    else if (!(await communityService.isMember(chatRoomDetails.community[0]?.id, clientId))) throw new WsError(`Messages cannot be retrived, client not a member of ${chatRoomDetails.type}`);
+    else if (chatRoomDetails.community.length > 0) {
+      if (!(await communityService.isMember(chatRoomDetails.community[0]?.id, clientId))) throw new WsError(`Messages cannot be retrived, client not a member of ${chatRoomDetails.type}`);
+    }
 
-    const startOfDayInUserTimeZone = new Date(`${date}T00:00:00`);
-    const endOfDayInUserTimeZone = new Date(`${date}T23:59:59`);
+    if (all) {
+      const messages = await database.message.findMany({
+        where: {
+          deleteFlag: false,
+          roomId: chatRoomId,
+          reportFlag: false,
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      socket.emit("response", { action: "getAllMessages", messages });
+    } else {
+      const { date, timeZone } = data as GetMessagesDto;
+      const startOfDayInUserTimeZone = new Date(`${date}T00:00:00`);
+      const endOfDayInUserTimeZone = new Date(`${date}T23:59:59`);
 
-    const messages = await database.message.findMany({
-      where: { createdAt: { gte: fromZonedTime(startOfDayInUserTimeZone, timeZone), lt: fromZonedTime(endOfDayInUserTimeZone, timeZone) }, deleteFlag: false, roomId: chatRoomId, reportFlag: false },
-      orderBy: { createdAt: "desc" },
-    });
-    socket.emit("response", { action: "getMessages", messages });
+      const messages = await database.message.findMany({
+        where: {
+          createdAt: { gte: fromZonedTime(startOfDayInUserTimeZone, timeZone), lt: fromZonedTime(endOfDayInUserTimeZone, timeZone) },
+          deleteFlag: false,
+          roomId: chatRoomId,
+          reportFlag: false,
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      socket.emit("response", { action: "getMessages", messages });
+    }
   }
 
   async updateMessage(userId: number, messageData: UpdateMessageDto) {

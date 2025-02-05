@@ -131,24 +131,45 @@ class ChatService {
         });
         return dataToReturn;
     }
-    async getMessages(socket, data) {
+    async getMessages(socket, data, all = false) {
         var _a;
-        const { chatRoomId, date, timeZone } = data;
+        const { chatRoomId } = data;
         const clientId = socket.authUserId;
         const chatRoomDetails = await this.checkChatRoom(chatRoomId);
         if (!chatRoomDetails)
             throw new errorHandler_1.WsError("No ChatRoom with this Id exists");
         else if (chatRoomDetails.type === "private" && !(chatRoomDetails.user1Id === clientId || chatRoomDetails.user2Id === clientId))
             throw new errorHandler_1.WsError("Messages does not belong to this account");
-        else if (!(await objects_1.communityService.isMember((_a = chatRoomDetails.community[0]) === null || _a === void 0 ? void 0 : _a.id, clientId)))
-            throw new errorHandler_1.WsError(`Messages cannot be retrived, client not a member of ${chatRoomDetails.type}`);
-        const startOfDayInUserTimeZone = new Date(`${date}T00:00:00`);
-        const endOfDayInUserTimeZone = new Date(`${date}T23:59:59`);
-        const messages = await objects_1.database.message.findMany({
-            where: { createdAt: { gte: (0, date_fns_tz_1.fromZonedTime)(startOfDayInUserTimeZone, timeZone), lt: (0, date_fns_tz_1.fromZonedTime)(endOfDayInUserTimeZone, timeZone) }, deleteFlag: false, roomId: chatRoomId, reportFlag: false },
-            orderBy: { createdAt: "desc" },
-        });
-        socket.emit("response", { action: "getMessages", messages });
+        else if (chatRoomDetails.community.length > 0) {
+            if (!(await objects_1.communityService.isMember((_a = chatRoomDetails.community[0]) === null || _a === void 0 ? void 0 : _a.id, clientId)))
+                throw new errorHandler_1.WsError(`Messages cannot be retrived, client not a member of ${chatRoomDetails.type}`);
+        }
+        if (all) {
+            const messages = await objects_1.database.message.findMany({
+                where: {
+                    deleteFlag: false,
+                    roomId: chatRoomId,
+                    reportFlag: false,
+                },
+                orderBy: { createdAt: "desc" },
+            });
+            socket.emit("response", { action: "getAllMessages", messages });
+        }
+        else {
+            const { date, timeZone } = data;
+            const startOfDayInUserTimeZone = new Date(`${date}T00:00:00`);
+            const endOfDayInUserTimeZone = new Date(`${date}T23:59:59`);
+            const messages = await objects_1.database.message.findMany({
+                where: {
+                    createdAt: { gte: (0, date_fns_tz_1.fromZonedTime)(startOfDayInUserTimeZone, timeZone), lt: (0, date_fns_tz_1.fromZonedTime)(endOfDayInUserTimeZone, timeZone) },
+                    deleteFlag: false,
+                    roomId: chatRoomId,
+                    reportFlag: false,
+                },
+                orderBy: { createdAt: "desc" },
+            });
+            socket.emit("response", { action: "getMessages", messages });
+        }
     }
     async updateMessage(userId, messageData) {
         const { messageId, newMessage } = messageData;

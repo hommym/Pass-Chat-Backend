@@ -9,6 +9,7 @@ import { GetMessagesDto } from "../dto/getMessagesDto";
 import { callController } from "../../calls/ws/callController";
 import { CallWsRequestDto } from "../../calls/dto/callWsRequestDto";
 import { SocketV1 } from "../../../common/helpers/classes/socketV1";
+import { GetAllMessagesDto } from "../dto/getAllMesaagesDto";
 
 export const chatController = async (socket: Socket, request: ChatWsRequestDto) => {
   // validate request
@@ -25,8 +26,11 @@ export const chatController = async (socket: Socket, request: ChatWsRequestDto) 
     await bodyValidatorWs(SetStatusDto, data);
     await chatService.setUserStatus(socket, data as SetStatusDto);
   } else if (action === "call") {
-     await bodyValidatorWs(CallWsRequestDto, data);
+    await bodyValidatorWs(CallWsRequestDto, data);
     await callController(socket as SocketV1, data as CallWsRequestDto);
+  } else if (action === "getAllMessages") {
+    await bodyValidatorWs(GetAllMessagesDto, data);
+    await chatService.getMessages(socket,data as GetAllMessagesDto,true)
   } else {
     await bodyValidatorWs(GetMessagesDto, data);
     await chatService.getMessages(socket, data as GetMessagesDto);

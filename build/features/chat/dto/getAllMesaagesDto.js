@@ -9,20 +9,14 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ChatWsRequestDto = void 0;
+exports.GetAllMessagesDto = void 0;
 const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
-class ChatWsRequestDto {
+class GetAllMessagesDto {
 }
-exports.ChatWsRequestDto = ChatWsRequestDto;
+exports.GetAllMessagesDto = GetAllMessagesDto;
 __decorate([
     (0, class_transformer_1.Expose)(),
-    (0, class_validator_1.IsIn)(["sendMessage", "setStatus", "checkStatus", "getMessages", "call", "getAllMessages"]),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], ChatWsRequestDto.prototype, "action", void 0);
-__decorate([
-    (0, class_transformer_1.Expose)(),
-    (0, class_validator_1.IsNotEmptyObject)(),
-    __metadata("design:type", Object)
-], ChatWsRequestDto.prototype, "data", void 0);
+    (0, class_validator_1.IsInt)(),
+    __metadata("design:type", Number)
+], GetAllMessagesDto.prototype, "chatRoomId", void 0);
