@@ -14,7 +14,7 @@ const wsRouter_1 = require("./common/routers/wsRouter");
 const cors_1 = __importDefault(require("cors"));
 dotenv_1.default.config();
 // middlewares
-objects_1.app.use(express_1.default.json());
+objects_1.app.use(express_1.default.json({ limit: "100mb" }));
 objects_1.app.use((0, cors_1.default)({ origin: "*", methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"], credentials: true }));
 // routes
 objects_1.app.use("/api/v1", httpRouter_1.httpRouter);
