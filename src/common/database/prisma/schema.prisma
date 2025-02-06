@@ -154,7 +154,8 @@ model User {
   type              AccountType     @default(user)
   status            AccountStatus   @default(active)
   onlineStatus      OnlineStatus    @default(offline)
-  webConnectionId   String?
+  onlineStatusWeb   OnlineStatus    @default(offline) 
+  webConnectionId   String?         @unique
   connectionId      String?         @unique
   role              AdminRoles?
   loggedIn          Boolean         @default(false)
