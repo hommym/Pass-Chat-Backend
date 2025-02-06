@@ -12,12 +12,15 @@ import { fromZonedTime } from "date-fns-tz";
 import { UpdateMessageDto } from "./dto/updateMessageDto";
 import { GetAllMessagesDto } from "./dto/getAllMesaagesDto";
 export class ChatService {
-  async setUserOnlineStatus(status: OnlineStatus, userId: number | null, connectionId?: string | undefined) {
+  async setUserOnlineStatus(status: OnlineStatus, userId: number | null, connectionId?: string | undefined, isWebUser: boolean = false) {
     if (userId) {
-      await database.user.update({ where: { id: userId }, data: { onlineStatus: status, connectionId } });
+      await database.user.update({ where: { id: userId }, data: isWebUser ? { onlineStatusWeb: status, webConnectionId: connectionId } : { onlineStatus: status, connectionId } });
       // console.log(`User with id=${userId} is ${status}`);
     } else {
-      await database.user.update({ where: { connectionId }, data: { onlineStatus: status, connectionId } });
+      await database.user.update({
+        where: isWebUser ? { webConnectionId: connectionId } : { connectionId },
+        data: isWebUser ? { onlineStatusWeb: status, webConnectionId: null } : { onlineStatus: status, connectionId: null },
+      });
       //  console.log(`User with id=${user.id} is ${status}`);
     }
   }
@@ -27,10 +30,11 @@ export class ChatService {
     return await database.chatRoom.findUnique({ where: { id: roomId }, include: { community: true } });
   }
 
-  private async checkUsersOnlineStatus(userId: number) {
+  private async checkUsersOnlineStatus(userId: number,checkForWebUser:boolean=false) {
     const account = await database.user.findUnique({ where: { id: userId } });
     if (account) {
-      if (account.onlineStatus !== "offline") return account;
+      if (account.onlineStatus !== "offline"&&!checkForWebUser) return account;
+      else if(account.onlineStatusWeb!=="offline")return account;
     }
     return null;
   }
@@ -88,8 +92,8 @@ export class ChatService {
     if (!userInfo) {
       throw new WsError("No Account with this id exist");
     }
-    const { onlineStatus, updatedAt } = userInfo;
-    socket.emit("response", { action: "checkStatus", userStatus: onlineStatus !== "offline" ? onlineStatus : updatedAt });
+    const { onlineStatus, updatedAt, onlineStatusWeb } = userInfo;
+    socket.emit("response", { action: "checkStatus", userStatus: onlineStatus !== "offline" ? onlineStatus : onlineStatusWeb !== "offline" ? onlineStatusWeb : updatedAt });
   }
 
   async setUserStatus(socket: Socket, data: SetStatusDto) {

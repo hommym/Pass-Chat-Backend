@@ -40,7 +40,8 @@ const verifyJwtForWs = async (socket, next) => {
     const token = ((_a = socket.handshake.auth) === null || _a === void 0 ? void 0 : _a.token) ? (_b = socket.handshake.auth) === null || _b === void 0 ? void 0 : _b.token : (_c = socket.handshake.headers.authorization) === null || _c === void 0 ? void 0 : _c.split(" ")[1];
     const setOnlineStatus = socket.handshake.query.setOnlineStatus;
     const platform = socket.handshake.query.platform && ["ios", "desktop", "android"].includes(socket.handshake.query.platform) ? socket.handshake.query.platform : "android";
-    const timezone = socket.handshake.query.platform ? socket.handshake.query.timezone : "Africa/Acrra";
+    const timezone = socket.handshake.query.timezone ? socket.handshake.query.timezone : "Africa/Acrra";
+    const isWebUser = socket.handshake.query.webUser ? true : false;
     if (!token) {
         next(new Error("No Auth Token Provided"));
     }
@@ -51,14 +52,17 @@ const verifyJwtForWs = async (socket, next) => {
         // checking if user is already online
         if (setOnlineStatus) {
             const userDetails = await objects_1.database.user.findUnique({ where: { id: userId } });
-            if (userDetails.onlineStatus !== "offline")
-                return next(new errorHandler_1.WsError("User Already Online"));
+            if (userDetails === null)
+                return next(new errorHandler_1.WsError(`NO account with such id exist`));
             else if (userDetails.status !== "active")
                 return next(new errorHandler_1.WsError(`Account has been ${userDetails.status}`));
-            await objects_1.chatService.setUserOnlineStatus("online", userId, socket.id);
+            else if ((userDetails.onlineStatus !== "offline" && !isWebUser) || (userDetails.onlineStatusWeb !== "offline" && isWebUser))
+                return next(new errorHandler_1.WsError("User Already Online"));
+            await objects_1.chatService.setUserOnlineStatus("online", userId, socket.id, isWebUser);
             objects_1.appEvents.emit("add-to-daily-users", { userId, platform, timezone });
         }
         socket.authUserId = userId;
+        socket.isWebUser = isWebUser;
         console.log(`User Verified id=${jwtData.userId}`);
         next();
     }

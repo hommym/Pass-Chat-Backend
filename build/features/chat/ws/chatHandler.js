@@ -22,7 +22,7 @@ const chatRouterDef = (mainPath) => {
         // Handle disconnection
         socket.on("disconnect", async () => {
             console.log(`User has disconnected, socketId=${socket.id}`);
-            await objects_1.chatService.setUserOnlineStatus("offline", null, socket.id);
+            await objects_1.chatService.setUserOnlineStatus("offline", null, socket.id, socket.isWebUser);
         });
     });
 };

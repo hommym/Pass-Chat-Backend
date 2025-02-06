@@ -40,7 +40,8 @@ export const verifyJwtForWs = async (socket: Socket, next: (err?: Error) => void
   const token = socket.handshake.auth?.token ? socket.handshake.auth?.token : socket.handshake.headers.authorization?.split(" ")[1];
   const setOnlineStatus = socket.handshake.query.setOnlineStatus;
   const platform = socket.handshake.query.platform && ["ios", "desktop", "android"].includes(socket.handshake.query.platform as string) ? (socket.handshake.query.platform as OS) : "android";
-  const timezone = socket.handshake.query.platform ? (socket.handshake.query.timezone as string) : "Africa/Acrra";
+  const timezone = socket.handshake.query.timezone ? (socket.handshake.query.timezone as string) : "Africa/Acrra";
+  const isWebUser = socket.handshake.query.webUser ? true : false;
   if (!token) {
     next(new Error("No Auth Token Provided"));
   }
@@ -52,12 +53,16 @@ export const verifyJwtForWs = async (socket: Socket, next: (err?: Error) => void
     // checking if user is already online
     if (setOnlineStatus) {
       const userDetails = await database.user.findUnique({ where: { id: userId } });
-      if (userDetails!.onlineStatus !== "offline") return next(new WsError("User Already Online"));
-      else if (userDetails!.status !== "active") return next(new WsError(`Account has been ${userDetails!.status}`));
-      await chatService.setUserOnlineStatus("online", userId, socket.id);
+
+      if (userDetails === null) return next(new WsError(`NO account with such id exist`));
+      else if (userDetails.status !== "active") return next(new WsError(`Account has been ${userDetails!.status}`));
+      else if ((userDetails.onlineStatus !== "offline" && !isWebUser) || (userDetails.onlineStatusWeb !== "offline" && isWebUser)) return next(new WsError("User Already Online"));
+
+      await chatService.setUserOnlineStatus("online", userId, socket.id, isWebUser);
       appEvents.emit("add-to-daily-users", { userId, platform, timezone });
     }
     (socket as SocketV1).authUserId = userId;
+    (socket as SocketV1).isWebUser = isWebUser;
     console.log(`User Verified id=${jwtData.userId}`);
     next();
   } catch (error) {

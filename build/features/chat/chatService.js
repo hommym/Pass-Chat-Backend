@@ -6,13 +6,16 @@ const errorHandler_1 = require("../../common/middlewares/errorHandler");
 const chatHandler_1 = require("./ws/chatHandler");
 const date_fns_tz_1 = require("date-fns-tz");
 class ChatService {
-    async setUserOnlineStatus(status, userId, connectionId) {
+    async setUserOnlineStatus(status, userId, connectionId, isWebUser = false) {
         if (userId) {
-            await objects_1.database.user.update({ where: { id: userId }, data: { onlineStatus: status, connectionId } });
+            await objects_1.database.user.update({ where: { id: userId }, data: isWebUser ? { onlineStatusWeb: status, webConnectionId: connectionId } : { onlineStatus: status, connectionId } });
             // console.log(`User with id=${userId} is ${status}`);
         }
         else {
-            await objects_1.database.user.update({ where: { connectionId }, data: { onlineStatus: status, connectionId } });
+            await objects_1.database.user.update({
+                where: isWebUser ? { webConnectionId: connectionId } : { connectionId },
+                data: isWebUser ? { onlineStatusWeb: status, webConnectionId: null } : { onlineStatus: status, connectionId: null },
+            });
             //  console.log(`User with id=${user.id} is ${status}`);
         }
     }
@@ -20,10 +23,12 @@ class ChatService {
         // this method checks for a chat room exist
         return await objects_1.database.chatRoom.findUnique({ where: { id: roomId }, include: { community: true } });
     }
-    async checkUsersOnlineStatus(userId) {
+    async checkUsersOnlineStatus(userId, checkForWebUser = false) {
         const account = await objects_1.database.user.findUnique({ where: { id: userId } });
         if (account) {
-            if (account.onlineStatus !== "offline")
+            if (account.onlineStatus !== "offline" && !checkForWebUser)
+                return account;
+            else if (account.onlineStatusWeb !== "offline")
                 return account;
         }
         return null;
@@ -78,8 +83,8 @@ class ChatService {
         if (!userInfo) {
             throw new errorHandler_1.WsError("No Account with this id exist");
         }
-        const { onlineStatus, updatedAt } = userInfo;
-        socket.emit("response", { action: "checkStatus", userStatus: onlineStatus !== "offline" ? onlineStatus : updatedAt });
+        const { onlineStatus, updatedAt, onlineStatusWeb } = userInfo;
+        socket.emit("response", { action: "checkStatus", userStatus: onlineStatus !== "offline" ? onlineStatus : onlineStatusWeb !== "offline" ? onlineStatusWeb : updatedAt });
     }
     async setUserStatus(socket, data) {
         const { status } = data;
