@@ -167,15 +167,15 @@ export class AuthService {
       if (userConnection) {
         userConnection.emit("response", { action: "recieveOtp", otpCode });
 
-        return { message: "OtpCode sent sucessfully , check paschat app for otp." };
+        // return { message: "OtpCode sent sucessfully , check paschat app for otp." };
       }
     }
     // for when user is offline set notification
-    await database.notification.upsert({
-      where: { twoFactorAuthId: twoAuthDetails.id },
-      create: { platform: "mobile", twoFactorAuthId: twoAuthDetails.id, data: { otpCode }, userId: account.id, action: "showOtpCode" },
-      update: { data: { otpCode } },
-    });
+    // await database.notification.upsert({
+    //   where: { twoFactorAuthId: twoAuthDetails.id },
+    //   create: { platform: "mobile", twoFactorAuthId: twoAuthDetails.id, data: { otpCode }, userId: account.id, action: "showOtpCode" },
+    //   update: { data: { otpCode } },
+    // });
     return { message: "OtpCode sent sucessfully , check paschat app for otp." };
   }
 
