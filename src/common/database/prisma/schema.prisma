@@ -154,11 +154,11 @@ model User {
   type              AccountType     @default(user)
   status            AccountStatus   @default(active)
   onlineStatus      OnlineStatus    @default(offline)
-  isWebActive       Boolean         @default(false)
   webConnectionId   String?
   connectionId      String?         @unique
   role              AdminRoles?
   loggedIn          Boolean         @default(false)
+  webLoggedIn       Boolean         @default(false)
   notifications     Notification[]
   contacts          UserContact[]
   chatRoomUser1     ChatRoom[]      @relation("User1")
