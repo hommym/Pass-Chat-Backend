@@ -56,7 +56,7 @@ authRouter.post(
   "/user/web/verify/otp",
   bodyValidator(Verify2FAOtpDto),
   asyncHandler(async (req: Request, res: Response) => {
-    res.status(201).json(await authService.verify2FAOtp(req.body as Verify2FAOtpDto,"user"));
+    res.status(201).json(await authService.verify2FAOtp(req.body as Verify2FAOtpDto, "user"));
   })
 );
 
@@ -74,7 +74,8 @@ authRouter.post(
   "/user/logout",
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
-    res.status(201).json(await authService.logout(req.body.verifiedUserId));
+    const { webLogout } = req.query;
+    res.status(201).json(await authService.logout(req.body.verifiedUserId, webLogout ? true : false));
   })
 );
 

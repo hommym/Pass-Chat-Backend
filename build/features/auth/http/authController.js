@@ -55,7 +55,8 @@ exports.authRouter.post("/user/web/qr-code/login", verifyJwt_1.verifyJwt, (0, ex
     res.status(200).json(await objects_1.authService.webQrCodeLogin(webClientId, verifiedUserId));
 }));
 exports.authRouter.post("/user/logout", verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
-    res.status(201).json(await objects_1.authService.logout(req.body.verifiedUserId));
+    const { webLogout } = req.query;
+    res.status(201).json(await objects_1.authService.logout(req.body.verifiedUserId, webLogout ? true : false));
 }));
 exports.authRouter.post("/admin/login", (0, bodyValidator_1.bodyValidator)(adminLoginDto_1.AdminLoginDto), (0, express_async_handler_1.default)(async (req, res) => {
     res.status(201).json(await objects_1.authService.login("admin", req.body));

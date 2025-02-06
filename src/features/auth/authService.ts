@@ -77,8 +77,12 @@ export class AuthService {
     }
   }
 
-  async logout(userId: number) {
-    await database.user.update({ where: { id: userId }, data: { loggedIn: false, onlineStatus: "offline" } });
+  async logout(userId: number, isWebLogout: boolean = false) {
+    if (isWebLogout) {
+      await database.user.update({ where: { id: userId }, data: { webLoggedIn: false } });
+    } else {
+      await database.user.update({ where: { id: userId }, data: { loggedIn: false, onlineStatus: "offline" } });
+    }
     return { message: "User Logged Out Successfully" };
   }
 
@@ -87,8 +91,9 @@ export class AuthService {
 
     const accountDetails = await database.user.findUnique({ where: { phone } });
     if (!accountDetails) throw new AppError("No Account with this number exist", 404);
-    else if (!accountDetails.isWebActive) await database.user.update({ where: { id: accountDetails.id }, data: { isWebActive: true } });
+    else if (accountDetails.webLoggedIn) throw new AppError("WebApp Already loggedIn", 401);
 
+    await database.user.update({ where: { id: accountDetails.id }, data: { webLoggedIn: true } });
     await this.sendOtpForWeb(accountDetails);
     return {
       account: plainToInstance(UserLoginResponseDto, accountDetails, { excludeExtraneousValues: true }),
@@ -102,17 +107,18 @@ export class AuthService {
       const webClientConnection = authRouterWs.sockets.get(jwtData.connectionId);
       if (webClientConnection) {
         const accountDetails = await database.user.findUnique({ where: { id: userId } });
+        if (accountDetails!.webLoggedIn) throw new AppError("WebApp Already loggedIn", 401);
         webClientConnection.emit("response", {
           action: "webQrCodeLogin",
           account: plainToInstance(UserLoginResponseDto, accountDetails, { excludeExtraneousValues: true }),
           authToken: jwtForLogIn(accountDetails!.id),
         });
 
-        if (!accountDetails!.isWebActive) await database.user.update({ where: { id: accountDetails!.id }, data: { isWebActive: true } });
+        await database.user.update({ where: { id: accountDetails!.id }, data: { webLoggedIn: true } });
       }
       return { message: "Login Sucessfull" };
     } catch (error) {
-      throw new AppError("Web Login Session has expired or is not valid", 401);
+      throw new AppError(error instanceof AppError ? error.message : "Web Login Session has expired or is not valid", 401);
     }
   }
 

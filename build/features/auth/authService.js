@@ -66,8 +66,13 @@ class AuthService {
             return { account: (0, class_transformer_1.plainToInstance)(adminLoginResponseDto_1.AdminLoginResponseDto, accountDetails, { excludeExtraneousValues: true }), authToken: (0, jwt_1.jwtForLogIn)(accountDetails.id), is2FAEnabled: false };
         }
     }
-    async logout(userId) {
-        await objects_1.database.user.update({ where: { id: userId }, data: { loggedIn: false, onlineStatus: "offline" } });
+    async logout(userId, isWebLogout = false) {
+        if (isWebLogout) {
+            await objects_1.database.user.update({ where: { id: userId }, data: { webLoggedIn: false } });
+        }
+        else {
+            await objects_1.database.user.update({ where: { id: userId }, data: { loggedIn: false, onlineStatus: "offline" } });
+        }
         return { message: "User Logged Out Successfully" };
     }
     async webLogin(loginDto) {
@@ -75,8 +80,9 @@ class AuthService {
         const accountDetails = await objects_1.database.user.findUnique({ where: { phone } });
         if (!accountDetails)
             throw new errorHandler_1.AppError("No Account with this number exist", 404);
-        else if (!accountDetails.isWebActive)
-            await objects_1.database.user.update({ where: { id: accountDetails.id }, data: { isWebActive: true } });
+        else if (accountDetails.webLoggedIn)
+            throw new errorHandler_1.AppError("WebApp Already loggedIn", 401);
+        await objects_1.database.user.update({ where: { id: accountDetails.id }, data: { webLoggedIn: true } });
         await this.sendOtpForWeb(accountDetails);
         return {
             account: (0, class_transformer_1.plainToInstance)(userLoginResponseDto_1.UserLoginResponseDto, accountDetails, { excludeExtraneousValues: true }),
@@ -89,18 +95,19 @@ class AuthService {
             const webClientConnection = authHandler_1.authRouterWs.sockets.get(jwtData.connectionId);
             if (webClientConnection) {
                 const accountDetails = await objects_1.database.user.findUnique({ where: { id: userId } });
+                if (accountDetails.webLoggedIn)
+                    throw new errorHandler_1.AppError("WebApp Already loggedIn", 401);
                 webClientConnection.emit("response", {
                     action: "webQrCodeLogin",
                     account: (0, class_transformer_1.plainToInstance)(userLoginResponseDto_1.UserLoginResponseDto, accountDetails, { excludeExtraneousValues: true }),
                     authToken: (0, jwt_1.jwtForLogIn)(accountDetails.id),
                 });
-                if (!accountDetails.isWebActive)
-                    await objects_1.database.user.update({ where: { id: accountDetails.id }, data: { isWebActive: true } });
+                await objects_1.database.user.update({ where: { id: accountDetails.id }, data: { webLoggedIn: true } });
             }
             return { message: "Login Sucessfull" };
         }
         catch (error) {
-            throw new errorHandler_1.AppError("Web Login Session has expired or is not valid", 401);
+            throw new errorHandler_1.AppError(error instanceof errorHandler_1.AppError ? error.message : "Web Login Session has expired or is not valid", 401);
         }
     }
     async set2FAOtp(otp, userId) {
