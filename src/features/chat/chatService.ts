@@ -1,4 +1,4 @@
-import { OnlineStatus, RoomType } from "@prisma/client";
+import { Message, OnlineStatus, RoomType } from "@prisma/client";
 import { appEvents, chatNotificationService, communityService, database } from "../../common/constants/objects";
 import { MessageDto } from "./dto/messageDto";
 import { AppError, WsError } from "../../common/middlewares/errorHandler";
@@ -30,24 +30,26 @@ export class ChatService {
     return await database.chatRoom.findUnique({ where: { id: roomId }, include: { community: true } });
   }
 
-  private async checkUsersOnlineStatus(userId: number,checkForWebUser:boolean=false) {
+  private async checkUsersOnlineStatus(userId: number, checkForWebUser: boolean = false) {
     const account = await database.user.findUnique({ where: { id: userId } });
     if (account) {
-      if (account.onlineStatus !== "offline"&&!checkForWebUser) return account;
-      else if(account.onlineStatusWeb!=="offline")return account;
+      if (account.onlineStatus !== "offline" && !checkForWebUser) return account;
+      else if (account.onlineStatusWeb !== "offline") return account;
     }
     return null;
   }
 
   async sendMessage(socket: Socket, message: MessageDto) {
     const { roomId, content, dataType, recipientId, senderId, replyTo, roomType, communityId } = message;
+    let savedMessage: Message;
     const roomDetails = await this.checkChatRoom(roomId);
     if (!roomDetails) throw new WsError("No ChatRoom with this id exist");
     else if (!roomType || roomType === "private") {
       if (!recipientId) throw new WsError("No value passed for recipientId");
-
+      else if (roomDetails.user1Id !== recipientId && roomDetails.user2Id !== recipientId) throw new WsError("The recipient is not a participant of this chatRoom");
+      else if (roomDetails.user1Id !== senderId && roomDetails.user2Id !== senderId) throw new WsError("Th sender is not a participant of this chatRoom");
       // save th data in database
-      const savedMessage = await database.message.create({ data: { roomId, content, type: dataType, recipientId, senderId, replyTo } });
+      savedMessage = await database.message.create({ data: { roomId, content, type: dataType, recipientId, senderId, replyTo } });
 
       // send the sender a response.
       socket.emit("response", { action: "sendMessage", data: savedMessage });
@@ -58,13 +60,19 @@ export class ChatService {
         const recipientInfo = await this.checkUsersOnlineStatus(recipientId!);
 
         if (recipientInfo) {
+          // sync mechanism
+          if (recipientInfo.webLoggedIn) await chatNotificationService.saveNotification(savedMessage.id, recipientId!, "mobile", "saveMessage");
           const recipientConnection = chatRouterWs.sockets.get(recipientInfo.connectionId!);
           if (recipientConnection) {
-            return recipientConnection.emit("response", { action: "recieveMessage", data: savedMessage });
+            recipientConnection.emit("response", { action: "recieveMessage", data: savedMessage });
+          } else {
+            // when user is not online
+            await chatNotificationService.saveNotification(savedMessage.id, recipientId!, "mobile", "saveMessage");
           }
+        } else {
+          // when user is not online
+          await chatNotificationService.saveNotification(savedMessage.id, recipientId!, "mobile", "saveMessage");
         }
-        // when user is not online
-        chatNotificationService.saveNotification(savedMessage.id, recipientId!, "mobile", "saveMessage");
       }
     } else {
       // for commnunity chat
@@ -74,7 +82,7 @@ export class ChatService {
       if (!(await communityService.isMember(communityId, senderId))) throw new WsError("Sender is not a member");
       appEvents.emit("add-to-active-communities", { communityId });
 
-      const savedMessage = await database.message.create({ data: { roomId, content, type: dataType, senderId, communityId, replyTo, read: true, recieved: true } });
+      savedMessage = await database.message.create({ data: { roomId, content, type: dataType, senderId, communityId, replyTo, read: true, recieved: true } });
       // send the sender a response.
       socket.emit("response", { action: "sendMessage", data: savedMessage });
 
@@ -83,6 +91,11 @@ export class ChatService {
       const membersIds = allMembers.map((member) => member.userId);
       appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId: savedMessage.id });
     }
+
+    // syn mechanism
+    const senderDetails = (await database.user.findUnique({ where: { id: senderId } }))!;
+    if ((socket as SocketV1).isWebUser) await chatNotificationService.saveNotification(savedMessage.id, senderId, "mobile", "saveMessage");
+    else if (senderDetails.webLoggedIn) await chatNotificationService.saveNotification(savedMessage.id, senderId, "browser", "saveMessage");
   }
 
   async getUserStatus(socket: Socket, data: CheckStatusDto) {
@@ -192,7 +205,7 @@ export class ChatService {
     }
   }
 
-  async updateMessage(userId: number, messageData: UpdateMessageDto) {
+  async updateMessage(userId: number, messageData: UpdateMessageDto,webUser:boolean=false) {
     const { messageId, newMessage } = messageData;
     const message = await database.message.findUnique({ where: { id: messageId } });
 
@@ -203,9 +216,11 @@ export class ChatService {
     await database.message.update({ where: { id: messageId }, data: { content: newMessage } });
 
     await chatNotificationService.saveNotification(messageId, message.recipientId!);
+    
+    // handling sync mechanism and community message update(N/A)
   }
 
-  async deleteMessage(messageId: number, userId: number) {
+  async deleteMessage(messageId: number, userId: number ,webUser:boolean=false) {
     const message = await database.message.findUnique({ where: { id: messageId } });
 
     if (!message) throw new AppError("No message with this id exist", 404);
@@ -214,6 +229,7 @@ export class ChatService {
     if (message.recieved) {
       await database.message.update({ where: { id: messageId }, data: { deleteFlag: true } });
       await chatNotificationService.saveNotification(messageId, message.recipientId!, "mobile", "deleteMessage");
+      // handling sync mechanism and community message update(N/A)
       return;
     }
     await database.message.delete({ where: { id: messageId } });

@@ -29,15 +29,26 @@ export class ChatNotificationService {
           create: { userId: memberId, communityId, platform, action, type: "community", messageId },
           update: { action },
         });
+        const { webLoggedIn } = (await database.user.findUnique({ where: { id: memberId } }))!;
+
+        // application sync mechanism
+        if (webLoggedIn) {
+          await database.notification.upsert({
+            where: { userId_communityId_platform: { userId: memberId, communityId, platform: "browser" } },
+            create: { userId: memberId, communityId, platform: "browser", action, type: "community", messageId },
+            update: { action },
+          });
+        }
       })
     );
   }
 
-  async setNotification(chatType: RoomType, data: any) {
+  async setNotification(chatType: RoomType, data: any, socket: SocketV1) {
+    let messageIdX: number;
     if (chatType === "private") {
       await bodyValidatorWs(PrivateChatNotificationDto, data);
       const { messageAction, messageId, recipientId, reaction } = data as PrivateChatNotificationDto;
-
+      messageIdX = messageId;
       const message = await database.message.findUnique({ where: { id: messageId } });
       if (!message) throw new WsError("No message with this id exist");
       else if (messageAction === "read") {
@@ -49,11 +60,14 @@ export class ChatNotificationService {
         await database.message.update({ where: { id: messageId }, data: { recieved: true } });
       }
       await this.saveNotification(messageId, recipientId);
+      const recipientInfo = (await database.user.findUnique({ where: { id: recipientId } }))!;
+      // application sync mechanism
+      if (recipientInfo.webLoggedIn) await this.saveNotification(messageId, recipientId, "browser");
     } else {
       // group or channel
       await bodyValidatorWs(CommunityChatNotificationDto, data);
       const { communityId, messageAction, messageId, reaction, comment } = data as CommunityChatNotificationDto;
-
+      messageIdX = messageId;
       const message = await database.message.findUnique({ where: { id: messageId, communityId } });
       const communityMembers = await database.communityMember.findMany({ where: { communityId } });
 
@@ -78,41 +92,36 @@ export class ChatNotificationService {
       const membersIds = communityMembers.map((member) => member.userId);
       appEvents.emit("set-community-members-notifications", { action: "updateMessage", communityId, membersIds, messageId, platform: "mobile" });
     }
+    // application sync mechanism
+    const senderInfo = (await database.user.findUnique({ where: { id: socket.authUserId } }))!;
+    if (socket.isWebUser) await this.saveNotification(messageIdX, socket.authUserId);
+    else if (senderInfo.webLoggedIn) await this.saveNotification(messageIdX, socket.authUserId, "browser");
   }
 
-  async getNotification(socket: Socket) {
-    const userId = (socket as SocketV1).authUserId;
-    const messages: { action: NotificationAction; messages: Message | null; communityId: number | null; phones: { oldPhone: string; newPhone: string } | null; otpCode: string | null }[] = [];
+  async getNotification(socket: SocketV1) {
+    const userId = socket.authUserId;
+    const messages: { action: NotificationAction; messages: Message | null; communityId: number | null; phones: { oldPhone: string; newPhone: string } | null; }[] = [];
     const notificationIds: number[] = [];
     // get those notfications and then delete them
     (
       await database.notification.findMany({
         where: {
           OR: [
-            { userId, platform: "mobile", messageId: { not: null }, action: { not: null } },
-            { userId, platform: "mobile", action: { not: null }, communityId: { not: null } },
-            { userId, platform: "mobile", action: "phoneChange" },
-            { userId, platform: "mobile", action: "showOtpCode" },
+            { userId, platform: socket.isWebUser ? "browser" : "mobile", messageId: { not: null }, action: { not: null } },
+            { userId, platform: socket.isWebUser ? "browser" : "mobile", action: { not: null }, communityId: { not: null } },
+            { userId, platform: socket.isWebUser ? "browser" : "mobile", action: "phoneChange" },
+            { userId, platform: socket.isWebUser ? "browser" : "mobile", action: "showOtpCode" },
           ],
         },
         include: { message: true },
       })
     ).forEach((notification) => {
-      const dataToSend = (notification.data as any).otpCode
-        ? {
-            messages: notification.message,
-            action: notification.action!,
-            communityId: notification.communityId,
-            phones: null,
-            otpCode: (notification.data as any).otpCode,
-          }
-        : {
-            messages: notification.message,
-            action: notification.action!,
-            communityId: notification.communityId,
-            phones: notification.data as any,
-            otpCode: null,
-          };
+      const dataToSend = {
+        messages: notification.message,
+        action: notification.action!,
+        communityId: notification.communityId,
+        phones: notification.data as any,
+      };
       messages.push(dataToSend);
       notificationIds.push(notification.id);
     });

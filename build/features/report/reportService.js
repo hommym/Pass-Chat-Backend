@@ -54,7 +54,15 @@ class ReportService {
             });
             if (room.type === "private") {
                 await objects_1.chatNotificationService.saveNotification(id, senderId);
+                const senderInfo = (await objects_1.database.user.findUnique({ where: { id: senderId } }));
+                // application sync mechanism
+                if (senderInfo.webLoggedIn)
+                    await objects_1.chatNotificationService.saveNotification(id, senderId, "browser");
                 await objects_1.chatNotificationService.saveNotification(id, recipientId);
+                const recipientInfo = (await objects_1.database.user.findUnique({ where: { id: recipientId } }));
+                // application sync mechanism
+                if (recipientInfo.webLoggedIn)
+                    await objects_1.chatNotificationService.saveNotification(id, recipientId, "browser");
             }
             else {
                 const communityId = room.community[0].id;

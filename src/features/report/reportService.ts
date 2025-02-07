@@ -49,7 +49,14 @@ export class ReportService {
 
       if (room.type === "private") {
         await chatNotificationService.saveNotification(id, senderId);
+        const senderInfo = (await database.user.findUnique({ where: { id: senderId } }))!;
+        // application sync mechanism
+        if (senderInfo.webLoggedIn) await chatNotificationService.saveNotification(id, senderId, "browser");
+
         await chatNotificationService.saveNotification(id, recipientId!);
+        const recipientInfo = (await database.user.findUnique({ where: { id: recipientId! } }))!;
+        // application sync mechanism
+        if (recipientInfo.webLoggedIn) await chatNotificationService.saveNotification(id, recipientId!, "browser");
       } else {
         const communityId = room.community[0].id;
         const communityMembers = await database.communityMember.findMany({ where: { communityId } });

@@ -36,14 +36,19 @@ class ChatService {
     async sendMessage(socket, message) {
         var _a;
         const { roomId, content, dataType, recipientId, senderId, replyTo, roomType, communityId } = message;
+        let savedMessage;
         const roomDetails = await this.checkChatRoom(roomId);
         if (!roomDetails)
             throw new errorHandler_1.WsError("No ChatRoom with this id exist");
         else if (!roomType || roomType === "private") {
             if (!recipientId)
                 throw new errorHandler_1.WsError("No value passed for recipientId");
+            else if (roomDetails.user1Id !== recipientId && roomDetails.user2Id !== recipientId)
+                throw new errorHandler_1.WsError("The recipient is not a participant of this chatRoom");
+            else if (roomDetails.user1Id !== senderId && roomDetails.user2Id !== senderId)
+                throw new errorHandler_1.WsError("Th sender is not a participant of this chatRoom");
             // save th data in database
-            const savedMessage = await objects_1.database.message.create({ data: { roomId, content, type: dataType, recipientId, senderId, replyTo } });
+            savedMessage = await objects_1.database.message.create({ data: { roomId, content, type: dataType, recipientId, senderId, replyTo } });
             // send the sender a response.
             socket.emit("response", { action: "sendMessage", data: savedMessage });
             //checking if recipient has blocked sender
@@ -51,13 +56,22 @@ class ChatService {
                 // check if recipient is online
                 const recipientInfo = await this.checkUsersOnlineStatus(recipientId);
                 if (recipientInfo) {
+                    // sync mechanism
+                    if (recipientInfo.webLoggedIn)
+                        await objects_1.chatNotificationService.saveNotification(savedMessage.id, recipientId, "mobile", "saveMessage");
                     const recipientConnection = chatHandler_1.chatRouterWs.sockets.get(recipientInfo.connectionId);
                     if (recipientConnection) {
-                        return recipientConnection.emit("response", { action: "recieveMessage", data: savedMessage });
+                        recipientConnection.emit("response", { action: "recieveMessage", data: savedMessage });
+                    }
+                    else {
+                        // when user is not online
+                        await objects_1.chatNotificationService.saveNotification(savedMessage.id, recipientId, "mobile", "saveMessage");
                     }
                 }
-                // when user is not online
-                objects_1.chatNotificationService.saveNotification(savedMessage.id, recipientId, "mobile", "saveMessage");
+                else {
+                    // when user is not online
+                    await objects_1.chatNotificationService.saveNotification(savedMessage.id, recipientId, "mobile", "saveMessage");
+                }
             }
         }
         else {
@@ -69,13 +83,19 @@ class ChatService {
             if (!(await objects_1.communityService.isMember(communityId, senderId)))
                 throw new errorHandler_1.WsError("Sender is not a member");
             objects_1.appEvents.emit("add-to-active-communities", { communityId });
-            const savedMessage = await objects_1.database.message.create({ data: { roomId, content, type: dataType, senderId, communityId, replyTo, read: true, recieved: true } });
+            savedMessage = await objects_1.database.message.create({ data: { roomId, content, type: dataType, senderId, communityId, replyTo, read: true, recieved: true } });
             // send the sender a response.
             socket.emit("response", { action: "sendMessage", data: savedMessage });
             const allMembers = await objects_1.database.communityMember.findMany({ where: { communityId } });
             const membersIds = allMembers.map((member) => member.userId);
             objects_1.appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId: savedMessage.id });
         }
+        // syn mechanism
+        const senderDetails = (await objects_1.database.user.findUnique({ where: { id: senderId } }));
+        if (socket.isWebUser)
+            await objects_1.chatNotificationService.saveNotification(savedMessage.id, senderId, "mobile", "saveMessage");
+        else if (senderDetails.webLoggedIn)
+            await objects_1.chatNotificationService.saveNotification(savedMessage.id, senderId, "browser", "saveMessage");
     }
     async getUserStatus(socket, data) {
         const { phone } = data;
@@ -176,7 +196,7 @@ class ChatService {
             socket.emit("response", { action: "getMessages", messages });
         }
     }
-    async updateMessage(userId, messageData) {
+    async updateMessage(userId, messageData, webUser = false) {
         const { messageId, newMessage } = messageData;
         const message = await objects_1.database.message.findUnique({ where: { id: messageId } });
         if (!message)
@@ -187,8 +207,9 @@ class ChatService {
             throw new errorHandler_1.AppError("Only messages of type text can be edited", 422);
         await objects_1.database.message.update({ where: { id: messageId }, data: { content: newMessage } });
         await objects_1.chatNotificationService.saveNotification(messageId, message.recipientId);
+        // handling sync mechanism and community message update(N/A)
     }
-    async deleteMessage(messageId, userId) {
+    async deleteMessage(messageId, userId, webUser = false) {
         const message = await objects_1.database.message.findUnique({ where: { id: messageId } });
         if (!message)
             throw new errorHandler_1.AppError("No message with this id exist", 404);
@@ -197,6 +218,7 @@ class ChatService {
         if (message.recieved) {
             await objects_1.database.message.update({ where: { id: messageId }, data: { deleteFlag: true } });
             await objects_1.chatNotificationService.saveNotification(messageId, message.recipientId, "mobile", "deleteMessage");
+            // handling sync mechanism and community message update(N/A)
             return;
         }
         await objects_1.database.message.delete({ where: { id: messageId } });
