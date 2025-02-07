@@ -52,6 +52,7 @@ enum MessageType{
   audio
   image
   call
+  docs
 }
 
 enum NotificationType{
