@@ -23,7 +23,7 @@ __decorate([
 ], MessageDto.prototype, "content", void 0);
 __decorate([
     (0, class_transformer_1.Expose)(),
-    (0, class_validator_1.IsIn)(["text", "video", "audio", "image"]),
+    (0, class_validator_1.IsIn)(["text", "video", "audio", "image", "docs"]),
     __metadata("design:type", String)
 ], MessageDto.prototype, "dataType", void 0);
 __decorate([

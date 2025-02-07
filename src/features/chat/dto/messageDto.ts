@@ -8,8 +8,8 @@ export class MessageDto {
   content: string;
 
   @Expose()
-  @IsIn(["text", "video", "audio", "image"])
-  dataType: "text" | "video" | "audio" | "image";
+  @IsIn(["text", "video", "audio", "image","docs"])
+  dataType: "text" | "video" | "audio" | "image"|"docs";
 
   @Expose()
   @IsInt()
