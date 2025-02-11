@@ -98,18 +98,44 @@ class ChatService {
             await objects_1.chatNotificationService.saveNotification(savedMessage.id, senderId, "browser", "saveMessage");
     }
     async getUserStatus(socket, data) {
-        const { phone } = data;
+        const { phone, roomId } = data;
         const userInfo = await objects_1.database.user.findUnique({ where: { phone } });
         if (!userInfo) {
             throw new errorHandler_1.WsError("No Account with this id exist");
         }
         const { onlineStatus, updatedAt, onlineStatusWeb } = userInfo;
-        socket.emit("response", { action: "checkStatus", userStatus: onlineStatus !== "offline" ? onlineStatus : onlineStatusWeb !== "offline" ? onlineStatusWeb : updatedAt });
+        socket.emit("response", { action: "checkStatus", userStatus: onlineStatus !== "offline" ? onlineStatus : onlineStatusWeb !== "offline" ? onlineStatusWeb : updatedAt, roomId });
     }
     async setUserStatus(socket, data) {
-        const { status } = data;
-        const id = socket.authUserId;
-        await objects_1.database.user.update({ where: { id }, data: { onlineStatus: status } });
+        const { status, roomId } = data;
+        const userId = socket.authUserId; //id of client sending the online status
+        //get room deatials
+        // check for room type
+        const roomDetails = await this.checkChatRoom(roomId);
+        if (!roomDetails)
+            throw new errorHandler_1.WsError("No ChatRoom with this id exist");
+        else if (roomDetails.type === "private" && roomDetails.status === "active") {
+            const { user1Id, user2Id } = roomDetails;
+            const recipientDetails = await objects_1.database.user.findUnique({ where: { id: user1Id !== userId ? user1Id : user2Id } });
+            if (!recipientDetails)
+                throw new errorHandler_1.WsError("Participants of this ChatRoom do not exist");
+            else if (recipientDetails.onlineStatus === "online") {
+                const recipientConnection = chatHandler_1.chatRouterWs.sockets.get(recipientDetails.connectionId);
+                if (recipientConnection)
+                    recipientConnection.emit("response", { action: "checkStatus", roomId, userStatus: status });
+            }
+            if (recipientDetails.webLoggedIn) {
+                if (recipientDetails.onlineStatusWeb === "online") {
+                    const recipientConnection = chatHandler_1.chatRouterWs.sockets.get(recipientDetails.webConnectionId);
+                    if (recipientConnection)
+                        recipientConnection.emit("response", { action: "checkStatus", roomId, userStatus: status });
+                }
+            }
+        }
+        else if (roomDetails.status === "active") {
+            // for groups and channels
+        }
+        // await database.user.update({ where: { id }, data: { onlineStatus: status } });
     }
     async creatChatRoomDeatils(phone1, phone2) {
         // this is for getting chat room details for

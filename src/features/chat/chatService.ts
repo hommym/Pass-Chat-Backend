@@ -99,20 +99,45 @@ export class ChatService {
   }
 
   async getUserStatus(socket: Socket, data: CheckStatusDto) {
-    const { phone } = data;
+    const { phone, roomId } = data;
     const userInfo = await database.user.findUnique({ where: { phone } });
 
     if (!userInfo) {
       throw new WsError("No Account with this id exist");
     }
     const { onlineStatus, updatedAt, onlineStatusWeb } = userInfo;
-    socket.emit("response", { action: "checkStatus", userStatus: onlineStatus !== "offline" ? onlineStatus : onlineStatusWeb !== "offline" ? onlineStatusWeb : updatedAt });
+    socket.emit("response", { action: "checkStatus", userStatus: onlineStatus !== "offline" ? onlineStatus : onlineStatusWeb !== "offline" ? onlineStatusWeb : updatedAt, roomId });
   }
 
   async setUserStatus(socket: Socket, data: SetStatusDto) {
-    const { status } = data;
-    const id = (socket as SocketV1).authUserId;
-    await database.user.update({ where: { id }, data: { onlineStatus: status } });
+    const { status, roomId } = data;
+    const userId = (socket as SocketV1).authUserId; //id of client sending the online status
+
+    //get room deatials
+    // check for room type
+    const roomDetails = await this.checkChatRoom(roomId);
+
+    if (!roomDetails) throw new WsError("No ChatRoom with this id exist");
+    else if (roomDetails.type === "private" && roomDetails.status === "active") {
+      const { user1Id, user2Id } = roomDetails;
+      const recipientDetails = await database.user.findUnique({ where: { id: user1Id !== userId ? user1Id! : user2Id! } });
+      if (!recipientDetails) throw new WsError("Participants of this ChatRoom do not exist");
+      else if (recipientDetails.onlineStatus === "online") {
+        const recipientConnection = chatRouterWs.sockets.get(recipientDetails.connectionId!);
+        if (recipientConnection) recipientConnection.emit("response", { action: "checkStatus", roomId, userStatus: status });
+      }
+
+      if (recipientDetails.webLoggedIn) {
+        if (recipientDetails.onlineStatusWeb === "online") {
+          const recipientConnection = chatRouterWs.sockets.get(recipientDetails.webConnectionId!);
+          if (recipientConnection) recipientConnection.emit("response", { action: "checkStatus", roomId, userStatus: status });
+        }
+      }
+    } else if (roomDetails.status === "active") {
+      // for groups and channels
+    }
+
+    // await database.user.update({ where: { id }, data: { onlineStatus: status } });
   }
 
   async creatChatRoomDeatils(phone1: string, phone2: string) {
@@ -205,7 +230,7 @@ export class ChatService {
     }
   }
 
-  async updateMessage(userId: number, messageData: UpdateMessageDto,webUser:boolean=false) {
+  async updateMessage(userId: number, messageData: UpdateMessageDto, webUser: boolean = false) {
     const { messageId, newMessage } = messageData;
     const message = await database.message.findUnique({ where: { id: messageId } });
 
@@ -216,11 +241,11 @@ export class ChatService {
     await database.message.update({ where: { id: messageId }, data: { content: newMessage } });
 
     await chatNotificationService.saveNotification(messageId, message.recipientId!);
-    
+
     // handling sync mechanism and community message update(N/A)
   }
 
-  async deleteMessage(messageId: number, userId: number ,webUser:boolean=false) {
+  async deleteMessage(messageId: number, userId: number, webUser: boolean = false) {
     const message = await database.message.findUnique({ where: { id: messageId } });
 
     if (!message) throw new AppError("No message with this id exist", 404);

@@ -21,3 +21,8 @@ __decorate([
     (0, class_validator_1.IsEnum)(client_1.OnlineStatus),
     __metadata("design:type", String)
 ], SetStatusDto.prototype, "status", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
+    (0, class_validator_1.IsInt)(),
+    __metadata("design:type", Number)
+], SetStatusDto.prototype, "roomId", void 0);

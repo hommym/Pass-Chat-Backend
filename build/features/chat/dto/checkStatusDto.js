@@ -20,3 +20,8 @@ __decorate([
     (0, class_validator_1.IsPhoneNumber)(),
     __metadata("design:type", String)
 ], CheckStatusDto.prototype, "phone", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
+    (0, class_validator_1.IsInt)(),
+    __metadata("design:type", Number)
+], CheckStatusDto.prototype, "roomId", void 0);
