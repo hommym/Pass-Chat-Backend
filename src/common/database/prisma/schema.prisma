@@ -161,11 +161,13 @@ model User {
   role              AdminRoles?
   loggedIn          Boolean         @default(false)
   webLoggedIn       Boolean         @default(false)
+  recentLoginDate   String?
   notifications     Notification[]
   contacts          UserContact[]
   chatRoomUser1     ChatRoom[]      @relation("User1")
   chatRoomUser2     ChatRoom[]      @relation("User2")
-  communities       Community[]
+  communitiesOwned  Community[]
+  communities       CommunityMember[]
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt   // use this get last time user was online
 
@@ -297,6 +299,7 @@ model CommunityMember{
   deleteFlag            Boolean               @default(false)
   role                  CommunityRole         @default(member)
   community             Community             @relation(fields: [communityId], references: [id])
+  userDetails           User                  @relation(fields: [userId], references: [id])
 
   @@unique([communityId,userId])
   @@map("community_members")
