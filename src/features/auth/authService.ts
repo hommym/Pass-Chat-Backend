@@ -19,14 +19,15 @@ import { authRouterWs } from "./ws/authHandler";
 import { ChangePhoneDto } from "./dtos/changePhoneDto";
 import { chatRouterWs } from "../chat/ws/chatHandler";
 import { Verify2FAOtpDto } from "./dtos/verify2FAOtpDto";
+import { getCurrentDate } from "../../common/helpers/date";
 
 export class AuthService {
   async checkAccount(email: string) {
-    return await database.user.findUnique({ where: { email } });
+    return await database.user.upsert({ where: { email }, create: {}, update: { recentLoginDate: getCurrentDate() } });
   }
 
   async createUserAccount(phone: string) {
-    return await database.user.upsert({ where: { phone }, create: { phone }, update: {} });
+    return await database.user.upsert({ where: { phone }, create: { phone, recentLoginDate: getCurrentDate() }, update: { recentLoginDate: getCurrentDate() } });
   }
 
   async check2FAuth(userId: number) {

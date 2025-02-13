@@ -14,12 +14,13 @@ const adminLoginResponseDto_1 = require("./dtos/adminLoginResponseDto");
 const qrcode_1 = __importDefault(require("qrcode"));
 const authHandler_1 = require("./ws/authHandler");
 const chatHandler_1 = require("../chat/ws/chatHandler");
+const date_1 = require("../../common/helpers/date");
 class AuthService {
     async checkAccount(email) {
-        return await objects_1.database.user.findUnique({ where: { email } });
+        return await objects_1.database.user.upsert({ where: { email }, create: {}, update: { recentLoginDate: (0, date_1.getCurrentDate)() } });
     }
     async createUserAccount(phone) {
-        return await objects_1.database.user.upsert({ where: { phone }, create: { phone }, update: {} });
+        return await objects_1.database.user.upsert({ where: { phone }, create: { phone, recentLoginDate: (0, date_1.getCurrentDate)() }, update: { recentLoginDate: (0, date_1.getCurrentDate)() } });
     }
     async check2FAuth(userId) {
         return objects_1.database.twoFactorAuth.findUnique({ where: { userId } });
