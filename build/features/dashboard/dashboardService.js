@@ -112,5 +112,64 @@ class DashboardService {
         await objects_1.database.communityVerification.update({ where: { id: verificationRequestId }, data: { status: "reviewed" } });
         return { message: action === "accept" ? `Request successfully ${action}ed` : `Request successfully ${action}d` };
     }
+    async getAllUsers(page, limit) {
+        const skip = (page - 1) * limit;
+        const users = await objects_1.database.user.findMany({
+            skip: skip,
+            take: limit,
+            select: { fullName: true, email: true, type: true, role: true, phone: true, updatedAt: true, id: true },
+        });
+        const totalUsers = await objects_1.database.user.count();
+        return {
+            data: users,
+            total: totalUsers,
+            page: page,
+            limit: limit,
+            totalPages: Math.ceil(totalUsers / limit),
+        };
+    }
+    async getAllCommunities(page, limit, type) {
+        const skip = (page - 1) * limit;
+        const communities = await objects_1.database.community.findMany({
+            where: { type },
+            skip: skip,
+            take: limit,
+            select: { createdAt: true, ownerId: true, name: true, subscriberCount: true, id: true },
+        });
+        const totalCommunities = await objects_1.database.community.count({ where: { type } });
+        return {
+            data: communities,
+            total: totalCommunities,
+            page: page,
+            limit: limit,
+            totalPages: Math.ceil(totalCommunities / limit),
+        };
+    }
+    async getUserDetails(userId) {
+        const userDetails = await objects_1.database.user.findUnique({
+            where: { id: userId },
+            select: { fullName: true, email: true, type: true, role: true, phone: true, updatedAt: true, id: true, recentLoginDate: true },
+        });
+        if (!userDetails)
+            throw new errorHandler_1.AppError("No Account with this id exist", 404);
+        const communitiesUserBelongTo = await objects_1.database.communityMember.findMany({ where: { userId }, select: { role: true, community: { select: { name: true, type: true } } } });
+        const allMessages = await objects_1.database.message.findMany({ where: { senderId: userId }, select: { content: true, type: true }, orderBy: { createdAt: "desc" } });
+        return { userDetails, communitiesUserBelongTo, allMessages };
+    }
+    async getCommunityDetails(communityId) {
+        const communityDetails = await objects_1.database.community.findUnique({
+            where: { id: communityId, deleteFlag: false },
+            include: {
+                ownerDetails: { select: { profile: true, fullName: true, bio: true, email: true, phone: true } },
+                members: { select: { userDetails: { select: { profile: true, phone: true } }, role: true, createdAt: true } },
+            },
+            omit: { deleteFlag: true },
+        });
+        if (!communityDetails)
+            throw new errorHandler_1.AppError("No Community with this id exist", 404);
+        const allMessages = await objects_1.database.message.findMany({ where: { roomId: communityDetails.roomId }, orderBy: { createdAt: "desc" } });
+        const allReports = await objects_1.database.flaggedData.findMany({ where: { communityId } });
+        return { communityDetails, allMessages, messagesSent: allMessages.length, allReports, totalReports: allReports.length };
+    }
 }
 exports.DashboardService = DashboardService;

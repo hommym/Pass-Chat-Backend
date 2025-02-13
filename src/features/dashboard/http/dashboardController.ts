@@ -78,3 +78,64 @@ dashboardRouter.patch(
     res.status(200).json(await dashboardService.updateCommunityVerificationStatus(req.body));
   })
 );
+
+dashboardRouter.get(
+  "/user-management/users",
+  verifyJwt,
+  checkAccountType("admin"),
+  asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const { page, limit } = req.query;
+      res.status(200).json(await dashboardService.getAllUsers(page ? +page : 1, limit ? +limit : 20));
+    } catch (error) {
+      throw new AppError(error instanceof AppError ? error.message : "Query params size and limit should be of type integers", 400);
+    }
+  })
+);
+
+dashboardRouter.get(
+  "/user-management/user/details/:id",
+  verifyJwt,
+  checkAccountType("admin"),
+  asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      res.status(200).json(await dashboardService.getUserDetails(+id));
+    } catch (error) {
+      throw new AppError(error instanceof AppError ? error.message : "Url parameter id must be an integer", 400);
+    }
+  })
+);
+
+dashboardRouter.get(
+  "/user-management/community/:type",
+  verifyJwt,
+  checkAccountType("admin"),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { type } = req.params;
+    if (type === "groups" || type === "channels") {
+      try {
+        const { page, limit } = req.query;
+        res.status(200).json(await dashboardService.getAllCommunities(page ? +page : 1, limit ? +limit : 20, type === "groups" ? "group" : "channel"));
+      } catch (error) {
+        throw new AppError(error instanceof AppError ? error.message : "Query params size and limit should be of type integers", 400);
+      }
+    } else {
+      throw new AppError("Url parameter type must have a value groups or channels", 400);
+    }
+  })
+);
+
+dashboardRouter.get(
+  "/user-management/community/details/:id",
+  verifyJwt,
+  checkAccountType("admin"),
+  asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      res.status(200).json(await dashboardService.getCommunityDetails(+id));
+    } catch (error) {
+      throw new AppError(error instanceof AppError ? error.message : "Url parameter id must be an integer", 400);
+    }
+  })
+);

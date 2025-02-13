@@ -1,4 +1,4 @@
-import { OS } from "@prisma/client";
+import { CommunityType, OS } from "@prisma/client";
 import { appEvents, database } from "../../common/constants/objects";
 import { getCurrentDate, getYesterdayDate } from "../../common/helpers/date";
 import { UpdateCommunityVerificationStatus } from "./dto/updateCommunityVerficationStatusDto";
@@ -95,7 +95,7 @@ export class DashboardService {
   }
 
   async getAllPendingComunityVerfRequests() {
-    return await database.communityVerification.findMany({where:{status:"pending"}});
+    return await database.communityVerification.findMany({ where: { status: "pending" } });
   }
 
   async updateCommunityVerificationStatus(data: UpdateCommunityVerificationStatus) {
@@ -109,13 +109,85 @@ export class DashboardService {
     if (action === "accept") {
       await database.community.update({ where: { id: verificationRequest.communityId }, data: { isVerified: true } });
       //send congratulation email
-      appEvents.emit("community-verification-email", { action: "accepted", communityName: community.name, email: contact, reason ,type:community.type});
+      appEvents.emit("community-verification-email", { action: "accepted", communityName: community.name, email: contact, reason, type: community.type });
     } else {
       // send apologetic email
-      appEvents.emit("community-verification-email", { action: "declined", communityName: community.name, email: contact, reason,type:community.type });
+      appEvents.emit("community-verification-email", { action: "declined", communityName: community.name, email: contact, reason, type: community.type });
     }
 
     await database.communityVerification.update({ where: { id: verificationRequestId }, data: { status: "reviewed" } });
     return { message: action === "accept" ? `Request successfully ${action}ed` : `Request successfully ${action}d` };
+  }
+
+  async getAllUsers(page: number, limit: number) {
+    const skip = (page - 1) * limit;
+    const users = await database.user.findMany({
+      skip: skip,
+      take: limit,
+      select: { fullName: true, email: true, type: true, role: true, phone: true, updatedAt: true, id: true },
+    });
+
+    const totalUsers = await database.user.count();
+
+    return {
+      data: users,
+      total: totalUsers,
+      page: page,
+      limit: limit,
+      totalPages: Math.ceil(totalUsers / limit),
+    };
+  }
+
+  async getAllCommunities(page: number, limit: number, type: CommunityType) {
+    const skip = (page - 1) * limit;
+    const communities = await database.community.findMany({
+      where: { type },
+      skip: skip,
+      take: limit,
+      select: { createdAt: true, ownerId: true, name: true, subscriberCount: true, id: true },
+    });
+
+    const totalCommunities = await database.community.count({ where: { type } });
+
+    return {
+      data: communities,
+      total: totalCommunities,
+      page: page,
+      limit: limit,
+      totalPages: Math.ceil(totalCommunities / limit),
+    };
+  }
+
+  async getUserDetails(userId: number) {
+    const userDetails = await database.user.findUnique({
+      where: { id: userId },
+      select: { fullName: true, email: true, type: true, role: true, phone: true, updatedAt: true, id: true, recentLoginDate: true },
+    });
+    if (!userDetails) throw new AppError("No Account with this id exist", 404);
+
+    const communitiesUserBelongTo = await database.communityMember.findMany({ where: { userId }, select: { role: true, community: { select: { name: true, type: true } } } });
+
+    const allMessages = await database.message.findMany({ where: { senderId: userId }, select: { content: true, type: true }, orderBy: { createdAt: "desc" } });
+
+    return { userDetails, communitiesUserBelongTo, allMessages };
+  }
+
+  async getCommunityDetails(communityId: number) {
+    const communityDetails = await database.community.findUnique({
+      where: { id: communityId, deleteFlag: false },
+      include: {
+        ownerDetails: { select: { profile: true, fullName: true, bio: true, email: true, phone: true } },
+        members: { select: { userDetails: { select: { profile: true, phone: true } }, role: true, createdAt: true } },
+      },
+      omit: { deleteFlag: true },
+    });
+
+    if (!communityDetails) throw new AppError("No Community with this id exist", 404);
+
+    const allMessages = await database.message.findMany({ where: { roomId: communityDetails.roomId }, orderBy: { createdAt: "desc" } });
+
+    const allReports = await database.flaggedData.findMany({ where: { communityId } });
+
+    return { communityDetails, allMessages, messagesSent: allMessages.length, allReports, totalReports: allReports.length };
   }
 }
