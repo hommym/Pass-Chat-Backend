@@ -124,7 +124,10 @@ class CommunityService {
         // this method gets all communities a user is part of
         const allMemberShipData = await objects_1.database.communityMember.findMany({ where: { userId, deleteFlag: false } });
         return Promise.all(allMemberShipData.map(async (memberShipData) => {
-            const communityDetails = await objects_1.database.community.findUnique({ where: { id: memberShipData.communityId }, include: { members: memberShipData.role === "owner" } });
+            const communityDetails = await objects_1.database.community.findUnique({
+                where: { id: memberShipData.communityId },
+                include: { members: memberShipData.role === "owner" ? { select: { role: true, userDetails: { select: { phone: true, profile: true } } } } : false },
+            });
             return { communityDetails, memberShipType: memberShipData.role };
         }));
     }
