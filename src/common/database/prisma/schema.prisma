@@ -284,7 +284,7 @@ model Community {
    communityVerf         CommunityVerification[]
    room                  ChatRoom               @relation(fields: [roomId], references: [id])
    ownerDetails          User                   @relation(fields: [ownerId], references: [id])
- 
+   activePeriods         ActiveCommunity[] 
 
   @@unique([type,ownerId,name])
   @@map("communities")
@@ -321,10 +321,22 @@ model DailyUser {
 model ActiveCommunity {
   id                    Int                   @id @default(autoincrement())
   communityId           Int
-  date                  String                         
-
+  date                  String
+  numberOfEngagement    Int                   @default(0)  
+  type                  CommunityType
+  community             Community             @relation(fields: [communityId], references: [id])                       
   @@unique([communityId,date])
   @@map("active_communities")
+}
+
+model DailyCommunityEngagement {
+  id                    Int                   @id @default(autoincrement())
+  userId                Int
+  date                  String
+  communityId           Int
+
+  @@unique([userId,communityId,date])
+  @@map("daily_community_engagements")
 }
 
 
