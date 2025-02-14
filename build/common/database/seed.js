@@ -4,6 +4,7 @@ const objects_1 = require("../constants/objects");
 const chatRoomSeeder_1 = require("./seeders/chatRoomSeeder");
 const communitySeeder_1 = require("./seeders/communitySeeder");
 const contactSeeder_1 = require("./seeders/contactSeeder");
+const flaggedDataSeeder_1 = require("./seeders/flaggedDataSeeder");
 const messageSeeder_1 = require("./seeders/messageSeeder");
 const userSeeder_1 = require("./seeders/userSeeder");
 const initialiseSeeders = async () => {
@@ -14,6 +15,7 @@ const initialiseSeeders = async () => {
     await (0, chatRoomSeeder_1.ChatRoomSeeder)();
     await (0, messageSeeder_1.MessageSeeder)();
     await (0, communitySeeder_1.CommunitySeeder)();
+    await (0, flaggedDataSeeder_1.FlaggedDataSeeder)();
     console.log("Setup Finished");
 };
 initialiseSeeders();
