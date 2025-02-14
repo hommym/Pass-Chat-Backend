@@ -148,3 +148,12 @@ dashboardRouter.get(
     res.status(200).json(await dashboardService.getContentManagementPageData());
   })
 );
+
+dashboardRouter.get(
+  "/analytics",
+  verifyJwt,
+  checkAccountType("admin"),
+  asyncHandler(async (req: Request, res: Response) => {
+    res.status(200).json(await dashboardService.getAnalyticsPageData());
+  })
+);

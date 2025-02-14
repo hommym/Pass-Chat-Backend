@@ -85,3 +85,6 @@ exports.dashboardRouter.get("/user-management/community/details/:id", verifyJwt_
 exports.dashboardRouter.get("/content-management", verifyJwt_1.verifyJwt, (0, checkAccountType_1.checkAccountType)("admin"), (0, express_async_handler_1.default)(async (req, res) => {
     res.status(200).json(await objects_1.dashboardService.getContentManagementPageData());
 }));
+exports.dashboardRouter.get("/analytics", verifyJwt_1.verifyJwt, (0, checkAccountType_1.checkAccountType)("admin"), (0, express_async_handler_1.default)(async (req, res) => {
+    res.status(200).json(await objects_1.dashboardService.getAnalyticsPageData());
+}));

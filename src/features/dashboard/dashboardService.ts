@@ -1,4 +1,4 @@
-import { CommunityType, OS } from "@prisma/client";
+import { CommunityType, OS, User } from "@prisma/client";
 import { appEvents, database } from "../../common/constants/objects";
 import { getCurrentDate, getYesterdayDate } from "../../common/helpers/date";
 import { UpdateCommunityVerificationStatus } from "./dto/updateCommunityVerficationStatusDto";
@@ -11,10 +11,19 @@ export class DashboardService {
     await database.dailyUser.upsert({ where: { userId_date: { userId, date: currentDate } }, create: { userId, date: currentDate, platform, timezone }, update: {} });
   }
 
-  async addToActiveCommunities(args: { communityId: number }) {
-    const { communityId } = args;
-    const currentDate = getCurrentDate();
-    await database.activeCommunity.upsert({ where: { communityId_date: { communityId, date: currentDate } }, create: { communityId, date: currentDate }, update: {} });
+  async addToActiveCommunities(args: { communityId: number; userId: number; type: CommunityType }) {
+    try {
+      const { communityId, userId, type } = args;
+      const currentDate = getCurrentDate();
+      await database.dailyCommunityEngagement.create({ data: { communityId, userId, date: currentDate } });
+      await database.activeCommunity.upsert({
+        where: { communityId_date: { communityId, date: currentDate } },
+        create: { communityId, date: currentDate, type },
+        update: { numberOfEngagement: { increment: 1 } },
+      });
+    } catch (error) {
+      // console.log("User")
+    }
   }
 
   async getNumberOfDailyData(dataType: "users" | "activeCommunities" | "flaggedMessage" | "bannedAccounts") {
@@ -236,6 +245,41 @@ export class DashboardService {
               hateSpeech: ((numOfHateSpeechCases / allReportedCases.length) * 100).toFixed(2),
               violence: ((numofViolenceCases / allReportedCases.length) * 100).toFixed(2),
             },
+    };
+  }
+
+  async getAnalyticsPageData() {
+    // get top performing groups
+    const currentDate = getCurrentDate();
+    const currentYear = currentDate.split("-")[0];
+    const newUsersGrowthTrend = (await database.$queryRaw`
+    SELECT "createdAt", "id" FROM "users"
+    WHERE EXTRACT(YEAR FROM "createdAt") = ${currentYear}
+    AND "type" = 'user'
+`) as { createdAt: Date; id: number }[];
+    const totalUsers = database.user.count({ where: { type: "user" } });
+    const numOfActiveUsers = database.dailyUser.count({ where: { date: currentDate } });
+    const totalMessagesSent = database.message.count();
+    const totalGroupsCreated = database.community.count({ where: { type: "group" } });
+    const totalChannelsCreated = database.community.count({ where: { type: "channel" } });
+    const deviceAndTimezoneStats = await database.dailyUser.findMany({ where: { date: { startsWith: currentYear } }, omit: { userId: true } });
+
+    // code for getting top performing group
+    const topPerformingGroups = await database.activeCommunity.findMany({
+      where: { date: currentDate },
+      orderBy: { numberOfEngagement: "desc" },
+      include: { community: { select: { name: true, subscriberCount: true ,status:true} } },
+    });
+
+    return {
+      newUsersGrowthTrend,
+      totalUsers,
+      numOfActiveUsers,
+      totalMessagesSent,
+      totalGroupsCreated,
+      totalChannelsCreated,
+      deviceAndTimezoneStats,
+      topPerformingGroups: topPerformingGroups.length <= 5 ? topPerformingGroups : topPerformingGroups.slice(0, 5),
     };
   }
 }
