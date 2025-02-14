@@ -139,3 +139,12 @@ dashboardRouter.get(
     }
   })
 );
+
+dashboardRouter.get(
+  "/content-management",
+  verifyJwt,
+  checkAccountType("admin"),
+  asyncHandler(async (req: Request, res: Response) => {
+    res.status(200).json(await dashboardService.getContentManagementPageData());
+  })
+);

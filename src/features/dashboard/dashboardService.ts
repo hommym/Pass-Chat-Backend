@@ -190,4 +190,52 @@ export class DashboardService {
 
     return { communityDetails, allMessages, messagesSent: allMessages.length, allReports, totalReports: allReports.length };
   }
+
+  async getContentManagementPageData() {
+    const currentYear = getCurrentDate().split("-")[0];
+    const flaggedDataTrend = await database.flaggedData.findMany({ where: { date: { startsWith: currentYear } }, select: { id: true, date: true } });
+    const pendingCases = await database.flaggedData.findMany({ where: { status: "pending" } });
+    const allReportedCases = await database.flaggedData.findMany({ select: { reason: true, status: true } });
+    let numOfResolvedCases = 0;
+    let numOfSpamCases = 0;
+    let numofViolenceCases = 0;
+    let numOfPornCases = 0;
+    let numOfHateSpeechCases = 0;
+
+    for (let item of allReportedCases) {
+      if (item.status !== "pending") numOfResolvedCases++;
+
+      switch (item.reason) {
+        case "spam":
+          numOfSpamCases++;
+          break;
+        case "hateSpeech":
+          numOfHateSpeechCases++;
+          break;
+        case "pornography":
+          numOfPornCases++;
+          break;
+        default:
+          numofViolenceCases++;
+          break;
+      }
+    }
+
+    return {
+      totalFlaggedContent: allReportedCases.length,
+      numOfPendingCases: pendingCases.length,
+      numOfResolvedCases,
+      pendingCases,
+      flaggedDataTrend,
+      commonVoilationPercentages:
+        allReportedCases.length === 0
+          ? { spam: 0, porn: 0, hateSpeech: 0, violence: 0 }
+          : {
+              spam: ((numOfSpamCases / allReportedCases.length) * 100).toFixed(2),
+              porn: ((numOfPornCases / allReportedCases.length) * 100).toFixed(2),
+              hateSpeech: ((numOfHateSpeechCases / allReportedCases.length) * 100).toFixed(2),
+              violence: ((numofViolenceCases / allReportedCases.length) * 100).toFixed(2),
+            },
+    };
+  }
 }
