@@ -80,7 +80,7 @@ export class ChatService {
       else if (communityId !== roomDetails.community[0]?.id) throw new WsError(`roomId used does not belong to this ${roomType}`);
 
       if (!(await communityService.isMember(communityId, senderId))) throw new WsError("Sender is not a member");
-      appEvents.emit("add-to-active-communities", { communityId });
+      appEvents.emit("add-to-active-communities", { communityId ,userId:senderId,type:roomType});
 
       savedMessage = await database.message.create({ data: { roomId, content, type: dataType, senderId, communityId, replyTo, read: true, recieved: true } });
       // send the sender a response.

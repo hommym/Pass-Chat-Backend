@@ -82,7 +82,7 @@ class ChatService {
                 throw new errorHandler_1.WsError(`roomId used does not belong to this ${roomType}`);
             if (!(await objects_1.communityService.isMember(communityId, senderId)))
                 throw new errorHandler_1.WsError("Sender is not a member");
-            objects_1.appEvents.emit("add-to-active-communities", { communityId });
+            objects_1.appEvents.emit("add-to-active-communities", { communityId, userId: senderId, type: roomType });
             savedMessage = await objects_1.database.message.create({ data: { roomId, content, type: dataType, senderId, communityId, replyTo, read: true, recieved: true } });
             // send the sender a response.
             socket.emit("response", { action: "sendMessage", data: savedMessage });
