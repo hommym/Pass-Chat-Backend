@@ -230,15 +230,15 @@ class DashboardService {
         const currentDate = (0, date_1.getCurrentDate)();
         const currentYear = currentDate.split("-")[0];
         const newUsersGrowthTrend = (await objects_1.database.$queryRaw `
-    SELECT "createdAt", "id" FROM "users"
-    WHERE EXTRACT(YEAR FROM "createdAt") = ${currentYear}
-    AND "type" = 'user'
+    SELECT \`createdAt\`, \`id\` FROM \`users\`
+    WHERE EXTRACT(YEAR FROM \`createdAt\`) = ${currentYear}
+    AND \`type\` = 'user'
 `);
-        const totalUsers = objects_1.database.user.count({ where: { type: "user" } });
-        const numOfActiveUsers = objects_1.database.dailyUser.count({ where: { date: currentDate } });
-        const totalMessagesSent = objects_1.database.message.count();
-        const totalGroupsCreated = objects_1.database.community.count({ where: { type: "group" } });
-        const totalChannelsCreated = objects_1.database.community.count({ where: { type: "channel" } });
+        const totalUsers = await objects_1.database.user.count({ where: { type: "user" } });
+        const numOfActiveUsers = await objects_1.database.dailyUser.count({ where: { date: currentDate } });
+        const totalMessagesSent = await objects_1.database.message.count();
+        const totalGroupsCreated = await objects_1.database.community.count({ where: { type: "group" } });
+        const totalChannelsCreated = await objects_1.database.community.count({ where: { type: "channel" } });
         const deviceAndTimezoneStats = await objects_1.database.dailyUser.findMany({ where: { date: { startsWith: currentYear } }, omit: { userId: true } });
         // code for getting top performing group
         const topPerformingGroups = await objects_1.database.activeCommunity.findMany({
