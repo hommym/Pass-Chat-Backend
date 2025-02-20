@@ -31,7 +31,8 @@
     "reflect-metadata": "^0.2.2",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
-    "tus-js-client": "^4.2.3"
+    "tus-js-client": "^4.2.3",
+    "uuid": "^11.1.0"
   },
   "keywords": [],
   "author": "",
