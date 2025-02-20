@@ -1,8 +1,11 @@
-import { Expose } from "class-transformer";
-import { IsArray } from "class-validator";
+import { Expose, Type } from "class-transformer";
+import { IsArray, ValidateNested } from "class-validator";
+import { ContactDto } from "./contactDto";
 
 export class SavedContactsDto {
   @Expose()
   @IsArray()
-  contacts: Array<string>;
+  @ValidateNested({ each: true })
+  @Type(() => ContactDto)
+  contacts: ContactDto[];
 }

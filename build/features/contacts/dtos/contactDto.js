@@ -9,17 +9,19 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SavedContactsDto = void 0;
+exports.ContactDto = void 0;
 const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
-const contactDto_1 = require("./contactDto");
-class SavedContactsDto {
+class ContactDto {
 }
-exports.SavedContactsDto = SavedContactsDto;
+exports.ContactDto = ContactDto;
 __decorate([
     (0, class_transformer_1.Expose)(),
-    (0, class_validator_1.IsArray)(),
-    (0, class_validator_1.ValidateNested)({ each: true }),
-    (0, class_transformer_1.Type)(() => contactDto_1.ContactDto),
-    __metadata("design:type", Array)
-], SavedContactsDto.prototype, "contacts", void 0);
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], ContactDto.prototype, "contactName", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
+    (0, class_validator_1.IsPhoneNumber)(),
+    __metadata("design:type", String)
+], ContactDto.prototype, "phone", void 0);

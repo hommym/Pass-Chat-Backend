@@ -3,13 +3,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ContactsService = void 0;
 const objects_1 = require("../../common/constants/objects");
 class ContactsService {
-    async saveContacts(contacts, userId) {
+    async saveContacts(contactsWithNames, userId) {
+        const contacts = contactsWithNames.map((items) => items.phone);
         const contactsWithAccount = await objects_1.database.user.findMany({ where: { phone: { in: contacts }, type: "user" }, select: { phone: true, profile: true } });
         if (contactsWithAccount.length === 0)
             return [];
         // const res: { phone: string; profile: string | null }[] = [];
         await Promise.all(contactsWithAccount.map(async (data) => {
+            let contactName = null;
             const phone = data.phone;
+            for (let item of contactsWithNames) {
+                if (item.phone === phone)
+                    contactName = item.contactName;
+            }
             const { profile } = data;
             await objects_1.database.userContact.upsert({
                 where: {
@@ -22,17 +28,18 @@ class ContactsService {
                     ownerId: userId,
                     phone,
                     profile,
+                    contactName,
                 },
                 update: {
                     phone,
                     profile,
+                    contactName,
                 },
-                select: { ownerId: false, phone: true, profile: true },
             });
         }));
     }
     async getSavedContacts(userId) {
-        const { contacts } = (await objects_1.database.user.findUnique({ where: { id: userId }, select: { contacts: { select: { phone: true, profile: true, roomId: true, status: true } } } }));
+        const { contacts } = (await objects_1.database.user.findUnique({ where: { id: userId }, select: { contacts: { omit: { id: true, ownerId: true } } } }));
         return contacts;
     }
     async updateContactsRommId(args) {

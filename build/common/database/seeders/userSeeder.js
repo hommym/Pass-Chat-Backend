@@ -14,12 +14,12 @@ const UserSeeder = async () => {
     ];
     const mobileUsers = [
         { phone: "+233503747734", fullName: "Arthur Kendrick" },
-        { phone: "+233403747734", fullName: "Hommy Kendrick" },
+        { phone: "+233553747734", fullName: "Hommy Kendrick" },
         { phone: "+233501777754", fullName: "Kwame Oppong" },
         { phone: "+233403748734", fullName: "Mabel Arhin" },
-        { phone: "+233476748734", fullName: "Mavis Dugan" },
-        { phone: "+233406728734", fullName: "Charles Lary" },
-        { phone: "+233786748734", fullName: "Victoria Arthur" },
+        { phone: "+233207674873", fullName: "Mavis Dugan" },
+        { phone: "+233550672873", fullName: "Charles Lary" },
+        { phone: "+233205748569", fullName: "Victoria Arthur" },
         { phone: "+233550663440", fullName: "Herberth Arthur" },
         { phone: "+251929241160", fullName: "Joseph Arthur" },
         { phone: "+233260812576", fullName: "Michael Owusu" },

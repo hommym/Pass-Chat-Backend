@@ -1,16 +1,22 @@
 import { chatService, database } from "../../common/constants/objects";
 import { BlockContactDto } from "./dtos/blockContactDto";
+import { ContactDto } from "./dtos/contactDto";
 import { SavedContactsDto } from "./dtos/savedContactsDto";
 
 export class ContactsService {
-  async saveContacts(contacts: string[], userId: number) {
+  async saveContacts(contactsWithNames: ContactDto[], userId: number) {
+    const contacts = contactsWithNames.map((items) => items.phone);
     const contactsWithAccount = await database.user.findMany({ where: { phone: { in: contacts }, type: "user" }, select: { phone: true, profile: true } });
 
     if (contactsWithAccount.length === 0) return [];
     // const res: { phone: string; profile: string | null }[] = [];
     await Promise.all(
       contactsWithAccount.map(async (data) => {
+        let contactName: string | null = null;
         const phone = data.phone!;
+        for (let item of contactsWithNames) {
+          if (item.phone === phone) contactName = item.contactName;
+        }
         const { profile } = data;
         await database.userContact.upsert({
           where: {
@@ -23,19 +29,20 @@ export class ContactsService {
             ownerId: userId,
             phone,
             profile,
+            contactName,
           },
           update: {
             phone,
             profile,
+            contactName,
           },
-          select: { ownerId: false, phone: true, profile: true },
         });
       })
     );
   }
 
   async getSavedContacts(userId: number) {
-    const { contacts } = (await database.user.findUnique({ where: { id: userId }, select: { contacts: { select: { phone: true, profile: true, roomId: true, status: true } } } }))!;
+    const { contacts } = (await database.user.findUnique({ where: { id: userId }, select: { contacts: { omit: { id: true, ownerId: true } } } }))!;
     return contacts;
   }
 
