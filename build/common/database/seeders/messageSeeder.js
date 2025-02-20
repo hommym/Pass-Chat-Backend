@@ -16,7 +16,7 @@ const MessageSeeder = async () => {
         const recipientId = senderId === chatRoom.user1Id ? chatRoom.user2Id : chatRoom.user1Id;
         messages.push({
             type: "text",
-            content: { text: JSON.stringify({ content: objects_1.randomData.num(0, 1) === 1 ? "Hello From this side" : "Hi , nice to meet you", content_id: (0, uuid_1.v4)() }) },
+            content: JSON.stringify({ content: objects_1.randomData.num(0, 1) === 1 ? "Hello From this side" : "Hi , nice to meet you", content_id: (0, uuid_1.v4)() }),
             senderId: senderId,
             recipientId,
             roomId: chatRoom.id,

@@ -18,7 +18,7 @@ export const MessageSeeder = async () => {
 
     messages.push({
       type: "text" as MessageType,
-      content: { text: JSON.stringify({ content: randomData.num(0, 1) === 1 ? "Hello From this side" : "Hi , nice to meet you", content_id: v4() }) },
+      content: JSON.stringify({ content: randomData.num(0, 1) === 1 ? "Hello From this side" : "Hi , nice to meet you", content_id: v4() }),
       senderId: senderId!,
       recipientId,
       roomId: chatRoom.id,
