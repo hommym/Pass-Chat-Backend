@@ -1,3 +1,4 @@
+import { v4 } from "uuid";
 import { chatNotificationService, chatService, database } from "../../common/constants/objects";
 import { SocketV1 } from "../../common/helpers/classes/socketV1";
 import { bodyValidatorWs } from "../../common/middlewares/bodyValidator";
@@ -17,12 +18,14 @@ export class CallService {
 
     // update caller online status to call
 
-    await database.user.update({ where: { id: callerId }, data: { onlineStatus: "call" } });
+    // await database.user.update({ where: { id: callerId }, data: { onlineStatus: "call" } });
 
     if (!recipientDetails) throw new WsError("No account with this phone numeber exist");
     else if (!roomDeatials) throw new WsError("No ChatRoom with this id exist");
 
-    const message = await database.message.create({ data: { senderId: callerId, recipientId: recipientDetails.id, content: callType, type: "call", roomId, callType } });
+    const message = await database.message.create({
+      data: { senderId: callerId, recipientId: recipientDetails.id, content: JSON.stringify({ content: callType, content_id: v4() }), type: "call", roomId, callType },
+    });
 
     socket.emit("response", { action: "call", callAction: "sendSDPOffer", message });
 
@@ -72,7 +75,7 @@ export class CallService {
   }
 
   async cancelCall(socket: SocketV1) {
-    const callCancellerId= socket.authUserId;
+    const callCancellerId = socket.authUserId;
     await database.user.update({ where: { id: callCancellerId }, data: { onlineStatus: "online" } });
   }
 }
