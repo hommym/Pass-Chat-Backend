@@ -12,7 +12,7 @@ export const MessageSeeder = async () => {
   const messages = [];
 
   for (let i = 0; i < chatRooms.length; i++) {
-    const chatRoom = chatRooms[Math.floor(Math.random() * chatRooms.length)];
+    const chatRoom = chatRooms[i];
     const senderId = Math.random() < 0.5 ? chatRoom.user1Id : chatRoom.user2Id;
     const recipientId = senderId === chatRoom.user1Id ? chatRoom.user2Id : chatRoom.user1Id;
 

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CallService = void 0;
+const uuid_1 = require("uuid");
 const objects_1 = require("../../common/constants/objects");
 const bodyValidator_1 = require("../../common/middlewares/bodyValidator");
 const errorHandler_1 = require("../../common/middlewares/errorHandler");
@@ -16,12 +17,14 @@ class CallService {
         const roomDeatials = await objects_1.chatService.checkChatRoom(roomId);
         const callerId = socket.authUserId;
         // update caller online status to call
-        await objects_1.database.user.update({ where: { id: callerId }, data: { onlineStatus: "call" } });
+        // await database.user.update({ where: { id: callerId }, data: { onlineStatus: "call" } });
         if (!recipientDetails)
             throw new errorHandler_1.WsError("No account with this phone numeber exist");
         else if (!roomDeatials)
             throw new errorHandler_1.WsError("No ChatRoom with this id exist");
-        const message = await objects_1.database.message.create({ data: { senderId: callerId, recipientId: recipientDetails.id, content: callType, type: "call", roomId, callType } });
+        const message = await objects_1.database.message.create({
+            data: { senderId: callerId, recipientId: recipientDetails.id, content: JSON.stringify({ content: callType, content_id: (0, uuid_1.v4)() }), type: "call", roomId, callType },
+        });
         socket.emit("response", { action: "call", callAction: "sendSDPOffer", message });
         if (recipientDetails.onlineStatus !== "offline" && recipientDetails.onlineStatus !== "call") {
             console.log("Setting Call Notification");
