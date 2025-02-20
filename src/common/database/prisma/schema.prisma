@@ -252,6 +252,7 @@ model UserContact {
    id             Int                 @id @default(autoincrement())
    ownerId        Int                
    phone          String
+   contactName    String?
    profile        String?             @db.LongText
    status         ContactStatus       @default(active)
    roomId         Int?
