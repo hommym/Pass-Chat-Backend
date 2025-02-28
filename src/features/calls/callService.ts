@@ -7,6 +7,7 @@ import { chatRouterWs } from "../chat/ws/chatHandler";
 import { SendIceDetailsDto } from "./dto/sendIceDetailsDto";
 import { SendSdpAnswerDto } from "./dto/sendSdpAnwerDto";
 import { SendSdpOfferDto } from "./dto/sendSdpOfferDto";
+import { CancelCallDto } from "./dto/cancelCallDto";
 
 export class CallService {
   async sendSdpOffer(socket: SocketV1, details: SendSdpOfferDto) {
@@ -18,7 +19,7 @@ export class CallService {
 
     // update caller online status to call
 
-    // await database.user.update({ where: { id: callerId }, data: { onlineStatus: "call" } });
+    await database.user.update({ where: { id: callerId }, data: { onlineStatus: "call" } });
 
     if (!recipientDetails) throw new WsError("No account with this phone numeber exist");
     else if (!roomDeatials) throw new WsError("No ChatRoom with this id exist");
@@ -46,10 +47,10 @@ export class CallService {
     const callerDetails = await database.user.findUnique({ where: { id: callerId } });
     const calleeId = socket.authUserId;
 
-    // await database.user.update({ where: { id: calleeId }, data: { onlineStatus: "call" } });
+    await database.user.update({ where: { id: calleeId }, data: { onlineStatus: "call" } });
     if (!callerDetails) throw new WsError("No Account with this id exist");
 
-    if (callerDetails.onlineStatus === "online") {
+    if (callerDetails.onlineStatus === "call") {
       const callerConnection = chatRouterWs.sockets.get(callerDetails.connectionId!);
       if (callerConnection) {
         callerConnection.emit("callResponse", { type: "spdAnswer", sdpAnswer });
@@ -66,7 +67,7 @@ export class CallService {
 
     if (!recipientDetails) throw new WsError("No Account with this id exist");
 
-    if (recipientDetails.onlineStatus === "online") {
+    if (recipientDetails.onlineStatus === "call") {
       const callerConnection = chatRouterWs.sockets.get(recipientDetails.connectionId!);
       if (callerConnection) {
         callerConnection.emit("callResponse", { type: "iceDetails", iceDetails });
@@ -74,8 +75,22 @@ export class CallService {
     }
   }
 
-  async cancelCall(socket: SocketV1) {
-    const callCancellerId = socket.authUserId;
-    await database.user.update({ where: { id: callCancellerId }, data: { onlineStatus: "online" } });
+  async endCall(socket: SocketV1, cancelCallDto: CancelCallDto) {
+    await bodyValidatorWs(CancelCallDto, cancelCallDto);
+    const { participantsIds } = cancelCallDto;
+    // const isWebUser = socket.isWebUser;
+    await database.user.updateMany({ where: { id: { in: participantsIds } }, data: { onlineStatus: "online" } });
+
+    const users = await database.user.findMany({ where: { id: { in: participantsIds } }, select: { onlineStatus: true, connectionId: true, webConnectionId: true, onlineStatusWeb: true } });
+    await Promise.all(
+      users.map(async (user) => {
+        if (user.onlineStatus !== "offline") {
+          const userConnection = chatRouterWs.sockets.get(user.connectionId!);
+          if (userConnection) {
+            userConnection.emit("callResponse", { type: "endCall" });
+          }
+        }
+      })
+    );
   }
 }

@@ -15,10 +15,8 @@ const callController = async (socket, request) => {
     }
     else if (callAction === "startGroupCall") {
     }
-    else if (callAction === "cancelPrivateCall") {
-        await objects_1.callService.cancelCall(socket);
-    }
-    else if (callAction === "leaveGroupCall") {
+    else if (callAction === "endCall") {
+        await objects_1.callService.endCall(socket, details);
     }
     else {
         // join group call

@@ -9,6 +9,7 @@ const chatHandler_1 = require("../chat/ws/chatHandler");
 const sendIceDetailsDto_1 = require("./dto/sendIceDetailsDto");
 const sendSdpAnwerDto_1 = require("./dto/sendSdpAnwerDto");
 const sendSdpOfferDto_1 = require("./dto/sendSdpOfferDto");
+const cancelCallDto_1 = require("./dto/cancelCallDto");
 class CallService {
     async sendSdpOffer(socket, details) {
         await (0, bodyValidator_1.bodyValidatorWs)(sendSdpOfferDto_1.SendSdpOfferDto, details);
@@ -17,7 +18,7 @@ class CallService {
         const roomDeatials = await objects_1.chatService.checkChatRoom(roomId);
         const callerId = socket.authUserId;
         // update caller online status to call
-        // await database.user.update({ where: { id: callerId }, data: { onlineStatus: "call" } });
+        await objects_1.database.user.update({ where: { id: callerId }, data: { onlineStatus: "call" } });
         if (!recipientDetails)
             throw new errorHandler_1.WsError("No account with this phone numeber exist");
         else if (!roomDeatials)
@@ -41,10 +42,10 @@ class CallService {
         const { callerId, sdpAnswer } = details;
         const callerDetails = await objects_1.database.user.findUnique({ where: { id: callerId } });
         const calleeId = socket.authUserId;
-        // await database.user.update({ where: { id: calleeId }, data: { onlineStatus: "call" } });
+        await objects_1.database.user.update({ where: { id: calleeId }, data: { onlineStatus: "call" } });
         if (!callerDetails)
             throw new errorHandler_1.WsError("No Account with this id exist");
-        if (callerDetails.onlineStatus === "online") {
+        if (callerDetails.onlineStatus === "call") {
             const callerConnection = chatHandler_1.chatRouterWs.sockets.get(callerDetails.connectionId);
             if (callerConnection) {
                 callerConnection.emit("callResponse", { type: "spdAnswer", sdpAnswer });
@@ -57,16 +58,27 @@ class CallService {
         const recipientDetails = await objects_1.database.user.findUnique({ where: { id: recipientId } });
         if (!recipientDetails)
             throw new errorHandler_1.WsError("No Account with this id exist");
-        if (recipientDetails.onlineStatus === "online") {
+        if (recipientDetails.onlineStatus === "call") {
             const callerConnection = chatHandler_1.chatRouterWs.sockets.get(recipientDetails.connectionId);
             if (callerConnection) {
                 callerConnection.emit("callResponse", { type: "iceDetails", iceDetails });
             }
         }
     }
-    async cancelCall(socket) {
-        const callCancellerId = socket.authUserId;
-        await objects_1.database.user.update({ where: { id: callCancellerId }, data: { onlineStatus: "online" } });
+    async endCall(socket, cancelCallDto) {
+        await (0, bodyValidator_1.bodyValidatorWs)(cancelCallDto_1.CancelCallDto, cancelCallDto);
+        const { participantsIds } = cancelCallDto;
+        // const isWebUser = socket.isWebUser;
+        await objects_1.database.user.updateMany({ where: { id: { in: participantsIds } }, data: { onlineStatus: "online" } });
+        const users = await objects_1.database.user.findMany({ where: { id: { in: participantsIds } }, select: { onlineStatus: true, connectionId: true, webConnectionId: true, onlineStatusWeb: true } });
+        await Promise.all(users.map(async (user) => {
+            if (user.onlineStatus !== "offline") {
+                const userConnection = chatHandler_1.chatRouterWs.sockets.get(user.connectionId);
+                if (userConnection) {
+                    userConnection.emit("callResponse", { type: "endCall" });
+                }
+            }
+        }));
     }
 }
 exports.CallService = CallService;

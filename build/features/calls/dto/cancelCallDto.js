@@ -9,19 +9,15 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CallWsRequestDto = void 0;
+exports.CancelCallDto = void 0;
 const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
-class CallWsRequestDto {
+class CancelCallDto {
 }
-exports.CallWsRequestDto = CallWsRequestDto;
+exports.CancelCallDto = CancelCallDto;
 __decorate([
     (0, class_transformer_1.Expose)(),
-    (0, class_validator_1.IsIn)(["sendSDPOffer", "sendSDPAnswer", "sendICEDetails", "startGroupCall", "joinGroupCall", "leaveGroupCall", "endCall"]),
-    __metadata("design:type", String)
-], CallWsRequestDto.prototype, "callAction", void 0);
-__decorate([
-    (0, class_transformer_1.Expose)(),
-    (0, class_validator_1.IsNotEmptyObject)(),
-    __metadata("design:type", Object)
-], CallWsRequestDto.prototype, "details", void 0);
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsInt)({ each: true }),
+    __metadata("design:type", Array)
+], CancelCallDto.prototype, "participantsIds", void 0);
