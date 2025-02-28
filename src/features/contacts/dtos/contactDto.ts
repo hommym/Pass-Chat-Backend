@@ -1,10 +1,11 @@
 import { Expose } from "class-transformer";
-import { IsString, IsPhoneNumber } from "class-validator";
+import { IsString, IsPhoneNumber, IsOptional } from "class-validator";
 
 export class ContactDto {
   @Expose()
+  @IsOptional()
   @IsString()
-  contactName: string;
+  contactName: string|null;
 
   @Expose()
   @IsPhoneNumber()

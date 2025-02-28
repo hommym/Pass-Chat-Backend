@@ -26,7 +26,7 @@ class CallService {
             data: { senderId: callerId, recipientId: recipientDetails.id, content: JSON.stringify({ content: callType, content_id: (0, uuid_1.v4)() }), type: "call", roomId, callType },
         });
         socket.emit("response", { action: "call", callAction: "sendSDPOffer", message });
-        if (recipientDetails.onlineStatus !== "offline" && recipientDetails.onlineStatus !== "call") {
+        if (recipientDetails.onlineStatus === "online") {
             console.log("Setting Call Notification");
             const recipientConnection = chatHandler_1.chatRouterWs.sockets.get(recipientDetails.connectionId);
             if (recipientConnection) {
@@ -41,10 +41,10 @@ class CallService {
         const { callerId, sdpAnswer } = details;
         const callerDetails = await objects_1.database.user.findUnique({ where: { id: callerId } });
         const calleeId = socket.authUserId;
-        await objects_1.database.user.update({ where: { id: calleeId }, data: { onlineStatus: "call" } });
+        // await database.user.update({ where: { id: calleeId }, data: { onlineStatus: "call" } });
         if (!callerDetails)
             throw new errorHandler_1.WsError("No Account with this id exist");
-        if (callerDetails.onlineStatus === "call") {
+        if (callerDetails.onlineStatus === "online") {
             const callerConnection = chatHandler_1.chatRouterWs.sockets.get(callerDetails.connectionId);
             if (callerConnection) {
                 callerConnection.emit("callResponse", { type: "spdAnswer", sdpAnswer });
@@ -57,7 +57,7 @@ class CallService {
         const recipientDetails = await objects_1.database.user.findUnique({ where: { id: recipientId } });
         if (!recipientDetails)
             throw new errorHandler_1.WsError("No Account with this id exist");
-        if (recipientDetails.onlineStatus === "call") {
+        if (recipientDetails.onlineStatus === "online") {
             const callerConnection = chatHandler_1.chatRouterWs.sockets.get(recipientDetails.connectionId);
             if (callerConnection) {
                 callerConnection.emit("callResponse", { type: "iceDetails", iceDetails });

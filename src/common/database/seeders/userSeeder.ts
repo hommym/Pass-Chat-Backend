@@ -33,6 +33,9 @@ export const UserSeeder = async () => {
     { phone: "+233207674873", fullName: "Mavis Dugan", profile: null },
     { phone: "+233550672873", fullName: "Charles Lary", profile: null },
     { phone: "+233205748569", fullName: "Victoria Arthur", profile: null },
+    { phone: "+233243125679", fullName: "Victor Arthur", profile: null },
+    { phone: "+233543215678", fullName: "Chloe Arthur", profile: null },
+    { phone: "+233557883185", fullName: "Mavinco Arthur", profile: null },
     {
       phone: "+233550663440",
       fullName: "Herberth Arthur",

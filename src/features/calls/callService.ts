@@ -29,7 +29,7 @@ export class CallService {
 
     socket.emit("response", { action: "call", callAction: "sendSDPOffer", message });
 
-    if (recipientDetails.onlineStatus !== "offline" && recipientDetails.onlineStatus !== "call") {
+    if (recipientDetails.onlineStatus === "online") {
       console.log("Setting Call Notification");
       const recipientConnection = chatRouterWs.sockets.get(recipientDetails.connectionId!);
       if (recipientConnection) {
@@ -46,10 +46,10 @@ export class CallService {
     const callerDetails = await database.user.findUnique({ where: { id: callerId } });
     const calleeId = socket.authUserId;
 
-    await database.user.update({ where: { id: calleeId }, data: { onlineStatus: "call" } });
+    // await database.user.update({ where: { id: calleeId }, data: { onlineStatus: "call" } });
     if (!callerDetails) throw new WsError("No Account with this id exist");
 
-    if (callerDetails.onlineStatus === "call") {
+    if (callerDetails.onlineStatus === "online") {
       const callerConnection = chatRouterWs.sockets.get(callerDetails.connectionId!);
       if (callerConnection) {
         callerConnection.emit("callResponse", { type: "spdAnswer", sdpAnswer });
@@ -66,7 +66,7 @@ export class CallService {
 
     if (!recipientDetails) throw new WsError("No Account with this id exist");
 
-    if (recipientDetails.onlineStatus === "call") {
+    if (recipientDetails.onlineStatus === "online") {
       const callerConnection = chatRouterWs.sockets.get(recipientDetails.connectionId!);
       if (callerConnection) {
         callerConnection.emit("callResponse", { type: "iceDetails", iceDetails });
