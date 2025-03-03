@@ -157,3 +157,33 @@ dashboardRouter.get(
     res.status(200).json(await dashboardService.getAnalyticsPageData());
   })
 );
+
+dashboardRouter.post(
+  "/database/backup",
+  verifyJwt,
+  checkAccountType("admin"),
+  asyncHandler(async (req: Request, res: Response) => {
+    const dateOfBackup = await dashboardService.backupDatabase();
+    res.status(201).json({ message: `Database Backup Sucessfull For Date:${dateOfBackup}` });
+  })
+);
+
+dashboardRouter.get(
+  "/database/restore/backup/:date",
+  verifyJwt,
+  checkAccountType("admin"),
+  asyncHandler(async (req: Request, res: Response) => {
+    // await dashboardService.backupDatabase();
+    res.status(204).end();
+  })
+);
+
+dashboardRouter.get(
+  "/database/backup/dates",
+  verifyJwt,
+  checkAccountType("admin"),
+  asyncHandler(async (req: Request, res: Response) => {
+    // await dashboardService.backupDatabase();
+    res.status(204).end();
+  })
+);

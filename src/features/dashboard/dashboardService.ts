@@ -1,8 +1,14 @@
+import dotenv from "dotenv";
+dotenv.config();
 import { CommunityType, OS, User } from "@prisma/client";
 import { appEvents, database } from "../../common/constants/objects";
 import { getCurrentDate, getYesterdayDate } from "../../common/helpers/date";
 import { UpdateCommunityVerificationStatus } from "./dto/updateCommunityVerficationStatusDto";
 import { AppError } from "../../common/middlewares/errorHandler";
+import { join } from "path";
+import { exec } from "child_process";
+import { Response } from "express";
+import { execAsync } from "../../common/helpers/classes/asyncCmd";
 
 export class DashboardService {
   async addToDailyUsers(args: { userId: number; platform: OS; timezone: string }) {
@@ -281,5 +287,19 @@ export class DashboardService {
       deviceAndTimezoneStats,
       topPerformingGroups: topPerformingGroups.length <= 5 ? topPerformingGroups : topPerformingGroups.slice(0, 5),
     };
+  }
+
+  async backupDatabase() {
+    try {
+      const now = new Date().toISOString().replace(/[:.]/g, "-");
+      const storagePath = join(__dirname, "..", "..", "..", `/storage/database_backups/${now}.sql`);
+      const command = `mysqldump -u ${process.env.DATABASE_USER} -p'${process.env.DATABASE_PASSWORD}' ${process.env.DATABASE_NAME} > ${storagePath}`;
+      // console.log(`Command Executed:${command}`);
+      await execAsync(command);
+      return now;
+    } catch (error) {
+      console.log((error as Error).message);
+      throw new AppError("Database backup failed, contact database manager.", 500);
+    }
   }
 }

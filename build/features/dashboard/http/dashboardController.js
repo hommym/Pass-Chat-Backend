@@ -88,3 +88,15 @@ exports.dashboardRouter.get("/content-management", verifyJwt_1.verifyJwt, (0, ch
 exports.dashboardRouter.get("/analytics", verifyJwt_1.verifyJwt, (0, checkAccountType_1.checkAccountType)("admin"), (0, express_async_handler_1.default)(async (req, res) => {
     res.status(200).json(await objects_1.dashboardService.getAnalyticsPageData());
 }));
+exports.dashboardRouter.post("/database/backup", verifyJwt_1.verifyJwt, (0, checkAccountType_1.checkAccountType)("admin"), (0, express_async_handler_1.default)(async (req, res) => {
+    const dateOfBackup = await objects_1.dashboardService.backupDatabase();
+    res.status(201).json({ message: `Database Backup Sucessfull For Date:${dateOfBackup}` });
+}));
+exports.dashboardRouter.get("/database/restore/backup/:date", verifyJwt_1.verifyJwt, (0, checkAccountType_1.checkAccountType)("admin"), (0, express_async_handler_1.default)(async (req, res) => {
+    // await dashboardService.backupDatabase();
+    res.status(204).end();
+}));
+exports.dashboardRouter.get("/database/backup/dates", verifyJwt_1.verifyJwt, (0, checkAccountType_1.checkAccountType)("admin"), (0, express_async_handler_1.default)(async (req, res) => {
+    // await dashboardService.backupDatabase();
+    res.status(204).end();
+}));

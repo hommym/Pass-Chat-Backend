@@ -1,9 +1,16 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DashboardService = void 0;
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
 const objects_1 = require("../../common/constants/objects");
 const date_1 = require("../../common/helpers/date");
 const errorHandler_1 = require("../../common/middlewares/errorHandler");
+const path_1 = require("path");
+const asyncCmd_1 = require("../../common/helpers/classes/asyncCmd");
 class DashboardService {
     async addToDailyUsers(args) {
         const { userId, platform, timezone } = args;
@@ -256,6 +263,20 @@ class DashboardService {
             deviceAndTimezoneStats,
             topPerformingGroups: topPerformingGroups.length <= 5 ? topPerformingGroups : topPerformingGroups.slice(0, 5),
         };
+    }
+    async backupDatabase() {
+        try {
+            const now = new Date().toISOString().replace(/[:.]/g, "-");
+            const storagePath = (0, path_1.join)(__dirname, "..", "..", "..", `/storage/database_backups/${now}.sql`);
+            const command = `mysqldump -u ${process.env.DATABASE_USER} -p'${process.env.DATABASE_PASSWORD}' ${process.env.DATABASE_NAME} > ${storagePath}`;
+            // console.log(`Command Executed:${command}`);
+            await (0, asyncCmd_1.execAsync)(command);
+            return now;
+        }
+        catch (error) {
+            console.log(error.message);
+            throw new errorHandler_1.AppError("Database backup failed, contact database manager.", 500);
+        }
     }
 }
 exports.DashboardService = DashboardService;
