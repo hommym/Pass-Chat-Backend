@@ -92,11 +92,11 @@ exports.dashboardRouter.post("/database/backup", verifyJwt_1.verifyJwt, (0, chec
     const dateOfBackup = await objects_1.dashboardService.backupDatabase();
     res.status(201).json({ message: `Database Backup Sucessfull For Date:${dateOfBackup}` });
 }));
-exports.dashboardRouter.get("/database/restore/backup/:date", verifyJwt_1.verifyJwt, (0, checkAccountType_1.checkAccountType)("admin"), (0, express_async_handler_1.default)(async (req, res) => {
-    // await dashboardService.backupDatabase();
-    res.status(204).end();
+exports.dashboardRouter.put("/database/restore/backup/:date", verifyJwt_1.verifyJwt, (0, checkAccountType_1.checkAccountType)("admin"), (0, express_async_handler_1.default)(async (req, res) => {
+    const { date } = req.params;
+    await objects_1.dashboardService.restoreBackup(date);
+    res.status(200).json({ message: "Backup Restore Sucessfull" });
 }));
 exports.dashboardRouter.get("/database/backup/dates", verifyJwt_1.verifyJwt, (0, checkAccountType_1.checkAccountType)("admin"), (0, express_async_handler_1.default)(async (req, res) => {
-    // await dashboardService.backupDatabase();
-    res.status(204).end();
+    res.status(200).json({ backupDates: await objects_1.dashboardService.getDatabaseBackupDates() });
 }));

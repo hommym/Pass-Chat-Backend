@@ -168,13 +168,14 @@ dashboardRouter.post(
   })
 );
 
-dashboardRouter.get(
+dashboardRouter.put(
   "/database/restore/backup/:date",
   verifyJwt,
   checkAccountType("admin"),
   asyncHandler(async (req: Request, res: Response) => {
-    // await dashboardService.backupDatabase();
-    res.status(204).end();
+    const { date } = req.params;
+    await dashboardService.restoreBackup(date);
+    res.status(200).json({ message: "Backup Restore Sucessfull" });
   })
 );
 
@@ -183,7 +184,6 @@ dashboardRouter.get(
   verifyJwt,
   checkAccountType("admin"),
   asyncHandler(async (req: Request, res: Response) => {
-    // await dashboardService.backupDatabase();
-    res.status(204).end();
+    res.status(200).json({ backupDates: await dashboardService.getDatabaseBackupDates() });
   })
 );

@@ -11,6 +11,8 @@ const date_1 = require("../../common/helpers/date");
 const errorHandler_1 = require("../../common/middlewares/errorHandler");
 const path_1 = require("path");
 const asyncCmd_1 = require("../../common/helpers/classes/asyncCmd");
+const promises_1 = require("fs/promises");
+const path_2 = require("../../common/helpers/path");
 class DashboardService {
     async addToDailyUsers(args) {
         const { userId, platform, timezone } = args;
@@ -277,6 +279,24 @@ class DashboardService {
             console.log(error.message);
             throw new errorHandler_1.AppError("Database backup failed, contact database manager.", 500);
         }
+    }
+    async restoreBackup(date) {
+        // Regular expression to match the date format "2025-03-03T17-15-39-498Z"
+        const dateFormatRegex = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/;
+        if (!dateFormatRegex.test(date)) {
+            throw new errorHandler_1.AppError("Invalid date format. Expected format: YYYY-MM-DDTHH-MM-SS-SSSZ", 400);
+        }
+        const backupFilePath = (0, path_1.join)(__dirname, "..", "..", "..", `/storage/database_backups/${date}.sql`);
+        if (!(await (0, path_2.checkPathExists)(backupFilePath))) {
+            throw new errorHandler_1.AppError(`No backup was found for this date:${date}`, 404);
+        }
+        const command = `mysql -u ${process.env.DATABASE_USER} -p'${process.env.DATABASE_PASSWORD}' ${process.env.DATABASE_NAME} < ${backupFilePath}`;
+        await (0, asyncCmd_1.execAsync)(command);
+    }
+    async getDatabaseBackupDates() {
+        const backupFilesPath = (0, path_1.join)(__dirname, "..", "..", "..", `/storage/database_backups`);
+        const backupFilesDates = (await (0, promises_1.readdir)(backupFilesPath)).map((backupDate) => backupDate.split(".s")[0]);
+        return backupFilesDates;
     }
 }
 exports.DashboardService = DashboardService;
