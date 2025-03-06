@@ -27,7 +27,7 @@ export class ChatService {
 
   async checkChatRoom(roomId: number) {
     // this method checks for a chat room exist
-    return await database.chatRoom.findUnique({ where: { id: roomId }, include: { community: true } });
+    return await database.chatRoom.findUnique({ where: { id: roomId }, include: { community: { include: { members: true } } } });
   }
 
   private async checkUsersOnlineStatus(userId: number, checkForWebUser: boolean = false) {
@@ -74,28 +74,29 @@ export class ChatService {
           await chatNotificationService.saveNotification(savedMessage.id, recipientId!, "mobile", "saveMessage");
         }
       }
+
+      // syn mechanism
+      const senderDetails = (await database.user.findUnique({ where: { id: senderId } }))!;
+      if ((socket as SocketV1).isWebUser) await chatNotificationService.saveNotification(savedMessage.id, senderId, "mobile", "saveMessage");
+      else if (senderDetails.webLoggedIn) await chatNotificationService.saveNotification(savedMessage.id, senderId, "browser", "saveMessage");
     } else {
       // for commnunity chat
       if (!communityId) throw new WsError(`No value passed for communityId`);
-      else if (communityId !== roomDetails.community[0]?.id) throw new WsError(`roomId used does not belong to this ${roomType}`);
+      else if (communityId !== roomDetails.community[0].id) throw new WsError(`roomId used does not belong to this ${roomType}`);
 
       if (!(await communityService.isMember(communityId, senderId))) throw new WsError("Sender is not a member");
-      appEvents.emit("add-to-active-communities", { communityId ,userId:senderId,type:roomType});
+      appEvents.emit("add-to-active-communities", { communityId, userId: senderId, type: roomType });
 
       savedMessage = await database.message.create({ data: { roomId, content, type: dataType, senderId, communityId, replyTo, read: true, recieved: true } });
       // send the sender a response.
       socket.emit("response", { action: "sendMessage", data: savedMessage });
 
-      const allMembers = await database.communityMember.findMany({ where: { communityId } });
+      const allMembers = roomDetails.community[0].members;
+      // await database.communityMember.findMany({ where: { communityId } });
 
       const membersIds = allMembers.map((member) => member.userId);
       appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId: savedMessage.id });
     }
-
-    // syn mechanism
-    const senderDetails = (await database.user.findUnique({ where: { id: senderId } }))!;
-    if ((socket as SocketV1).isWebUser) await chatNotificationService.saveNotification(savedMessage.id, senderId, "mobile", "saveMessage");
-    else if (senderDetails.webLoggedIn) await chatNotificationService.saveNotification(savedMessage.id, senderId, "browser", "saveMessage");
   }
 
   async getUserStatus(socket: Socket, data: CheckStatusDto) {
@@ -232,31 +233,77 @@ export class ChatService {
 
   async updateMessage(userId: number, messageData: UpdateMessageDto, webUser: boolean = false) {
     const { messageId, newMessage } = messageData;
-    const message = await database.message.findUnique({ where: { id: messageId } });
+    const message = await database.message.findUnique({ where: { id: messageId }, include: { room: { include: { community: { include: { members: true } } } } } });
 
     if (!message) throw new AppError("No message with this id exist", 404);
     else if (message.senderId !== userId) throw new AppError("You cannot edit messages you did not send", 402);
     else if (message.type !== "text") throw new AppError("Only messages of type text can be edited", 422);
 
     await database.message.update({ where: { id: messageId }, data: { content: newMessage } });
+    const roomDetails = message.room;
 
-    await chatNotificationService.saveNotification(messageId, message.recipientId!);
+    if (roomDetails.type === "private" && roomDetails.status === "active") {
+      const recipientId = message.recipientId!;
+      await chatNotificationService.saveNotification(messageId, recipientId);
+      const recipientAccount = await database.user.findUnique({ where: { id: recipientId } });
+      // handling sync mechanism for the other user invloved with this message
+      if (recipientAccount!.webLoggedIn) {
+        await chatNotificationService.saveNotification(messageId, recipientId, "browser");
+      }
 
-    // handling sync mechanism and community message update(N/A)
+      // handling sync mechanism for the sender of the message
+      if (webUser) {
+        await chatNotificationService.saveNotification(messageId, userId);
+      } else {
+        const senderAccount = await database.user.findUnique({ where: { id: userId } });
+        if (senderAccount!.webLoggedIn) {
+          await chatNotificationService.saveNotification(messageId, userId, "browser");
+        }
+      }
+    } else {
+      // for groups or channels message update
+      const communityId = roomDetails.community[0].id;
+      const allMembers = roomDetails.community[0].members;
+
+      const membersIds = allMembers.map((member) => member.userId);
+      appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId });
+    }
   }
 
   async deleteMessage(messageId: number, userId: number, webUser: boolean = false) {
-    const message = await database.message.findUnique({ where: { id: messageId } });
+    const message = await database.message.findUnique({ where: { id: messageId }, include: { room: { include: { community: { include: { members: true } } } } } });
 
     if (!message) throw new AppError("No message with this id exist", 404);
-    else if (message.senderId !== userId) throw new AppError("You cannot edit messages you did not send", 402);
+    else if (message.senderId !== userId) throw new AppError("You cannot delete messages you did not send", 402);
 
-    if (message.recieved) {
-      await database.message.update({ where: { id: messageId }, data: { deleteFlag: true } });
-      await chatNotificationService.saveNotification(messageId, message.recipientId!, "mobile", "deleteMessage");
-      // handling sync mechanism and community message update(N/A)
-      return;
+    await database.message.update({ where: { id: messageId }, data: { deleteFlag: true } });
+    const roomDetails = message.room;
+
+    if (roomDetails.type === "private" && roomDetails.status === "active") {
+      const recipientId = message.recipientId!;
+      await chatNotificationService.saveNotification(messageId, recipientId, "mobile", "deleteMessage");
+      const recipientAccount = await database.user.findUnique({ where: { id: recipientId } });
+      // handling sync mechanism for the other user invloved with this message
+      if (recipientAccount!.webLoggedIn) {
+        await chatNotificationService.saveNotification(messageId, recipientId, "browser", "deleteMessage");
+      }
+
+      // handling sync mechanism for the sender of the message
+      if (webUser) {
+        await chatNotificationService.saveNotification(messageId, userId, "mobile", "deleteMessage");
+      } else {
+        const senderAccount = await database.user.findUnique({ where: { id: userId } });
+        if (senderAccount!.webLoggedIn) {
+          await chatNotificationService.saveNotification(messageId, userId, "browser", "deleteMessage");
+        }
+      }
+    } else {
+      // for groups or channels message update
+      const communityId = roomDetails.community[0].id;
+      const allMembers = roomDetails.community[0].members;
+
+      const membersIds = allMembers.map((member) => member.userId);
+      appEvents.emit("set-community-members-notifications", { action: "deleteMessage", communityId, membersIds, platform: "mobile", messageId });
     }
-    await database.message.delete({ where: { id: messageId } });
   }
 }

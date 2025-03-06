@@ -21,7 +21,7 @@ class ChatService {
     }
     async checkChatRoom(roomId) {
         // this method checks for a chat room exist
-        return await objects_1.database.chatRoom.findUnique({ where: { id: roomId }, include: { community: true } });
+        return await objects_1.database.chatRoom.findUnique({ where: { id: roomId }, include: { community: { include: { members: true } } } });
     }
     async checkUsersOnlineStatus(userId, checkForWebUser = false) {
         const account = await objects_1.database.user.findUnique({ where: { id: userId } });
@@ -34,7 +34,6 @@ class ChatService {
         return null;
     }
     async sendMessage(socket, message) {
-        var _a;
         const { roomId, content, dataType, recipientId, senderId, replyTo, roomType, communityId } = message;
         let savedMessage;
         const roomDetails = await this.checkChatRoom(roomId);
@@ -73,12 +72,18 @@ class ChatService {
                     await objects_1.chatNotificationService.saveNotification(savedMessage.id, recipientId, "mobile", "saveMessage");
                 }
             }
+            // syn mechanism
+            const senderDetails = (await objects_1.database.user.findUnique({ where: { id: senderId } }));
+            if (socket.isWebUser)
+                await objects_1.chatNotificationService.saveNotification(savedMessage.id, senderId, "mobile", "saveMessage");
+            else if (senderDetails.webLoggedIn)
+                await objects_1.chatNotificationService.saveNotification(savedMessage.id, senderId, "browser", "saveMessage");
         }
         else {
             // for commnunity chat
             if (!communityId)
                 throw new errorHandler_1.WsError(`No value passed for communityId`);
-            else if (communityId !== ((_a = roomDetails.community[0]) === null || _a === void 0 ? void 0 : _a.id))
+            else if (communityId !== roomDetails.community[0].id)
                 throw new errorHandler_1.WsError(`roomId used does not belong to this ${roomType}`);
             if (!(await objects_1.communityService.isMember(communityId, senderId)))
                 throw new errorHandler_1.WsError("Sender is not a member");
@@ -86,16 +91,11 @@ class ChatService {
             savedMessage = await objects_1.database.message.create({ data: { roomId, content, type: dataType, senderId, communityId, replyTo, read: true, recieved: true } });
             // send the sender a response.
             socket.emit("response", { action: "sendMessage", data: savedMessage });
-            const allMembers = await objects_1.database.communityMember.findMany({ where: { communityId } });
+            const allMembers = roomDetails.community[0].members;
+            // await database.communityMember.findMany({ where: { communityId } });
             const membersIds = allMembers.map((member) => member.userId);
             objects_1.appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId: savedMessage.id });
         }
-        // syn mechanism
-        const senderDetails = (await objects_1.database.user.findUnique({ where: { id: senderId } }));
-        if (socket.isWebUser)
-            await objects_1.chatNotificationService.saveNotification(savedMessage.id, senderId, "mobile", "saveMessage");
-        else if (senderDetails.webLoggedIn)
-            await objects_1.chatNotificationService.saveNotification(savedMessage.id, senderId, "browser", "saveMessage");
     }
     async getUserStatus(socket, data) {
         const { phone, roomId } = data;
@@ -224,7 +224,7 @@ class ChatService {
     }
     async updateMessage(userId, messageData, webUser = false) {
         const { messageId, newMessage } = messageData;
-        const message = await objects_1.database.message.findUnique({ where: { id: messageId } });
+        const message = await objects_1.database.message.findUnique({ where: { id: messageId }, include: { room: { include: { community: { include: { members: true } } } } } });
         if (!message)
             throw new errorHandler_1.AppError("No message with this id exist", 404);
         else if (message.senderId !== userId)
@@ -232,22 +232,68 @@ class ChatService {
         else if (message.type !== "text")
             throw new errorHandler_1.AppError("Only messages of type text can be edited", 422);
         await objects_1.database.message.update({ where: { id: messageId }, data: { content: newMessage } });
-        await objects_1.chatNotificationService.saveNotification(messageId, message.recipientId);
-        // handling sync mechanism and community message update(N/A)
+        const roomDetails = message.room;
+        if (roomDetails.type === "private" && roomDetails.status === "active") {
+            const recipientId = message.recipientId;
+            await objects_1.chatNotificationService.saveNotification(messageId, recipientId);
+            const recipientAccount = await objects_1.database.user.findUnique({ where: { id: recipientId } });
+            // handling sync mechanism for the other user invloved with this message
+            if (recipientAccount.webLoggedIn) {
+                await objects_1.chatNotificationService.saveNotification(messageId, recipientId, "browser");
+            }
+            // handling sync mechanism for the sender of the message
+            if (webUser) {
+                await objects_1.chatNotificationService.saveNotification(messageId, userId);
+            }
+            else {
+                const senderAccount = await objects_1.database.user.findUnique({ where: { id: userId } });
+                if (senderAccount.webLoggedIn) {
+                    await objects_1.chatNotificationService.saveNotification(messageId, userId, "browser");
+                }
+            }
+        }
+        else {
+            // for groups or channels message update
+            const communityId = roomDetails.community[0].id;
+            const allMembers = roomDetails.community[0].members;
+            const membersIds = allMembers.map((member) => member.userId);
+            objects_1.appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId });
+        }
     }
     async deleteMessage(messageId, userId, webUser = false) {
-        const message = await objects_1.database.message.findUnique({ where: { id: messageId } });
+        const message = await objects_1.database.message.findUnique({ where: { id: messageId }, include: { room: { include: { community: { include: { members: true } } } } } });
         if (!message)
             throw new errorHandler_1.AppError("No message with this id exist", 404);
         else if (message.senderId !== userId)
             throw new errorHandler_1.AppError("You cannot edit messages you did not send", 402);
-        if (message.recieved) {
-            await objects_1.database.message.update({ where: { id: messageId }, data: { deleteFlag: true } });
-            await objects_1.chatNotificationService.saveNotification(messageId, message.recipientId, "mobile", "deleteMessage");
-            // handling sync mechanism and community message update(N/A)
-            return;
+        await objects_1.database.message.update({ where: { id: messageId }, data: { deleteFlag: true } });
+        const roomDetails = message.room;
+        if (roomDetails.type === "private" && roomDetails.status === "active") {
+            const recipientId = message.recipientId;
+            await objects_1.chatNotificationService.saveNotification(messageId, recipientId, "mobile", "deleteMessage");
+            const recipientAccount = await objects_1.database.user.findUnique({ where: { id: recipientId } });
+            // handling sync mechanism for the other user invloved with this message
+            if (recipientAccount.webLoggedIn) {
+                await objects_1.chatNotificationService.saveNotification(messageId, recipientId, "browser", "deleteMessage");
+            }
+            // handling sync mechanism for the sender of the message
+            if (webUser) {
+                await objects_1.chatNotificationService.saveNotification(messageId, userId, "mobile", "deleteMessage");
+            }
+            else {
+                const senderAccount = await objects_1.database.user.findUnique({ where: { id: userId } });
+                if (senderAccount.webLoggedIn) {
+                    await objects_1.chatNotificationService.saveNotification(messageId, userId, "browser", "deleteMessage");
+                }
+            }
         }
-        await objects_1.database.message.delete({ where: { id: messageId } });
+        else {
+            // for groups or channels message update
+            const communityId = roomDetails.community[0].id;
+            const allMembers = roomDetails.community[0].members;
+            const membersIds = allMembers.map((member) => member.userId);
+            objects_1.appEvents.emit("set-community-members-notifications", { action: "deleteMessage", communityId, membersIds, platform: "mobile", messageId });
+        }
     }
 }
 exports.ChatService = ChatService;

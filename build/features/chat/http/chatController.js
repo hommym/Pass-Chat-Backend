@@ -34,13 +34,15 @@ exports.chatRouter.get("/room", verifyJwt_1.verifyJwt, (0, express_async_handler
 }));
 exports.chatRouter.patch("/message", (0, bodyValidator_1.bodyValidator)(updateMessageDto_1.UpdateMessageDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
     const _a = req.body, { verifiedUserId } = _a, messageData = __rest(_a, ["verifiedUserId"]);
-    await objects_1.chatService.updateMessage(verifiedUserId, messageData);
+    const webUser = req.params.webUser ? true : false; // for differentiating between web and mobile request
+    await objects_1.chatService.updateMessage(verifiedUserId, messageData, webUser);
     res.status(204).end();
 }));
 exports.chatRouter.delete("/message", verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
     const { verifiedUserId, messageId } = req.body;
+    const webUser = req.params.webUser ? true : false;
     if (!messageId)
         throw new errorHandler_1.AppError("No value passed for messageId", 400);
-    await objects_1.chatService.deleteMessage(+messageId, verifiedUserId);
+    await objects_1.chatService.deleteMessage(+messageId, verifiedUserId, webUser);
     res.status(204).end();
 }));

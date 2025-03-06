@@ -35,7 +35,8 @@ chatRouter.patch(
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
     const { verifiedUserId, ...messageData } = req.body;
-    await chatService.updateMessage(verifiedUserId, messageData);
+    const webUser = req.params.webUser ? true : false; // for differentiating between web and mobile request
+    await chatService.updateMessage(verifiedUserId, messageData,webUser);
     res.status(204).end();
   })
 );
@@ -45,8 +46,9 @@ chatRouter.delete(
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
     const { verifiedUserId, messageId } = req.body;
+    const webUser = req.params.webUser ? true : false; 
     if (!messageId) throw new AppError("No value passed for messageId", 400);
-    await chatService.deleteMessage(+messageId, verifiedUserId);
+    await chatService.deleteMessage(+messageId, verifiedUserId,webUser);
     res.status(204).end();
   })
 );
