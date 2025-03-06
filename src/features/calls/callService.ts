@@ -19,7 +19,7 @@ export class CallService {
 
     // update caller online status to call
 
-    await database.user.update({ where: { id: callerId }, data: { onlineStatus: "call" } });
+    await database.user.update({ where: { id: callerId }, data: socket.isWebUser ? { onlineStatusWeb: "call" } : { onlineStatus: "call" } });
 
     if (!recipientDetails) throw new WsError("No account with this phone numeber exist");
     else if (!roomDeatials) throw new WsError("No ChatRoom with this id exist");
@@ -46,12 +46,31 @@ export class CallService {
     const { callerId, sdpAnswer } = details;
     const callerDetails = await database.user.findUnique({ where: { id: callerId } });
     const calleeId = socket.authUserId;
+    const calleeDetails = await database.user.findUnique({ where: { id: calleeId } });
+    const isWebUser = socket.isWebUser;
 
-    await database.user.update({ where: { id: calleeId }, data: { onlineStatus: "call" } });
+    // ending call received on other device
+    if (isWebUser) {
+      if (calleeDetails!.onlineStatus === "online") {
+        const otherDeviceConnection = chatRouterWs.sockets.get(calleeDetails!.connectionId!);
+        if (otherDeviceConnection) {
+          otherDeviceConnection.emit("callResponse", { type: "callPickedByOtherDevice" });
+        }
+      }
+    } else {
+      if (calleeDetails!.webLoggedIn && calleeDetails!.onlineStatusWeb === "online") {
+        const otherDeviceConnection = chatRouterWs.sockets.get(calleeDetails!.webConnectionId!);
+        if (otherDeviceConnection) {
+          otherDeviceConnection.emit("callResponse", { type: "callPickedByOtherDevice" });
+        }
+      }
+    }
+
+    await database.user.update({ where: { id: calleeId }, data: isWebUser ? { onlineStatusWeb: "call" } : { onlineStatus: "call" } });
     if (!callerDetails) throw new WsError("No Account with this id exist");
 
-    if (callerDetails.onlineStatus === "call") {
-      const callerConnection = chatRouterWs.sockets.get(callerDetails.connectionId!);
+    if (callerDetails.onlineStatus === "call" || callerDetails.onlineStatusWeb === "call") {
+      const callerConnection = chatRouterWs.sockets.get(callerDetails.onlineStatus === "call" ? callerDetails.connectionId! : callerDetails.webConnectionId!);
       if (callerConnection) {
         callerConnection.emit("callResponse", { type: "spdAnswer", sdpAnswer });
       }
@@ -67,8 +86,8 @@ export class CallService {
 
     if (!recipientDetails) throw new WsError("No Account with this id exist");
 
-    if (recipientDetails.onlineStatus === "call") {
-      const callerConnection = chatRouterWs.sockets.get(recipientDetails.connectionId!);
+    if (recipientDetails.onlineStatus === "call" || recipientDetails.onlineStatusWeb === "call") {
+      const callerConnection = chatRouterWs.sockets.get(recipientDetails.onlineStatus === "call" ? recipientDetails.connectionId! : recipientDetails.webConnectionId!);
       if (callerConnection) {
         callerConnection.emit("callResponse", { type: "iceDetails", iceDetails });
       }
@@ -79,13 +98,13 @@ export class CallService {
     await bodyValidatorWs(CancelCallDto, cancelCallDto);
     const { participantsIds } = cancelCallDto;
     // const isWebUser = socket.isWebUser;
-    await database.user.updateMany({ where: { id: { in: participantsIds } }, data: { onlineStatus: "online" } });
 
-    const users = await database.user.findMany({ where: { id: { in: participantsIds } }, select: { onlineStatus: true, connectionId: true, webConnectionId: true, onlineStatusWeb: true } });
+    const users = await database.user.findMany({ where: { id: { in: participantsIds } }, select: { onlineStatus: true, connectionId: true, webConnectionId: true, onlineStatusWeb: true, id: true } });
     await Promise.all(
       users.map(async (user) => {
-        if (user.onlineStatus !== "offline") {
-          const userConnection = chatRouterWs.sockets.get(user.connectionId!);
+        await database.user.update({ where: { id: user.id }, data: user.onlineStatus === "call" ? { onlineStatus: "online" } : { onlineStatusWeb: "online" } });
+        if (user.onlineStatus === "call" || user.onlineStatusWeb === "call") {
+          const userConnection = chatRouterWs.sockets.get(user.onlineStatus === "call" ? user.connectionId! : user.webConnectionId!);
           if (userConnection) {
             userConnection.emit("callResponse", { type: "endCall" });
           }

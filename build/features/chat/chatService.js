@@ -265,7 +265,7 @@ class ChatService {
         if (!message)
             throw new errorHandler_1.AppError("No message with this id exist", 404);
         else if (message.senderId !== userId)
-            throw new errorHandler_1.AppError("You cannot edit messages you did not send", 402);
+            throw new errorHandler_1.AppError("You cannot delete messages you did not send", 402);
         await objects_1.database.message.update({ where: { id: messageId }, data: { deleteFlag: true } });
         const roomDetails = message.room;
         if (roomDetails.type === "private" && roomDetails.status === "active") {
