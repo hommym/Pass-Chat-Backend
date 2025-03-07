@@ -36,7 +36,7 @@ chatRouter.patch(
   asyncHandler(async (req: Request, res: Response) => {
     const { verifiedUserId, ...messageData } = req.body;
     const webUser = req.params.webUser ? true : false; // for differentiating between web and mobile request
-    await chatService.updateMessage(verifiedUserId, messageData,webUser);
+    await chatService.updateMessage(verifiedUserId, messageData, webUser);
     res.status(204).end();
   })
 );
@@ -46,9 +46,23 @@ chatRouter.delete(
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
     const { verifiedUserId, messageId } = req.body;
-    const webUser = req.params.webUser ? true : false; 
+    const webUser = req.params.webUser ? true : false;
     if (!messageId) throw new AppError("No value passed for messageId", 400);
-    await chatService.deleteMessage(+messageId, verifiedUserId,webUser);
+    await chatService.deleteMessage(+messageId, verifiedUserId, webUser);
     res.status(204).end();
+  })
+);
+
+chatRouter.patch(
+  "/pin/message/:messageId",
+  verifyJwt,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { messageId } = req.params;
+    try {
+      res.status(200).json(await chatService.pinMessage(+messageId));
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      else throw new AppError("Url parameter messageId should be an integer", 400);
+    }
   })
 );

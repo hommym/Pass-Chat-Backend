@@ -174,11 +174,11 @@ export class ChatService {
   async getAllChatRooms(userId: number) {
     const rooms = await database.chatRoom.findMany({
       where: { OR: [{ user1Id: userId }, { user2Id: userId }], type: "private" },
-      select: { id: true, type: true, user1: { select: { phone: true, id: true } }, user2: { select: { phone: true, id: true } }, createdAt: true },
+      select: { id: true, type: true, user1: { select: { phone: true, id: true } }, user2: { select: { phone: true, id: true } }, createdAt: true, pinnedMessages: true },
     });
     const dataToReturn: object[] = [];
     rooms.forEach((room) => {
-      const { id, createdAt, type, user1, user2 } = room;
+      const { id, createdAt, type, user1, user2, pinnedMessages } = room;
       dataToReturn.push({
         roomId: id,
         roomType: type,
@@ -187,6 +187,7 @@ export class ChatService {
           { id: user1!.id, phone: user1!.phone },
           { id: user2!.id, phone: user2!.phone },
         ],
+        pinnedMessages,
       });
     });
     return dataToReturn;
@@ -305,5 +306,15 @@ export class ChatService {
       const membersIds = allMembers.map((member) => member.userId);
       appEvents.emit("set-community-members-notifications", { action: "deleteMessage", communityId, membersIds, platform: "mobile", messageId });
     }
+  }
+
+  async pinMessage(messageId: number) {
+    const message = await database.message.findUnique({ where: { id: messageId }, include: { room: true } });
+    if (!message) throw new AppError("No Message With this Id Exist", 404);
+    const { id, pinnedMessages } = message.room;
+    const pinnedMessageIds = pinnedMessages ? (pinnedMessages as number[]) : [];
+    pinnedMessageIds.push(messageId);
+    await database.chatRoom.update({ where: { id: id }, data: { pinnedMessages: pinnedMessageIds } });
+    return { message: "Message Pinned Sucessfully" };
   }
 }

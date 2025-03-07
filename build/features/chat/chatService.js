@@ -165,11 +165,11 @@ class ChatService {
     async getAllChatRooms(userId) {
         const rooms = await objects_1.database.chatRoom.findMany({
             where: { OR: [{ user1Id: userId }, { user2Id: userId }], type: "private" },
-            select: { id: true, type: true, user1: { select: { phone: true, id: true } }, user2: { select: { phone: true, id: true } }, createdAt: true },
+            select: { id: true, type: true, user1: { select: { phone: true, id: true } }, user2: { select: { phone: true, id: true } }, createdAt: true, pinnedMessages: true },
         });
         const dataToReturn = [];
         rooms.forEach((room) => {
-            const { id, createdAt, type, user1, user2 } = room;
+            const { id, createdAt, type, user1, user2, pinnedMessages } = room;
             dataToReturn.push({
                 roomId: id,
                 roomType: type,
@@ -178,6 +178,7 @@ class ChatService {
                     { id: user1.id, phone: user1.phone },
                     { id: user2.id, phone: user2.phone },
                 ],
+                pinnedMessages,
             });
         });
         return dataToReturn;
@@ -294,6 +295,16 @@ class ChatService {
             const membersIds = allMembers.map((member) => member.userId);
             objects_1.appEvents.emit("set-community-members-notifications", { action: "deleteMessage", communityId, membersIds, platform: "mobile", messageId });
         }
+    }
+    async pinMessage(messageId) {
+        const message = await objects_1.database.message.findUnique({ where: { id: messageId }, include: { room: true } });
+        if (!message)
+            throw new errorHandler_1.AppError("No Message With this Id Exist", 404);
+        const { id, pinnedMessages } = message.room;
+        const pinnedMessageIds = pinnedMessages ? pinnedMessages : [];
+        pinnedMessageIds.push(messageId);
+        await objects_1.database.chatRoom.update({ where: { id: id }, data: { pinnedMessages: pinnedMessageIds } });
+        return { message: "Message Pinned Sucessfully" };
     }
 }
 exports.ChatService = ChatService;

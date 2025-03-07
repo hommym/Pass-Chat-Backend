@@ -46,3 +46,15 @@ exports.chatRouter.delete("/message", verifyJwt_1.verifyJwt, (0, express_async_h
     await objects_1.chatService.deleteMessage(+messageId, verifiedUserId, webUser);
     res.status(204).end();
 }));
+exports.chatRouter.patch("/pin/message/:messageId", verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
+    const { messageId } = req.params;
+    try {
+        res.status(200).json(await objects_1.chatService.pinMessage(+messageId));
+    }
+    catch (error) {
+        if (error instanceof errorHandler_1.AppError)
+            throw error;
+        else
+            throw new errorHandler_1.AppError("Url parameter messageId should be an integer", 400);
+    }
+}));
