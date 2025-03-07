@@ -27,15 +27,25 @@ class CallService {
             data: { senderId: callerId, recipientId: recipientDetails.id, content: JSON.stringify({ content: callType, content_id: (0, uuid_1.v4)() }), type: "call", roomId, callType },
         });
         socket.emit("response", { action: "call", callAction: "sendSDPOffer", message });
-        if (recipientDetails.onlineStatus === "online") {
-            console.log("Setting Call Notification");
+        //sending offer to mobile
+        if (recipientDetails.onlineStatus === "online" && recipientDetails.onlineStatusWeb !== "call") {
+            // console.log("Setting Call Notification");
             const recipientConnection = chatHandler_1.chatRouterWs.sockets.get(recipientDetails.connectionId);
             if (recipientConnection) {
                 recipientConnection.emit("callResponse", { type: "spdOffer", sdpOffer, message });
-                return;
             }
         }
-        await objects_1.chatNotificationService.saveNotification(message.id, recipientDetails.id, "mobile", "saveMessage");
+        else
+            await objects_1.chatNotificationService.saveNotification(message.id, recipientDetails.id, "mobile", "saveMessage");
+        //sending offer to web
+        if (recipientDetails.onlineStatusWeb === "online" && recipientDetails.onlineStatus !== "call") {
+            const recipientWebConnection = chatHandler_1.chatRouterWs.sockets.get(recipientDetails.webConnectionId);
+            if (recipientWebConnection) {
+                recipientWebConnection.emit("callResponse", { type: "spdOffer", sdpOffer, message });
+            }
+        }
+        else if (recipientDetails.webLoggedIn)
+            await objects_1.chatNotificationService.saveNotification(message.id, recipientDetails.id, "browser", "saveMessage");
     }
     async sendSdpAnswer(socket, details) {
         await (0, bodyValidator_1.bodyValidatorWs)(sendSdpAnwerDto_1.SendSdpAnswerDto, details);
@@ -44,6 +54,8 @@ class CallService {
         const calleeId = socket.authUserId;
         const calleeDetails = await objects_1.database.user.findUnique({ where: { id: calleeId } });
         const isWebUser = socket.isWebUser;
+        if (!callerDetails)
+            throw new errorHandler_1.WsError("No Account with this id exist");
         // ending call received on other device
         if (isWebUser) {
             if (calleeDetails.onlineStatus === "online") {
@@ -54,7 +66,7 @@ class CallService {
             }
         }
         else {
-            if (calleeDetails.webLoggedIn && calleeDetails.onlineStatusWeb === "online") {
+            if (calleeDetails.onlineStatusWeb === "online") {
                 const otherDeviceConnection = chatHandler_1.chatRouterWs.sockets.get(calleeDetails.webConnectionId);
                 if (otherDeviceConnection) {
                     otherDeviceConnection.emit("callResponse", { type: "callPickedByOtherDevice" });
@@ -62,8 +74,6 @@ class CallService {
             }
         }
         await objects_1.database.user.update({ where: { id: calleeId }, data: isWebUser ? { onlineStatusWeb: "call" } : { onlineStatus: "call" } });
-        if (!callerDetails)
-            throw new errorHandler_1.WsError("No Account with this id exist");
         if (callerDetails.onlineStatus === "call" || callerDetails.onlineStatusWeb === "call") {
             const callerConnection = chatHandler_1.chatRouterWs.sockets.get(callerDetails.onlineStatus === "call" ? callerDetails.connectionId : callerDetails.webConnectionId);
             if (callerConnection) {

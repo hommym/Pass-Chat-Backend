@@ -30,15 +30,22 @@ export class CallService {
 
     socket.emit("response", { action: "call", callAction: "sendSDPOffer", message });
 
-    if (recipientDetails.onlineStatus === "online") {
-      console.log("Setting Call Notification");
+    //sending offer to mobile
+    if (recipientDetails.onlineStatus === "online" && recipientDetails.onlineStatusWeb !== "call") {
+      // console.log("Setting Call Notification");
       const recipientConnection = chatRouterWs.sockets.get(recipientDetails.connectionId!);
       if (recipientConnection) {
         recipientConnection.emit("callResponse", { type: "spdOffer", sdpOffer, message });
-        return;
       }
-    }
-    await chatNotificationService.saveNotification(message.id, recipientDetails.id, "mobile", "saveMessage");
+    } else await chatNotificationService.saveNotification(message.id, recipientDetails.id, "mobile", "saveMessage");
+
+    //sending offer to web
+    if (recipientDetails.onlineStatusWeb === "online" && recipientDetails.onlineStatus !== "call") {
+      const recipientWebConnection = chatRouterWs.sockets.get(recipientDetails.webConnectionId!);
+      if (recipientWebConnection) {
+        recipientWebConnection.emit("callResponse", { type: "spdOffer", sdpOffer, message });
+      }
+    } else if (recipientDetails.webLoggedIn) await chatNotificationService.saveNotification(message.id, recipientDetails.id, "browser", "saveMessage");
   }
 
   async sendSdpAnswer(socket: SocketV1, details: SendSdpAnswerDto) {
@@ -49,6 +56,8 @@ export class CallService {
     const calleeDetails = await database.user.findUnique({ where: { id: calleeId } });
     const isWebUser = socket.isWebUser;
 
+    if (!callerDetails) throw new WsError("No Account with this id exist");
+
     // ending call received on other device
     if (isWebUser) {
       if (calleeDetails!.onlineStatus === "online") {
@@ -58,7 +67,7 @@ export class CallService {
         }
       }
     } else {
-      if (calleeDetails!.webLoggedIn && calleeDetails!.onlineStatusWeb === "online") {
+      if (calleeDetails!.onlineStatusWeb === "online") {
         const otherDeviceConnection = chatRouterWs.sockets.get(calleeDetails!.webConnectionId!);
         if (otherDeviceConnection) {
           otherDeviceConnection.emit("callResponse", { type: "callPickedByOtherDevice" });
@@ -67,7 +76,6 @@ export class CallService {
     }
 
     await database.user.update({ where: { id: calleeId }, data: isWebUser ? { onlineStatusWeb: "call" } : { onlineStatus: "call" } });
-    if (!callerDetails) throw new WsError("No Account with this id exist");
 
     if (callerDetails.onlineStatus === "call" || callerDetails.onlineStatusWeb === "call") {
       const callerConnection = chatRouterWs.sockets.get(callerDetails.onlineStatus === "call" ? callerDetails.connectionId! : callerDetails.webConnectionId!);
