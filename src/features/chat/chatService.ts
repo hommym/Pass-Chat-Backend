@@ -238,7 +238,7 @@ export class ChatService {
 
     if (!message) throw new AppError("No message with this id exist", 404);
     else if (message.senderId !== userId) throw new AppError("You cannot edit messages you did not send", 402);
-    else if (message.type !== "text") throw new AppError("Only messages of type text can be edited", 422);
+    else if (message.type !== "text" && message.type !== "poll") throw new AppError("Only messages of type text or poll can be edited", 422);
 
     await database.message.update({ where: { id: messageId }, data: { content: newMessage } });
     const roomDetails = message.room;
