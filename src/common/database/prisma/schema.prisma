@@ -191,6 +191,7 @@ model ChatRoom {
   user1          User?            @relation("User1",fields: [user1Id], references: [id]) 
   user2          User?            @relation("User2",fields: [user2Id], references: [id]) 
   status         ContactStatus?   // this only avialable for private chatRooms
+  pinnedMessages Json?            // a list message ids    
   createdAt      DateTime         @default(now())
   messages       Message[]
   community      Community[]
