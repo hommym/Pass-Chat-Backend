@@ -53,6 +53,9 @@ enum MessageType{
   image
   call
   docs
+  contact
+  invitation
+  poll
 }
 
 enum NotificationType{
