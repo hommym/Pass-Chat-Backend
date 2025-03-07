@@ -97,11 +97,11 @@ class CallService {
     async endCall(socket, cancelCallDto) {
         await (0, bodyValidator_1.bodyValidatorWs)(cancelCallDto_1.CancelCallDto, cancelCallDto);
         const { participantsIds } = cancelCallDto;
-        // const isWebUser = socket.isWebUser;
+        const enderId = socket.authUserId;
         const users = await objects_1.database.user.findMany({ where: { id: { in: participantsIds } }, select: { onlineStatus: true, connectionId: true, webConnectionId: true, onlineStatusWeb: true, id: true } });
         await Promise.all(users.map(async (user) => {
             await objects_1.database.user.update({ where: { id: user.id }, data: user.onlineStatus === "call" ? { onlineStatus: "online" } : { onlineStatusWeb: "online" } });
-            if (user.onlineStatus === "call" || user.onlineStatusWeb === "call") {
+            if (user.onlineStatus === "call" || (user.onlineStatusWeb === "call" && user.id !== enderId)) {
                 const userConnection = chatHandler_1.chatRouterWs.sockets.get(user.onlineStatus === "call" ? user.connectionId : user.webConnectionId);
                 if (userConnection) {
                     userConnection.emit("callResponse", { type: "endCall" });
