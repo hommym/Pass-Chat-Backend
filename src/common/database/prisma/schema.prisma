@@ -146,6 +146,11 @@ enum CommunityVerificationStatus{
   reviewed
 }
 
+enum CallRoomType {
+  private
+  public
+}
+
 model User {
   id                Int             @id @default(autoincrement())
   email             String?         @unique
@@ -171,6 +176,8 @@ model User {
   chatRoomUser2     ChatRoom[]      @relation("User2")
   communitiesOwned  Community[]
   communities       CommunityMember[]
+  callRooms         CallRoom[]
+  calRoomParts      CallRoomParticipants[] 
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt   // use this get last time user was online
 
@@ -290,6 +297,7 @@ model Community {
    room                  ChatRoom               @relation(fields: [roomId], references: [id])
    ownerDetails          User                   @relation(fields: [ownerId], references: [id])
    activePeriods         ActiveCommunity[] 
+   callRoom              CallRoom[]                            
 
   @@unique([type,ownerId,name])
   @@map("communities")
@@ -373,4 +381,31 @@ model CommunityVerification {
    createdAt             DateTime                    @default(now())
 
    @@map("community_verfications")
+}
+
+
+
+model CallRoom {
+  id                    Int                         @id @default(autoincrement())
+  type                  CallRoomType                @default(public)
+  creatorId             Int
+  communityId           Int?                        // this is only set for when type is public
+  creator               User                        @relation(fields:[creatorId],references:[id])
+  community             Community?                  @relation(fields:[communityId],references:[id])
+  participants          CallRoomParticipants[]
+
+  @@map("call_rooms")
+}
+
+
+
+
+model CallRoomParticipants{
+  id                    Int                         @id @default(autoincrement())
+  callRoomId            Int 
+  callRoom              CallRoom                    @relation(fields:[callRoomId],references:[id])   
+  participantId         Int
+  participant           User                        @relation(fields:[participantId],references:[id])          
+
+  @@map("call_room_participants")
 }
