@@ -111,7 +111,7 @@ export class CallService {
     await Promise.all(
       users.map(async (user) => {
         await database.user.update({ where: { id: user.id }, data: user.onlineStatus === "call" ? { onlineStatus: "online" } : { onlineStatusWeb: "online" } });
-        if (user.onlineStatus === "call" || (user.onlineStatusWeb === "call" && user.id !== enderId)) {
+        if ((user.onlineStatus === "call" || user.onlineStatusWeb === "call") && user.id !== enderId) {
           const userConnection = chatRouterWs.sockets.get(user.onlineStatus === "call" ? user.connectionId! : user.webConnectionId!);
           if (userConnection) {
             userConnection.emit("callResponse", { type: "endCall" });
