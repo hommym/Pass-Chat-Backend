@@ -6,6 +6,7 @@ const privateChatNotficationDto_1 = require("./dto/privateChatNotficationDto");
 const objects_1 = require("../../common/constants/objects");
 const errorHandler_1 = require("../../common/middlewares/errorHandler");
 const communityChatNotificationsDto_1 = require("./dto/communityChatNotificationsDto");
+const chatHandler_1 = require("../chat/ws/chatHandler");
 class ChatNotificationService {
     async saveNotification(messageId, recipientId, platform = "mobile", action = "updateMessage") {
         // this is for setting messages notifications
@@ -129,6 +130,29 @@ class ChatNotificationService {
         // console.log(messages);
         socket.emit("response", { action: "getNotification", data: messages });
         await objects_1.database.notification.deleteMany({ where: { id: { in: notificationIds } } });
+    }
+    async notifyOnlineMembersOfCall(args) {
+        // this method will sned an alert to online members of a particular community that a group call for that community has started
+        const { allMembersIds, chatRoomId, callerId } = args;
+        await Promise.all(allMembersIds.map(async (userId) => {
+            const user = await objects_1.database.user.findUnique({ where: { id: userId } });
+            const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId } = user;
+            if (callerId === userId)
+                return;
+            const connectionIds = [connectionId, webConnectionId];
+            let statusTracker = 0;
+            for (let id of connectionIds) {
+                if (!id)
+                    continue;
+                else if ((statusTracker === 0 && onlineStatus === "call") || (statusTracker === 1 && onlineStatusWeb === "call"))
+                    return;
+                const userConnection = chatHandler_1.chatRouterWs.sockets.get(id);
+                if (userConnection) {
+                    userConnection.emit("groupCallResponse", { type: "groupCallAlert", chatRoomId });
+                }
+                statusTracker++;
+            }
+        }));
     }
 }
 exports.ChatNotificationService = ChatNotificationService;

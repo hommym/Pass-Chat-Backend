@@ -8,6 +8,8 @@ import { SocketV1 } from "../../common/helpers/classes/socketV1";
 import { CommunityChatNotificationDto } from "./dto/communityChatNotificationsDto";
 import { SaveCommunityNotificationsArgs } from "../community/dto/saveCommunityNotificationsArgs";
 import { JsonArray } from "@prisma/client/runtime/library";
+import { CommunityCallNotifier } from "../community/type/communityCallNotifier";
+import { chatRouterWs } from "../chat/ws/chatHandler";
 
 export class ChatNotificationService {
   async saveNotification(messageId: number, recipientId: number, platform: Platform = "mobile", action: NotificationAction = "updateMessage") {
@@ -100,7 +102,7 @@ export class ChatNotificationService {
 
   async getNotification(socket: SocketV1) {
     const userId = socket.authUserId;
-    const messages: { action: NotificationAction; messages: Message | null; communityId: number | null; phones: { oldPhone: string; newPhone: string } | null; }[] = [];
+    const messages: { action: NotificationAction; messages: Message | null; communityId: number | null; phones: { oldPhone: string; newPhone: string } | null }[] = [];
     const notificationIds: number[] = [];
     // get those notfications and then delete them
     (
@@ -128,5 +130,30 @@ export class ChatNotificationService {
     // console.log(messages);
     socket.emit("response", { action: "getNotification", data: messages });
     await database.notification.deleteMany({ where: { id: { in: notificationIds } } });
+  }
+
+  async notifyOnlineMembersOfCall(args: CommunityCallNotifier) {
+    // this method will sned an alert to online members of a particular community that a group call for that community has started
+    const { allMembersIds, chatRoomId, callerId } = args;
+
+    await Promise.all(
+      allMembersIds.map(async (userId) => {
+        const user = await database.user.findUnique({ where: { id: userId } });
+        const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId } = user!;
+        if (callerId === userId) return;
+
+        const connectionIds = [connectionId, webConnectionId];
+        let statusTracker = 0;
+        for (let id of connectionIds) {
+          if (!id) continue;
+          else if ((statusTracker === 0 && onlineStatus === "call") || (statusTracker === 1 && onlineStatusWeb === "call")) return;
+          const userConnection = chatRouterWs.sockets.get(id);
+          if (userConnection) {
+            userConnection.emit("groupCallResponse", { type: "groupCallAlert", chatRoomId });
+          }
+          statusTracker++;
+        }
+      })
+    );
   }
 }
