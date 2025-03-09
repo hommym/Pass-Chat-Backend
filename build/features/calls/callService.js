@@ -10,6 +10,7 @@ const sendIceDetailsDto_1 = require("./dto/sendIceDetailsDto");
 const sendSdpAnwerDto_1 = require("./dto/sendSdpAnwerDto");
 const sendSdpOfferDto_1 = require("./dto/sendSdpOfferDto");
 const cancelCallDto_1 = require("./dto/cancelCallDto");
+const publicGroupCallDto_1 = require("./dto/publicGroupCallDto");
 class CallService {
     async sendSdpOffer(socket, details) {
         await (0, bodyValidator_1.bodyValidatorWs)(sendSdpOfferDto_1.SendSdpOfferDto, details);
@@ -108,6 +109,34 @@ class CallService {
                 }
             }
         }));
+    }
+    async startPublicGroupCall(publicGroupCallDto, socket) {
+        await (0, bodyValidator_1.bodyValidatorWs)(publicGroupCallDto_1.PublicGroupCallDto, publicGroupCallDto);
+        const { communityId, callType } = publicGroupCallDto;
+        const community = await objects_1.database.community.findUnique({ where: { id: communityId }, select: { callRoom: true, id: true, room: true, members: true, roomId: true } });
+        const callerId = socket.authUserId;
+        if (!community)
+            throw new errorHandler_1.WsError("No Community with this id exist");
+        else if (community.callRoom.length > 0)
+            throw new errorHandler_1.WsError("A call has already been started");
+        const { id, callRoom, room, roomId, members } = community;
+        // creating CallRoom
+        const callRoomDetails = await objects_1.database.callRoom.create({ data: { creatorId: callerId, communityId } });
+        //Adding Caller to the CallRoom
+        await objects_1.database.callRoomParticipants.create({ data: { callRoomId: callRoomDetails.id, participantId: callerId } });
+        const message = await objects_1.database.message.create({
+            data: { senderId: callerId, content: JSON.stringify({ content: `on-going-${callType}-call`, content_id: (0, uuid_1.v4)() }), type: "call", roomId, callType },
+        });
+        const membersIds = members.map((member) => member.userId);
+        objects_1.appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId: message.id });
+        // alerting online mmebers of the community that a group call has been started
+        objects_1.appEvents.emit("community-call-notifier", { allMembersIds: membersIds, callerId, chatRoomId: roomId });
+        const updatedCallRoomDetails = await objects_1.database.callRoom.findUnique({
+            where: { id: callRoomDetails.id },
+            include: { participants: { include: { participant: { select: { phone: true, profile: true, username: true } } } } },
+        });
+        //returning caller the CallRoom details
+        socket.emit("groupCallResponse", { type: "CallRoomDetails", callRooom: updatedCallRoomDetails });
     }
 }
 exports.CallService = CallService;

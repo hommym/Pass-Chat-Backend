@@ -1,5 +1,5 @@
 import { v4 } from "uuid";
-import { chatNotificationService, chatService, database } from "../../common/constants/objects";
+import { appEvents, chatNotificationService, chatService, database } from "../../common/constants/objects";
 import { SocketV1 } from "../../common/helpers/classes/socketV1";
 import { bodyValidatorWs } from "../../common/middlewares/bodyValidator";
 import { WsError } from "../../common/middlewares/errorHandler";
@@ -8,6 +8,7 @@ import { SendIceDetailsDto } from "./dto/sendIceDetailsDto";
 import { SendSdpAnswerDto } from "./dto/sendSdpAnwerDto";
 import { SendSdpOfferDto } from "./dto/sendSdpOfferDto";
 import { CancelCallDto } from "./dto/cancelCallDto";
+import { PublicGroupCallDto } from "./dto/publicGroupCallDto";
 
 export class CallService {
   async sendSdpOffer(socket: SocketV1, details: SendSdpOfferDto) {
@@ -119,5 +120,40 @@ export class CallService {
         }
       })
     );
+  }
+
+  async startPublicGroupCall(publicGroupCallDto: PublicGroupCallDto, socket: SocketV1) {
+    await bodyValidatorWs(PublicGroupCallDto, publicGroupCallDto);
+    const { communityId, callType } = publicGroupCallDto;
+    const community = await database.community.findUnique({ where: { id: communityId }, select: { callRoom: true, id: true, room: true, members: true, roomId: true } });
+    const callerId = socket.authUserId;
+
+    if (!community) throw new WsError("No Community with this id exist");
+    else if (community.callRoom.length > 0) throw new WsError("A call has already been started");
+    const { id, callRoom, room, roomId, members } = community;
+
+    // creating CallRoom
+    const callRoomDetails = await database.callRoom.create({ data: { creatorId: callerId, communityId } });
+
+    //Adding Caller to the CallRoom
+    await database.callRoomParticipants.create({ data: { callRoomId: callRoomDetails.id, participantId: callerId } });
+
+    const message = await database.message.create({
+      data: { senderId: callerId, content: JSON.stringify({ content: `on-going-${callType}-call`, content_id: v4() }), type: "call", roomId, callType },
+    });
+
+    const membersIds = members.map((member) => member.userId);
+    appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId: message.id });
+
+    // alerting online mmebers of the community that a group call has been started
+    appEvents.emit("community-call-notifier", { allMembersIds: membersIds, callerId, chatRoomId: roomId });
+
+    const updatedCallRoomDetails = await database.callRoom.findUnique({
+      where: { id: callRoomDetails.id },
+      include: { participants: { include: { participant: { select: { phone: true, profile: true, username: true } } } } },
+    });
+
+    //returning caller the CallRoom details
+    socket.emit("groupCallResponse", { type: "CallRoomDetails", callRooom: updatedCallRoomDetails });
   }
 }

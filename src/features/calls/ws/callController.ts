@@ -4,6 +4,7 @@ import { bodyValidatorWs } from "../../../common/middlewares/bodyValidator";
 import { WsError } from "../../../common/middlewares/errorHandler";
 import { CallWsRequestDto } from "../dto/callWsRequestDto";
 import { CancelCallDto } from "../dto/cancelCallDto";
+import { PublicGroupCallDto } from "../dto/publicGroupCallDto";
 import { SendIceDetailsDto } from "../dto/sendIceDetailsDto";
 import { SendSdpAnswerDto } from "../dto/sendSdpAnwerDto";
 import { SendSdpOfferDto } from "../dto/sendSdpOfferDto";
@@ -17,7 +18,8 @@ export const callController = async (socket: SocketV1, request: CallWsRequestDto
     await callService.sendSdpAnswer(socket, details as SendSdpAnswerDto);
   } else if (callAction === "sendICEDetails") {
     await callService.sendIceDetails(socket, details as SendIceDetailsDto);
-  } else if (callAction === "startGroupCall") {
+  } else if (callAction === "startPublicGroupCall") {
+    await callService.startPublicGroupCall(details as PublicGroupCallDto, socket);
   } else if (callAction === "endCall") {
     await callService.endCall(socket, details as CancelCallDto);
   } else {

@@ -4,8 +4,8 @@ import { IsEnum, IsIn, IsNotEmptyObject } from "class-validator";
 
 export class CallWsRequestDto {
   @Expose()
-  @IsIn(["sendSDPOffer", "sendSDPAnswer", "sendICEDetails", "startGroupCall", "joinGroupCall", "leaveGroupCall", "endCall"])
-  callAction: "sendSDPOffer" | "sendSDPAnswer" | "sendICEDetails" | "startGroupCall" | "joinGroupCall" | "leaveGroupCall" | "endCall";
+  @IsIn(["sendSDPOffer", "sendSDPAnswer", "sendICEDetails", "startPublicGroupCall", "joinGroupCall", "leaveGroupCall", "endCall"])
+  callAction: "sendSDPOffer" | "sendSDPAnswer" | "sendICEDetails" | "startPublicGroupCall" | "joinGroupCall" | "leaveGroupCall" | "endCall";
 
   @Expose()
   @IsNotEmptyObject()
