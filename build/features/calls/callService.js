@@ -11,19 +11,36 @@ const sendSdpAnwerDto_1 = require("./dto/sendSdpAnwerDto");
 const sendSdpOfferDto_1 = require("./dto/sendSdpOfferDto");
 const cancelCallDto_1 = require("./dto/cancelCallDto");
 const publicGroupCallDto_1 = require("./dto/publicGroupCallDto");
+const joinOrLeaveGroupCallDto_1 = require("./dto/joinOrLeaveGroupCallDto");
 class CallService {
-    async sendSdpOffer(socket, details) {
+    async isUserAlreadyInACall(userId, details = null) {
+        const userDetails = details ? details : await objects_1.database.user.findUnique({ where: { id: userId } });
+        if (!userDetails)
+            throw new errorHandler_1.WsError("No User with this account id exist");
+        const { onlineStatus, onlineStatusWeb } = userDetails;
+        //check online status for web and mobile if user is on a call.
+        if (onlineStatus === "call" || onlineStatusWeb === "call")
+            return true;
+        //check users existence in any CallRoom
+        const callRooms = await objects_1.database.callRoomParticipants.findMany({ where: { participantId: userId } });
+        if (callRooms.length !== 0)
+            return true;
+        return false;
+    }
+    async sendSdpOffer(socket, details, isGroupCall = false) {
         await (0, bodyValidator_1.bodyValidatorWs)(sendSdpOfferDto_1.SendSdpOfferDto, details);
         const { recipientPhone, sdpOffer, roomId, callType } = details;
         const recipientDetails = await objects_1.database.user.findUnique({ where: { phone: recipientPhone } });
         const roomDeatials = await objects_1.chatService.checkChatRoom(roomId);
         const callerId = socket.authUserId;
-        // update caller online status to call
-        await objects_1.database.user.update({ where: { id: callerId }, data: socket.isWebUser ? { onlineStatusWeb: "call" } : { onlineStatus: "call" } });
-        if (!recipientDetails)
+        if (!isGroupCall && (await this.isUserAlreadyInACall(callerId)))
+            throw new errorHandler_1.WsError("Cannot Start Call,User is Already in a call");
+        else if (!recipientDetails)
             throw new errorHandler_1.WsError("No account with this phone numeber exist");
         else if (!roomDeatials)
             throw new errorHandler_1.WsError("No ChatRoom with this id exist");
+        // update caller online status to call
+        await objects_1.database.user.update({ where: { id: callerId }, data: socket.isWebUser ? { onlineStatusWeb: "call" } : { onlineStatus: "call" } });
         const message = await objects_1.database.message.create({
             data: { senderId: callerId, recipientId: recipientDetails.id, content: JSON.stringify({ content: callType, content_id: (0, uuid_1.v4)() }), type: "call", roomId, callType },
         });
@@ -48,14 +65,16 @@ class CallService {
         else if (recipientDetails.webLoggedIn)
             await objects_1.chatNotificationService.saveNotification(message.id, recipientDetails.id, "browser", "saveMessage");
     }
-    async sendSdpAnswer(socket, details) {
+    async sendSdpAnswer(socket, details, isGroupCall = false) {
         await (0, bodyValidator_1.bodyValidatorWs)(sendSdpAnwerDto_1.SendSdpAnswerDto, details);
         const { callerId, sdpAnswer } = details;
         const callerDetails = await objects_1.database.user.findUnique({ where: { id: callerId } });
         const calleeId = socket.authUserId;
         const calleeDetails = await objects_1.database.user.findUnique({ where: { id: calleeId } });
         const isWebUser = socket.isWebUser;
-        if (!callerDetails)
+        if (!isGroupCall && (await this.isUserAlreadyInACall(calleeId, calleeDetails)))
+            throw new errorHandler_1.WsError("Cannot Recive Call,User Already in a Call");
+        else if (!callerDetails)
             throw new errorHandler_1.WsError("No Account with this id exist");
         // ending call received on other device
         if (isWebUser) {
@@ -113,12 +132,14 @@ class CallService {
     async startPublicGroupCall(publicGroupCallDto, socket) {
         await (0, bodyValidator_1.bodyValidatorWs)(publicGroupCallDto_1.PublicGroupCallDto, publicGroupCallDto);
         const { communityId, callType } = publicGroupCallDto;
-        const community = await objects_1.database.community.findUnique({ where: { id: communityId }, select: { callRoom: true, id: true, room: true, members: true, roomId: true } });
+        const community = await objects_1.database.community.findUnique({ where: { id: communityId }, select: { callRoom: true, id: true, room: true, members: true, roomId: true, type: true } });
         const callerId = socket.authUserId;
-        if (!community)
+        if (await this.isUserAlreadyInACall(callerId))
+            throw new errorHandler_1.WsError("Cannot Start Call,User is Already in a call");
+        else if (!community)
             throw new errorHandler_1.WsError("No Community with this id exist");
         else if (community.callRoom.length > 0)
-            throw new errorHandler_1.WsError("A call has already been started");
+            throw new errorHandler_1.WsError(`A Call Has Already been Started in the ${community.type}`);
         const { id, callRoom, room, roomId, members } = community;
         // creating CallRoom
         const callRoomDetails = await objects_1.database.callRoom.create({ data: { creatorId: callerId, communityId } });
@@ -136,7 +157,56 @@ class CallService {
             include: { participants: { include: { participant: { select: { phone: true, profile: true, username: true } } } } },
         });
         //returning caller the CallRoom details
-        socket.emit("groupCallResponse", { type: "CallRoomDetails", callRooom: updatedCallRoomDetails });
+        socket.emit("groupCallResponse", { type: "startedGroupCall", callRooom: updatedCallRoomDetails });
+    }
+    async joinOrLeaveGroupCall(socket, joinOrLeaveGroupCallDto, action = "join") {
+        await (0, bodyValidator_1.bodyValidatorWs)(joinOrLeaveGroupCallDto_1.JoinOrLeaveGroupCallDto, joinOrLeaveGroupCallDto);
+        const userId = socket.authUserId;
+        if ((await this.isUserAlreadyInACall(userId)) && action === "join")
+            throw new errorHandler_1.WsError("User Cannot Join A Call,When Already In A Call ");
+        const { callRoomId } = joinOrLeaveGroupCallDto;
+        let callRoomDetails = await objects_1.database.callRoom.findUnique({
+            where: { id: callRoomId },
+            include: { participants: { include: { participant: { select: { connectionId: true, webConnectionId: true, onlineStatus: true, onlineStatusWeb: true } } } } },
+        });
+        //check if this callRoom exist
+        if (!callRoomDetails)
+            throw new errorHandler_1.WsError("No CallRoom With This Id Exist");
+        if (action === "join")
+            await objects_1.database.callRoomParticipants.create({ data: { participantId: userId, callRoomId } });
+        else {
+            await objects_1.database.callRoomParticipants.delete({ where: { callRoomId_participantId: { callRoomId, participantId: userId } } });
+        }
+        // get updated call room details
+        const updatedCallRoomDetails = await objects_1.database.callRoom.findUnique({
+            where: { id: callRoomId },
+            include: { participants: { include: { participant: { select: { profile: true, phone: true, username: true } } } } },
+        });
+        // return response to user who made the request
+        socket.emit("groupCallResponse", action === "join" ? { type: "joinedGroupCall", callRoom: updatedCallRoomDetails } : { type: "LeftGroupCall" });
+        //if there are no participants left in the CallRoom clear the room
+        if ((updatedCallRoomDetails === null || updatedCallRoomDetails === void 0 ? void 0 : updatedCallRoomDetails.participants.length) === 0)
+            await objects_1.database.callRoom.delete({ where: { id: callRoomId } });
+        //alert all participants of this room that a new user is has joined or an old one left
+        await Promise.all(callRoomDetails.participants.map(async (participant) => {
+            const { connectionId, onlineStatus, onlineStatusWeb, webConnectionId } = participant.participant;
+            const statuses = [onlineStatus, onlineStatusWeb];
+            let tracker = 0;
+            for (let userStatus of statuses) {
+                let conId;
+                if (userStatus === "call" && tracker === 0)
+                    conId = connectionId;
+                else if (userStatus === "call" && tracker === 1)
+                    conId = webConnectionId;
+                else
+                    return;
+                const participantConnection = chatHandler_1.chatRouterWs.sockets.get(conId);
+                if (participantConnection) {
+                    participantConnection.emit("groupCallResponse", { type: action === "join" ? "userJoined" : "userLeft", callRoom: updatedCallRoomDetails });
+                }
+                tracker++;
+            }
+        }));
     }
 }
 exports.CallService = CallService;
