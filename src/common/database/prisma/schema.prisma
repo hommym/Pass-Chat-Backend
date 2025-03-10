@@ -407,5 +407,6 @@ model CallRoomParticipants{
   participantId         Int
   participant           User                        @relation(fields:[participantId],references:[id])          
 
+  @@unique([callRoomId,participantId])
   @@map("call_room_participants")
 }
