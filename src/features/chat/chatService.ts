@@ -317,4 +317,54 @@ export class ChatService {
     await database.chatRoom.update({ where: { id: id }, data: { pinnedMessages: pinnedMessageIds } });
     return { message: "Message Pinned Sucessfully" };
   }
+
+  async handleUserDisconnection(userId: number) {
+    // check if user is in CallRoom
+    const participants = await database.callRoomParticipants.findMany({ where: { participantId: userId } });
+    if (participants.length === 0) return;
+
+    const { callRoomId, id } = participants[0];
+
+    // Get updated call room details
+    const callRoomDetails = await database.callRoom.findUnique({
+      where: { id: callRoomId },
+      include: {
+        participants: { include: { participant: { select: { profile: true, phone: true, username: true, onlineStatus: true, onlineStatusWeb: true, connectionId: true, webConnectionId: true } } } },
+      },
+    });
+
+    // Remove the user from the CallRoom
+    await database.callRoomParticipants.delete({ where: { id } });
+
+    // If there are no participants left in the CallRoom, clear the room
+    if (callRoomDetails!.participants.length === 0) {
+      await database.callRoom.delete({ where: { id: callRoomId } });
+      return;
+    }
+
+    const updatedCallRoomDetails = await database.callRoom.findUnique({
+      where: { id: callRoomId },
+      include: { participants: { include: { participant: { select: { profile: true, phone: true, username: true } } } } },
+    });
+
+    // Alert all participants of this room that the user has left
+    await Promise.all(
+      callRoomDetails!.participants.map(async (participant) => {
+        const { connectionId, onlineStatus, onlineStatusWeb, webConnectionId } = participant.participant;
+        const statuses = [onlineStatus, onlineStatusWeb];
+        let tracker = 0;
+        for (let userStatus of statuses) {
+          let conId;
+          if (userStatus === "call" && tracker === 0) conId = connectionId!;
+          else if (userStatus === "call" && tracker === 1) conId = webConnectionId!;
+          else return;
+          const participantConnection = chatRouterWs.sockets.get(conId);
+          if (participantConnection) {
+            participantConnection.emit("groupCallResponse", { type: "userLeft", callRoom: updatedCallRoomDetails });
+          }
+          tracker++;
+        }
+      })
+    );
+  }
 }

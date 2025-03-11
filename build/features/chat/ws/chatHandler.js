@@ -11,7 +11,6 @@ const chatRouterDef = (mainPath) => {
         // Respond to a custom event from the client
         console.log("User On Chat Ws...");
         socket.on("request", async (body) => {
-            // socket.emit("response", `Server says: ${body}`);
             try {
                 await (0, chatController_1.chatController)(socket, JSON.parse(body));
             }
@@ -23,6 +22,7 @@ const chatRouterDef = (mainPath) => {
         socket.on("disconnect", async () => {
             console.log(`User has disconnected, socketId=${socket.id}`);
             await objects_1.chatService.setUserOnlineStatus("offline", null, socket.id, socket.isWebUser);
+            await objects_1.chatService.handleUserDisconnection(socket.authUserId);
         });
     });
 };

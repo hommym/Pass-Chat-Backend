@@ -14,17 +14,17 @@ export const chatRouterDef = (mainPath: string) => {
     // Respond to a custom event from the client
     console.log("User On Chat Ws...");
     socket.on("request", async (body) => {
-      // socket.emit("response", `Server says: ${body}`);
       try {
         await chatController(socket, JSON.parse(body));
-      } catch (error:any) {
+      } catch (error: any) {
         socket.emit("error", { message: error.message });
       }
     });
     // Handle disconnection
     socket.on("disconnect", async () => {
       console.log(`User has disconnected, socketId=${socket.id}`);
-      await chatService.setUserOnlineStatus("offline", null, socket.id,(socket as SocketV1).isWebUser);
+      await chatService.setUserOnlineStatus("offline", null, socket.id, (socket as SocketV1).isWebUser);
+      await chatService.handleUserDisconnection((socket as SocketV1).authUserId);
     });
   });
 };
