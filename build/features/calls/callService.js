@@ -185,8 +185,10 @@ class CallService {
         // return response to user who made the request
         socket.emit("groupCallResponse", action === "join" ? { type: "joinedGroupCall", callRoom: updatedCallRoomDetails } : { type: "LeftGroupCall" });
         //if there are no participants left in the CallRoom clear the room
-        if ((updatedCallRoomDetails === null || updatedCallRoomDetails === void 0 ? void 0 : updatedCallRoomDetails.participants.length) === 0)
+        if ((updatedCallRoomDetails === null || updatedCallRoomDetails === void 0 ? void 0 : updatedCallRoomDetails.participants.length) === 0) {
             await objects_1.database.callRoom.delete({ where: { id: callRoomId } });
+            return;
+        }
         //alert all participants of this room that a new user is has joined or an old one left
         await Promise.all(callRoomDetails.participants.map(async (participant) => {
             const { connectionId, onlineStatus, onlineStatusWeb, webConnectionId } = participant.participant;

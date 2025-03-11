@@ -203,7 +203,10 @@ export class CallService {
     socket.emit("groupCallResponse", action === "join" ? { type: "joinedGroupCall", callRoom: updatedCallRoomDetails } : { type: "LeftGroupCall" });
 
     //if there are no participants left in the CallRoom clear the room
-    if (updatedCallRoomDetails?.participants.length === 0) await database.callRoom.delete({ where: { id: callRoomId } });
+    if (updatedCallRoomDetails?.participants.length === 0) {
+      await database.callRoom.delete({ where: { id: callRoomId } });
+      return;
+    }
 
     //alert all participants of this room that a new user is has joined or an old one left
     await Promise.all(
