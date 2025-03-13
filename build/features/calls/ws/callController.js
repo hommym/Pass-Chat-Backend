@@ -17,6 +17,9 @@ const callController = async (socket, request) => {
         case "startPublicGroupCall":
             await objects_1.callService.startPublicGroupCall(details, socket);
             break;
+        case "startPrivateGroupCall":
+            await objects_1.callService.startPrivateGroupCall(socket, details);
+            break;
         case "endCall":
             await objects_1.callService.endCall(socket, details);
             break;

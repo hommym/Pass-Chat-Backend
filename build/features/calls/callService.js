@@ -12,6 +12,7 @@ const sendSdpOfferDto_1 = require("./dto/sendSdpOfferDto");
 const cancelCallDto_1 = require("./dto/cancelCallDto");
 const publicGroupCallDto_1 = require("./dto/publicGroupCallDto");
 const joinOrLeaveGroupCallDto_1 = require("./dto/joinOrLeaveGroupCallDto");
+const privateGroupCallDto_1 = require("./dto/privateGroupCallDto");
 class CallService {
     async isUserAlreadyInACall(userId, details = null) {
         const userDetails = details ? details : await objects_1.database.user.findUnique({ where: { id: userId } });
@@ -159,9 +160,51 @@ class CallService {
         //returning caller the CallRoom details
         socket.emit("groupCallResponse", { type: "startedGroupCall", callRooom: updatedCallRoomDetails });
     }
+    async startPrivateGroupCall(socket, privateGroupCall) {
+        await (0, bodyValidator_1.bodyValidatorWs)(privateGroupCallDto_1.PrivateGroupCallDto, privateGroupCall);
+        const { existingUserPhone, newUserPhone } = privateGroupCall;
+        const groupCallerId = socket.authUserId; // the id of the user who started the group call
+        const existingUser = await objects_1.database.user.findUnique({ where: { phone: existingUserPhone, type: "user" } });
+        if (!existingUser)
+            throw new errorHandler_1.WsError("PrivateGroupCall Failed , existingUserPhone is not as associated with any account");
+        const newUser = await objects_1.database.user.findUnique({ where: { phone: newUserPhone, type: "user" } });
+        if (!newUser)
+            throw new errorHandler_1.WsError("PrivateGroupCall Failed , existingUserPhone is not as associated with any account");
+        const groupCaller = await objects_1.database.user.findUnique({ where: { id: groupCallerId } });
+        // create CallRoom
+        const callRoomDetails = await objects_1.database.callRoom.create({ data: { creatorId: groupCallerId, type: "private" } });
+        //adding participants of the private call in the call room
+        await objects_1.database.callRoomParticipants.createMany({
+            data: [
+                { participantId: groupCallerId, callRoomId: callRoomDetails.id },
+                { participantId: existingUser.id, callRoomId: callRoomDetails.id },
+            ],
+        });
+        // get updated call room details
+        const updatedCallRoomDetails = await objects_1.database.callRoom.findUnique({
+            where: { id: callRoomDetails.id },
+            include: { participants: { include: { participant: { select: { profile: true, phone: true, username: true } } } } },
+        });
+        const participantsAccount = [groupCaller, existingUser, newUser];
+        // sending callRoom details to call participants and a GroupCall Request to new user
+        for (let account of participantsAccount) {
+            const { id, onlineStatus, onlineStatusWeb, connectionId, webConnectionId } = account;
+            if (id === groupCallerId) {
+                socket.emit("groupCallResponse", { type: "startedGroupCall", callRooom: updatedCallRoomDetails });
+                continue;
+            }
+            const userConnection = id === existingUser.id
+                ? chatHandler_1.chatRouterWs.sockets.get(onlineStatus === "call" ? connectionId : webConnectionId)
+                : chatHandler_1.chatRouterWs.sockets.get(onlineStatus === "online" ? connectionId : onlineStatusWeb === "online" ? webConnectionId : "N/A");
+            if (userConnection) {
+                userConnection.emit("groupCallResponse", { type: id === existingUser.id ? "startedGroupCall" : "groupCallRequest", callRooom: updatedCallRoomDetails, from: groupCaller.phone });
+            }
+        }
+    }
     async joinOrLeaveGroupCall(socket, joinOrLeaveGroupCallDto, action = "join") {
         await (0, bodyValidator_1.bodyValidatorWs)(joinOrLeaveGroupCallDto_1.JoinOrLeaveGroupCallDto, joinOrLeaveGroupCallDto);
         const userId = socket.authUserId;
+        const isWebUser = socket.isWebUser;
         if ((await this.isUserAlreadyInACall(userId)) && action === "join")
             throw new errorHandler_1.WsError("User Cannot Join A Call,When Already In A Call ");
         const { callRoomId } = joinOrLeaveGroupCallDto;
@@ -176,6 +219,7 @@ class CallService {
             await objects_1.database.callRoomParticipants.create({ data: { participantId: userId, callRoomId } });
         else {
             await objects_1.database.callRoomParticipants.delete({ where: { callRoomId_participantId: { callRoomId, participantId: userId } } });
+            await objects_1.database.user.update({ where: { id: userId }, data: isWebUser ? { onlineStatusWeb: "online" } : { onlineStatus: "online" } });
         }
         // get updated call room details
         const updatedCallRoomDetails = await objects_1.database.callRoom.findUnique({
@@ -183,7 +227,7 @@ class CallService {
             include: { participants: { include: { participant: { select: { profile: true, phone: true, username: true } } } } },
         });
         // return response to user who made the request
-        socket.emit("groupCallResponse", action === "join" ? { type: "joinedGroupCall", callRoom: updatedCallRoomDetails } : { type: "LeftGroupCall" });
+        socket.emit("groupCallResponse", action === "join" ? { type: "joinedGroupCall", callRoom: updatedCallRoomDetails } : { type: "leftGroupCall" });
         //if there are no participants left in the CallRoom clear the room
         if ((updatedCallRoomDetails === null || updatedCallRoomDetails === void 0 ? void 0 : updatedCallRoomDetails.participants.length) === 0) {
             await objects_1.database.callRoom.delete({ where: { id: callRoomId } });

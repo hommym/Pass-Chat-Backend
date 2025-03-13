@@ -11,6 +11,7 @@ import { CancelCallDto } from "./dto/cancelCallDto";
 import { PublicGroupCallDto } from "./dto/publicGroupCallDto";
 import { User } from "@prisma/client";
 import { JoinOrLeaveGroupCallDto } from "./dto/joinOrLeaveGroupCallDto";
+import { PrivateGroupCallDto } from "./dto/privateGroupCallDto";
 
 export class CallService {
   async isUserAlreadyInACall(userId: number, details: User | null = null) {
@@ -174,9 +175,62 @@ export class CallService {
     socket.emit("groupCallResponse", { type: "startedGroupCall", callRooom: updatedCallRoomDetails });
   }
 
+  async startPrivateGroupCall(socket: SocketV1, privateGroupCall: PrivateGroupCallDto) {
+    await bodyValidatorWs(PrivateGroupCallDto, privateGroupCall);
+    const { existingUserPhone, newUserPhone } = privateGroupCall;
+    const groupCallerId = socket.authUserId; // the id of the user who started the group call
+
+    const existingUser = await database.user.findUnique({ where: { phone: existingUserPhone, type: "user" } });
+
+    if (!existingUser) throw new WsError("PrivateGroupCall Failed , existingUserPhone is not as associated with any account");
+
+    const newUser = await database.user.findUnique({ where: { phone: newUserPhone, type: "user" } });
+
+    if (!newUser) throw new WsError("PrivateGroupCall Failed , existingUserPhone is not as associated with any account");
+
+    const groupCaller = await database.user.findUnique({ where: { id: groupCallerId } });
+
+    // create CallRoom
+    const callRoomDetails = await database.callRoom.create({ data: { creatorId: groupCallerId, type: "private" } });
+
+    //adding participants of the private call in the call room
+    await database.callRoomParticipants.createMany({
+      data: [
+        { participantId: groupCallerId, callRoomId: callRoomDetails.id },
+        { participantId: existingUser.id, callRoomId: callRoomDetails.id },
+      ],
+    });
+
+    // get updated call room details
+    const updatedCallRoomDetails = await database.callRoom.findUnique({
+      where: { id: callRoomDetails.id },
+      include: { participants: { include: { participant: { select: { profile: true, phone: true, username: true } } } } },
+    });
+
+    const participantsAccount = [groupCaller!, existingUser, newUser];
+    // sending callRoom details to call participants and a GroupCall Request to new user
+    for (let account of participantsAccount) {
+      const { id, onlineStatus, onlineStatusWeb, connectionId, webConnectionId } = account;
+      if (id === groupCallerId) {
+        socket.emit("groupCallResponse", { type: "startedGroupCall", callRooom: updatedCallRoomDetails });
+        continue;
+      }
+
+      const userConnection =
+        id === existingUser.id
+          ? chatRouterWs.sockets.get(onlineStatus === "call" ? connectionId! : webConnectionId!)
+          : chatRouterWs.sockets.get(onlineStatus === "online" ? connectionId! : onlineStatusWeb === "online" ? webConnectionId! : "N/A");
+
+      if (userConnection) {
+        userConnection.emit("groupCallResponse", { type: id === existingUser.id ? "startedGroupCall" : "groupCallRequest", callRooom: updatedCallRoomDetails, from: groupCaller!.phone });
+      }
+    }
+  }
+
   async joinOrLeaveGroupCall(socket: SocketV1, joinOrLeaveGroupCallDto: JoinOrLeaveGroupCallDto, action: "join" | "leave" = "join") {
     await bodyValidatorWs(JoinOrLeaveGroupCallDto, joinOrLeaveGroupCallDto);
     const userId = socket.authUserId;
+    const isWebUser = socket.isWebUser;
     if ((await this.isUserAlreadyInACall(userId)) && action === "join") throw new WsError("User Cannot Join A Call,When Already In A Call ");
 
     const { callRoomId } = joinOrLeaveGroupCallDto;
@@ -191,6 +245,7 @@ export class CallService {
     if (action === "join") await database.callRoomParticipants.create({ data: { participantId: userId, callRoomId } });
     else {
       await database.callRoomParticipants.delete({ where: { callRoomId_participantId: { callRoomId, participantId: userId } } });
+      await database.user.update({ where: { id: userId }, data: isWebUser ? { onlineStatusWeb: "online" } : { onlineStatus: "online" } });
     }
 
     // get updated call room details
@@ -200,7 +255,7 @@ export class CallService {
     });
 
     // return response to user who made the request
-    socket.emit("groupCallResponse", action === "join" ? { type: "joinedGroupCall", callRoom: updatedCallRoomDetails } : { type: "LeftGroupCall" });
+    socket.emit("groupCallResponse", action === "join" ? { type: "joinedGroupCall", callRoom: updatedCallRoomDetails } : { type: "leftGroupCall" });
 
     //if there are no participants left in the CallRoom clear the room
     if (updatedCallRoomDetails?.participants.length === 0) {

@@ -9,19 +9,19 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CallWsRequestDto = void 0;
+exports.PrivateGroupCallDto = void 0;
 const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
-class CallWsRequestDto {
+class PrivateGroupCallDto {
 }
-exports.CallWsRequestDto = CallWsRequestDto;
+exports.PrivateGroupCallDto = PrivateGroupCallDto;
 __decorate([
     (0, class_transformer_1.Expose)(),
-    (0, class_validator_1.IsIn)(["sendSDPOffer", "sendSDPAnswer", "sendICEDetails", "startPublicGroupCall", "joinGroupCall", "leaveGroupCall", "endCall", "startPrivateGroupCall"]),
+    (0, class_validator_1.IsPhoneNumber)(),
     __metadata("design:type", String)
-], CallWsRequestDto.prototype, "callAction", void 0);
+], PrivateGroupCallDto.prototype, "existingUserPhone", void 0);
 __decorate([
     (0, class_transformer_1.Expose)(),
-    (0, class_validator_1.IsNotEmptyObject)(),
-    __metadata("design:type", Object)
-], CallWsRequestDto.prototype, "details", void 0);
+    (0, class_validator_1.IsPhoneNumber)(),
+    __metadata("design:type", String)
+], PrivateGroupCallDto.prototype, "newUserPhone", void 0);

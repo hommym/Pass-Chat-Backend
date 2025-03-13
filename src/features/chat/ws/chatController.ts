@@ -16,23 +16,30 @@ export const chatController = async (socket: Socket, request: ChatWsRequestDto) 
   await bodyValidatorWs(ChatWsRequestDto, request);
   const { action, data } = request;
 
-  if (action === "sendMessage") {
-    await bodyValidatorWs(MessageDto, data);
-    await chatService.sendMessage(socket, data as MessageDto);
-  } else if (action === "checkStatus") {
-    await bodyValidatorWs(CheckStatusDto, data);
-    await chatService.getUserStatus(socket, data as CheckStatusDto);
-  } else if (action === "setStatus") {
-    await bodyValidatorWs(SetStatusDto, data);
-    await chatService.setUserStatus(socket, data as SetStatusDto);
-  } else if (action === "call") {
-    await bodyValidatorWs(CallWsRequestDto, data);
-    await callController(socket as SocketV1, data as CallWsRequestDto);
-  } else if (action === "getAllMessages") {
-    await bodyValidatorWs(GetAllMessagesDto, data);
-    await chatService.getMessages(socket,data as GetAllMessagesDto,true)
-  } else {
-    await bodyValidatorWs(GetMessagesDto, data);
-    await chatService.getMessages(socket, data as GetMessagesDto);
+  switch (action) {
+    case "sendMessage":
+      await bodyValidatorWs(MessageDto, data);
+      await chatService.sendMessage(socket, data as MessageDto);
+      break;
+    case "checkStatus":
+      await bodyValidatorWs(CheckStatusDto, data);
+      await chatService.getUserStatus(socket, data as CheckStatusDto);
+      break;
+    case "setStatus":
+      await bodyValidatorWs(SetStatusDto, data);
+      await chatService.setUserStatus(socket, data as SetStatusDto);
+      break;
+    case "call":
+      await bodyValidatorWs(CallWsRequestDto, data);
+      await callController(socket as SocketV1, data as CallWsRequestDto);
+      break;
+    case "getAllMessages":
+      await bodyValidatorWs(GetAllMessagesDto, data);
+      await chatService.getMessages(socket, data as GetAllMessagesDto, true);
+      break;
+    default:
+      await bodyValidatorWs(GetMessagesDto, data);
+      await chatService.getMessages(socket, data as GetMessagesDto);
+      break;
   }
 };
