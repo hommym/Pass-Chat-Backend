@@ -70,9 +70,11 @@ class AuthService {
     async logout(userId, isWebLogout = false) {
         if (isWebLogout) {
             await objects_1.database.user.update({ where: { id: userId }, data: { webLoggedIn: false } });
+            await objects_1.database.notification.deleteMany({ where: { userId, platform: "browser" } });
         }
         else {
-            await objects_1.database.user.update({ where: { id: userId }, data: { loggedIn: false, onlineStatus: "offline" } });
+            await objects_1.database.user.update({ where: { id: userId }, data: { loggedIn: false } });
+            await objects_1.database.notification.deleteMany({ where: { userId, platform: "mobile" } });
         }
         return { message: "User Logged Out Successfully" };
     }
