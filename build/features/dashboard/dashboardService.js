@@ -153,7 +153,7 @@ class DashboardService {
             where: { type },
             skip: skip,
             take: limit,
-            select: { createdAt: true, ownerId: true, name: true, subscriberCount: true, id: true },
+            select: { createdAt: true, ownerId: true, name: true, subscriberCount: true, id: true, status: true },
         });
         const totalCommunities = await objects_1.database.community.count({ where: { type } });
         return {
