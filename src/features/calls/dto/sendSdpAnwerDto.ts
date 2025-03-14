@@ -1,5 +1,5 @@
 import { Expose } from "class-transformer";
-import { IsInt, IsString } from "class-validator";
+import { IsBoolean, IsInt, IsOptional, IsString } from "class-validator";
 
 export class SendSdpAnswerDto {
   @Expose()
@@ -9,4 +9,9 @@ export class SendSdpAnswerDto {
   @Expose()
   @IsString()
   sdpAnswer: string;
+
+  @Expose()
+  @IsOptional()
+  @IsBoolean()
+  isGroupCall?: boolean;
 }

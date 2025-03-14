@@ -1,6 +1,6 @@
 import { CallType } from "@prisma/client";
 import { Expose } from "class-transformer";
-import { IsEnum, IsInt, IsNotEmpty, IsPhoneNumber, IsString } from "class-validator";
+import { IsBoolean, IsEnum, IsInt, IsNotEmpty, IsOptional, IsPhoneNumber, IsString } from "class-validator";
 
 export class SendSdpOfferDto {
   @Expose()
@@ -19,4 +19,9 @@ export class SendSdpOfferDto {
   @IsString()
   @IsNotEmpty()
   sdpOffer: string;
+
+  @Expose()
+  @IsOptional()
+  @IsBoolean()
+  isGroupCall?: boolean;
 }
