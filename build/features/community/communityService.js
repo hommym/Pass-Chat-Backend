@@ -136,7 +136,10 @@ class CommunityService {
         const memberShipInfo = await this.isMember(communityId, userId);
         if (!memberShipInfo)
             throw new errorHandler_1.AppError("User is not a member", 404);
-        const communityDetails = await objects_1.database.community.findUnique({ where: { id: memberShipInfo.communityId }, include: { members: memberShipInfo.role === "owner" } });
+        const communityDetails = await objects_1.database.community.findUnique({
+            where: { id: memberShipInfo.communityId },
+            include: { members: memberShipInfo.role === "owner", callRoom: { include: { participants: { include: { participant: { select: { profile: true, phone: true, username: true } } } } } } },
+        });
         return { communityDetails, memberShipType: memberShipInfo.role };
     }
     async deleteCommunity(communityId, ownerId) {
