@@ -10,6 +10,7 @@ const server = new Turn({
     paschatAdmin: process.env.TurnServerPassword ? process.env.TurnServerPassword : "XoXo",
   },
   realm: process.env.DomainName,
+  listeningPort:3479
 });
 server.start();
-console.log("Node TURN server is running on port 3478");
+console.log("Node TURN server is running on port 3479");
