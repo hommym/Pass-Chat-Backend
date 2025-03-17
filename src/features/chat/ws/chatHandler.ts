@@ -17,6 +17,7 @@ export const chatRouterDef = (mainPath: string) => {
       try {
         await chatController(socket, JSON.parse(body));
       } catch (error: any) {
+        // console.log(`error:${error}`);
         socket.emit("error", { message: error.message });
       }
     });

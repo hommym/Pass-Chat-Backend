@@ -132,8 +132,8 @@ class ChatNotificationService {
         await objects_1.database.notification.deleteMany({ where: { id: { in: notificationIds } } });
     }
     async notifyOnlineMembersOfCall(args) {
-        // this method will sned an alert to online members of a particular community that a group call for that community has started
-        const { allMembersIds, chatRoomId, callerId } = args;
+        // this method will send an alert to online members of a particular community that a group call for that community has started
+        const { allMembersIds, chatRoomId, callerId, callRoomId } = args;
         await Promise.all(allMembersIds.map(async (userId) => {
             const user = await objects_1.database.user.findUnique({ where: { id: userId } });
             const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId } = user;
@@ -148,7 +148,7 @@ class ChatNotificationService {
                     return;
                 const userConnection = chatHandler_1.chatRouterWs.sockets.get(id);
                 if (userConnection) {
-                    userConnection.emit("groupCallResponse", { type: "groupCallAlert", chatRoomId });
+                    userConnection.emit("groupCallResponse", { type: "groupCallAlert", chatRoomId, callRoomId });
                 }
                 statusTracker++;
             }

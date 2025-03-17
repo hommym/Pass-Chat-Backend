@@ -322,7 +322,7 @@ class ChatService {
         // Remove the user from the CallRoom
         await objects_1.database.callRoomParticipants.delete({ where: { id } });
         // If there are no participants left in the CallRoom, clear the room
-        if (callRoomDetails.participants.length === 0) {
+        if (callRoomDetails.participants.length === 1) {
             await objects_1.database.callRoom.delete({ where: { id: callRoomId } });
             return;
         }

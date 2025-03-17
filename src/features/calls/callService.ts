@@ -193,7 +193,7 @@ export class CallService {
     appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId: message.id });
 
     // alerting online mmebers of the community that a group call has been started
-    appEvents.emit("community-call-notifier", { allMembersIds: membersIds, callerId, chatRoomId: roomId });
+    appEvents.emit("community-call-notifier", { allMembersIds: membersIds, callerId, chatRoomId: roomId, callRoomId: callRoomDetails.id });
   }
 
   async startPrivateGroupCall(socket: SocketV1, privateGroupCall: PrivateGroupCallDto) {
@@ -257,7 +257,7 @@ export class CallService {
     const { callRoomId } = joinOrLeaveGroupCallDto;
     let callRoomDetails = await database.callRoom.findUnique({
       where: { id: callRoomId },
-      include: { participants: { include: { participant: { select: { connectionId: true, webConnectionId: true, onlineStatus: true, onlineStatusWeb: true } } } } },
+      include: { participants: { include: { participant: { select: { connectionId: true, webConnectionId: true, onlineStatus: true, onlineStatusWeb: true ,id:true} } } } },
     });
 
     //check if this callRoom exist
@@ -290,20 +290,22 @@ export class CallService {
     //alert all participants of this room that a new user is has joined or an old one left
     await Promise.all(
       callRoomDetails.participants.map(async (participant) => {
-        const { connectionId, onlineStatus, onlineStatusWeb, webConnectionId } = participant.participant;
-        const statuses = [onlineStatus, onlineStatusWeb];
-        let tracker = 0;
-        for (let userStatus of statuses) {
-          let conId;
-          if (userStatus === "call" && tracker === 0) conId = connectionId!;
-          else if (userStatus === "call" && tracker === 1) conId = webConnectionId!;
-          else return;
-          const participantConnection = chatRouterWs.sockets.get(conId);
-          if (participantConnection) {
-            participantConnection.emit("groupCallResponse", { type: action === "join" ? "userJoined" : "userLeft", callRoom: updatedCallRoomDetails });
-          }
+        const { connectionId, onlineStatus, onlineStatusWeb, webConnectionId,id } = participant.participant;
+        if(id!==userId){
+          const statuses = [onlineStatus, onlineStatusWeb];
+          let tracker = 0;
+          for (let userStatus of statuses) {
+            let conId;
+            if (userStatus === "call" && tracker === 0) conId = connectionId!;
+            else if (userStatus === "call" && tracker === 1) conId = webConnectionId!;
+            else return;
+            const participantConnection = chatRouterWs.sockets.get(conId);
+            if (participantConnection) {
+              participantConnection.emit("groupCallResponse", { type: action === "join" ? "userJoined" : "userLeft", callRoom: updatedCallRoomDetails });
+            }
 
-          tracker++;
+            tracker++;
+          }
         }
       })
     );
