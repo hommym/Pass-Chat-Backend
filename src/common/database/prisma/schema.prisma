@@ -151,6 +151,11 @@ enum CallRoomType {
   public
 }
 
+enum FileType {
+  norm // for normal files 
+  dir  // for directories or folders
+}
+
 model User {
   id                Int             @id @default(autoincrement())
   email             String?         @unique
@@ -409,4 +414,22 @@ model CallRoomParticipants{
 
   @@unique([callRoomId,participantId])
   @@map("call_room_participants")
+}
+
+
+model File{
+  id                    Int                         @id @default(autoincrement())
+  ownerId               Int
+  name                  String                      
+  type                  FileType                    @default(norm)
+  createdAt             DateTime                    @default(now())
+  isRoot                Boolean                     @default(false)
+  dataUrl               String?                     // should only be set for files of type norm 
+  parentId              Int?                        // should be set for all files except the root folder
+  parent                File?                       @relation("SubFiles",fields:[parentId],references:[id])
+  subFiles              File[]                      @relation("SubFiles")
+
+  
+   @@unique([ownerId,parentId,name])
+   @@map("files")
 }
