@@ -196,6 +196,9 @@ class CallService {
         if (!newUser)
             throw new errorHandler_1.WsError("PrivateGroupCall Failed , existingUserPhone is not as associated with any account");
         const groupCaller = await objects_1.database.user.findUnique({ where: { id: groupCallerId } });
+        if (!(groupCaller.onlineStatus === "call" || groupCaller.onlineStatusWeb === "call") && (existingUser.onlineStatus === "call" || existingUser.onlineStatusWeb === "call")) {
+            throw new errorHandler_1.WsError("The user starting the call and the existing user should be in a call before a private group call can be started");
+        }
         // create CallRoom
         const callRoomDetails = await objects_1.database.callRoom.create({ data: { creatorId: groupCallerId, type: "private" } });
         //adding participants of the private call in the call room

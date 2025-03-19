@@ -211,6 +211,9 @@ export class CallService {
 
     const groupCaller = await database.user.findUnique({ where: { id: groupCallerId } });
 
+    if (!(groupCaller!.onlineStatus === "call" || groupCaller!.onlineStatusWeb === "call") && (existingUser!.onlineStatus === "call" || existingUser!.onlineStatusWeb === "call")) {
+      throw new WsError("The user starting the call and the existing user should be in a call before a private group call can be started");
+    }
     // create CallRoom
     const callRoomDetails = await database.callRoom.create({ data: { creatorId: groupCallerId, type: "private" } });
 
@@ -257,7 +260,7 @@ export class CallService {
     const { callRoomId } = joinOrLeaveGroupCallDto;
     let callRoomDetails = await database.callRoom.findUnique({
       where: { id: callRoomId },
-      include: { participants: { include: { participant: { select: { connectionId: true, webConnectionId: true, onlineStatus: true, onlineStatusWeb: true ,id:true} } } } },
+      include: { participants: { include: { participant: { select: { connectionId: true, webConnectionId: true, onlineStatus: true, onlineStatusWeb: true, id: true } } } } },
     });
 
     //check if this callRoom exist
@@ -290,8 +293,8 @@ export class CallService {
     //alert all participants of this room that a new user is has joined or an old one left
     await Promise.all(
       callRoomDetails.participants.map(async (participant) => {
-        const { connectionId, onlineStatus, onlineStatusWeb, webConnectionId,id } = participant.participant;
-        if(id!==userId){
+        const { connectionId, onlineStatus, onlineStatusWeb, webConnectionId, id } = participant.participant;
+        if (id !== userId) {
           const statuses = [onlineStatus, onlineStatusWeb];
           let tracker = 0;
           for (let userStatus of statuses) {
