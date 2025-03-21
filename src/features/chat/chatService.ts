@@ -107,7 +107,14 @@ export class ChatService {
       throw new WsError("No Account with this id exist");
     }
     const { onlineStatus, updatedAt, onlineStatusWeb } = userInfo;
-    socket.emit("response", { action: "checkStatus", userStatus: onlineStatus !== "offline" ? onlineStatus : onlineStatusWeb !== "offline" ? onlineStatusWeb : updatedAt, roomId });
+    const isUserOnlineM = onlineStatus !== "offline"; // for mobile
+    const isUserOnlineW = onlineStatusWeb !== "offline"; // fro web
+    socket.emit("response", {
+      action: "checkStatus",
+      userStatus: onlineStatus !== "offline" ? onlineStatus : onlineStatusWeb !== "offline" ? onlineStatusWeb : "offline",
+      roomId,
+      lastSeen: isUserOnlineM || isUserOnlineW ? null : updatedAt,
+    });
   }
 
   async setUserStatus(socket: Socket, data: SetStatusDto) {
@@ -125,13 +132,13 @@ export class ChatService {
       if (!recipientDetails) throw new WsError("Participants of this ChatRoom do not exist");
       else if (recipientDetails.onlineStatus === "online") {
         const recipientConnection = chatRouterWs.sockets.get(recipientDetails.connectionId!);
-        if (recipientConnection) recipientConnection.emit("response", { action: "checkStatus", roomId, userStatus: status });
+        if (recipientConnection) recipientConnection.emit("response", { action: "checkStatus", roomId, userStatus: status, lastSeen :null});
       }
 
       if (recipientDetails.webLoggedIn) {
         if (recipientDetails.onlineStatusWeb === "online") {
           const recipientConnection = chatRouterWs.sockets.get(recipientDetails.webConnectionId!);
-          if (recipientConnection) recipientConnection.emit("response", { action: "checkStatus", roomId, userStatus: status });
+          if (recipientConnection) recipientConnection.emit("response", { action: "checkStatus", roomId, userStatus: status, lastSeen: null });
         }
       }
     } else if (roomDetails.status === "active") {
