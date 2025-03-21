@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ContactSeeder = void 0;
 const objects_1 = require("../../constants/objects");
 const ContactSeeder = async () => {
-    const allMobileUsers = await objects_1.database.user.findMany({ where: { phone: { not: null } } });
+    const allMobileUsers = await objects_1.database.user.findMany({ where: { phone: { not: null }, type: "user" } });
     const names = [
         "John Doe",
         "Jane Smith",
@@ -40,7 +40,7 @@ const ContactSeeder = async () => {
         allMobileUsers.forEach(async (user) => {
             const currentUser = allMobileUsers[i];
             if (currentUser !== user) {
-                const randomName = names[objects_1.randomData.num(0, names.length - 1)];
+                const randomName = `${names[objects_1.randomData.num(0, names.length - 1)]}${objects_1.randomData.num(1000, 9999)}`;
                 await objects_1.contactsService.saveContacts([{ phone: user.phone, contactName: randomName }], currentUser.id);
             }
         });

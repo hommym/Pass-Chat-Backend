@@ -6,9 +6,9 @@ export const ActiveCommunitySeeder = async () => {
 
   await Promise.all(
     allCommunities.map(async (item) => {
-      const randomNum = randomData.num(0, 17);
+      const randomNum = randomData.num(0, allUsers.length);
 
-      for (let index: number = 0; index <= randomNum; index++) {
+      for (let index: number = 0; index < randomNum; index++) {
         await dashboardService.addToActiveCommunities({ communityId: item.id, type: "group", userId: allUsers[index].id });
       }
     })
