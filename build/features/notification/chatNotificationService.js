@@ -17,31 +17,44 @@ class ChatNotificationService {
         });
     }
     async saveCommunityNotifications(args) {
-        // this a method for setting notifications for all members of a community
-        const { action, communityId, membersIds, messageId, platform } = args;
+        // this a method for  updating  all members of a community about what is happening around a community(ie new messages, updated messages,deleted etc.)
+        const { action, communityId, membersIds, messageId } = args;
         await Promise.all(membersIds.map(async (memberId) => {
-            await objects_1.database.notification.upsert({
-                where: { userId_communityId_platform: { userId: memberId, communityId, platform } },
-                create: { userId: memberId, communityId, platform, action, type: "community", messageId },
-                update: { action },
-            });
-            const { webLoggedIn } = (await objects_1.database.user.findUnique({ where: { id: memberId } }));
-            // application sync mechanism
-            if (webLoggedIn) {
+            const userDetails = (await objects_1.database.user.findUnique({ where: { id: memberId } }));
+            const connectionIds = [userDetails.connectionId, userDetails.webConnectionId];
+            const platformStatuses = [userDetails.onlineStatus, userDetails.onlineStatusWeb];
+            let userConnection;
+            for (let i = 0; i < connectionIds.length; i++) {
+                if (platformStatuses[i] !== "offline") {
+                    userConnection = chatHandler_1.chatRouterWs.sockets.get(connectionIds[i]);
+                    if (userConnection) {
+                        const message = messageId ? await objects_1.database.message.findUnique({ where: { id: messageId } }) : null;
+                        const response = action === "saveMessage" || action === "updateMessage" || action === "deleteMessage" ? { action: "recieveMessage", data: message } : { action: "deleteCommunity", communityId };
+                        userConnection.emit("response", response);
+                        continue;
+                    }
+                }
+                if (userDetails.webLoggedIn && i === 1) {
+                    // application sync mechanism
+                    await objects_1.database.notification.upsert({
+                        where: { userId_communityId_platform: { userId: memberId, communityId, platform: "browser" } },
+                        create: { userId: memberId, communityId, platform: "browser", action, type: "community", messageId },
+                        update: { action },
+                    });
+                    continue;
+                }
                 await objects_1.database.notification.upsert({
-                    where: { userId_communityId_platform: { userId: memberId, communityId, platform: "browser" } },
-                    create: { userId: memberId, communityId, platform: "browser", action, type: "community", messageId },
+                    where: { userId_communityId_platform: { userId: memberId, communityId, platform: "mobile" } },
+                    create: { userId: memberId, communityId, platform: "mobile", action, type: "community", messageId },
                     update: { action },
                 });
             }
         }));
     }
     async setNotification(chatType, data, socket) {
-        let messageIdX;
         if (chatType === "private") {
             await (0, bodyValidator_1.bodyValidatorWs)(privateChatNotficationDto_1.PrivateChatNotificationDto, data);
             const { messageAction, messageId, recipientId, reaction } = data;
-            messageIdX = messageId;
             const message = await objects_1.database.message.findUnique({ where: { id: messageId } });
             if (!message)
                 throw new errorHandler_1.WsError("No message with this id exist");
@@ -56,17 +69,33 @@ class ChatNotificationService {
             else {
                 await objects_1.database.message.update({ where: { id: messageId }, data: { recieved: true } });
             }
-            await this.saveNotification(messageId, recipientId);
+            const setterInfo = (await objects_1.database.user.findUnique({ where: { id: socket.authUserId } }));
             const recipientInfo = (await objects_1.database.user.findUnique({ where: { id: recipientId } }));
-            // application sync mechanism
-            if (recipientInfo.webLoggedIn)
-                await this.saveNotification(messageId, recipientId, "browser");
+            let recipientConnection;
+            const connectionIds = [recipientInfo.connectionId, recipientInfo.webConnectionId, setterInfo.connectionId, setterInfo.webConnectionId];
+            const platformStatuses = [recipientInfo.onlineStatus, recipientInfo.onlineStatusWeb, setterInfo.onlineStatus, setterInfo.onlineStatusWeb];
+            for (let i = 0; i < connectionIds.length; i++) {
+                if (platformStatuses[i] !== "offline") {
+                    recipientConnection = chatHandler_1.chatRouterWs.sockets.get(connectionIds[i]);
+                    if (recipientConnection) {
+                        //sending updated message directly if user is online
+                        const message = await objects_1.database.message.findUnique({ where: { id: messageId } });
+                        recipientConnection.emit("response", { action: "recieveMessage", data: message });
+                        continue;
+                    }
+                }
+                if (recipientInfo.webLoggedIn && (i === 1 || i === 3)) {
+                    // application sync mechanism
+                    await this.saveNotification(messageId, i < 2 ? recipientId : socket.authUserId, "browser");
+                    continue;
+                }
+                await this.saveNotification(messageId, i < 2 ? recipientId : socket.authUserId);
+            }
         }
         else {
             // group or channel
             await (0, bodyValidator_1.bodyValidatorWs)(communityChatNotificationsDto_1.CommunityChatNotificationDto, data);
             const { communityId, messageAction, messageId, reaction, comment } = data;
-            messageIdX = messageId;
             const message = await objects_1.database.message.findUnique({ where: { id: messageId, communityId } });
             const communityMembers = await objects_1.database.communityMember.findMany({ where: { communityId } });
             if (!message)
@@ -95,12 +124,6 @@ class ChatNotificationService {
             const membersIds = communityMembers.map((member) => member.userId);
             objects_1.appEvents.emit("set-community-members-notifications", { action: "updateMessage", communityId, membersIds, messageId, platform: "mobile" });
         }
-        // application sync mechanism
-        const senderInfo = (await objects_1.database.user.findUnique({ where: { id: socket.authUserId } }));
-        if (socket.isWebUser)
-            await this.saveNotification(messageIdX, socket.authUserId);
-        else if (senderInfo.webLoggedIn)
-            await this.saveNotification(messageIdX, socket.authUserId, "browser");
     }
     async getNotification(socket) {
         const userId = socket.authUserId;
@@ -113,7 +136,6 @@ class ChatNotificationService {
                     { userId, platform: socket.isWebUser ? "browser" : "mobile", messageId: { not: null }, action: { not: null } },
                     { userId, platform: socket.isWebUser ? "browser" : "mobile", action: { not: null }, communityId: { not: null } },
                     { userId, platform: socket.isWebUser ? "browser" : "mobile", action: "phoneChange" },
-                    { userId, platform: socket.isWebUser ? "browser" : "mobile", action: "showOtpCode" },
                 ],
             },
             include: { message: true },

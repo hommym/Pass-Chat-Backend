@@ -243,21 +243,26 @@ class ChatService {
         const roomDetails = message.room;
         if (roomDetails.type === "private" && roomDetails.status === "active") {
             const recipientId = message.recipientId;
-            await objects_1.chatNotificationService.saveNotification(messageId, recipientId);
-            const recipientAccount = await objects_1.database.user.findUnique({ where: { id: recipientId } });
-            // handling sync mechanism for the other user invloved with this message
-            if (recipientAccount.webLoggedIn) {
-                await objects_1.chatNotificationService.saveNotification(messageId, recipientId, "browser");
-            }
-            // handling sync mechanism for the sender of the message
-            if (webUser) {
-                await objects_1.chatNotificationService.saveNotification(messageId, userId);
-            }
-            else {
-                const senderAccount = await objects_1.database.user.findUnique({ where: { id: userId } });
-                if (senderAccount.webLoggedIn) {
-                    await objects_1.chatNotificationService.saveNotification(messageId, userId, "browser");
+            const recipientAccount = (await objects_1.database.user.findUnique({ where: { id: recipientId } }));
+            const updaterAccount = (await objects_1.database.user.findUnique({ where: { id: userId } }));
+            const connectionIds = [recipientAccount.connectionId, recipientAccount.webConnectionId, updaterAccount.connectionId, updaterAccount.webConnectionId];
+            const platformStatuses = [recipientAccount.onlineStatus, recipientAccount.onlineStatusWeb, updaterAccount.onlineStatus, updaterAccount.onlineStatusWeb];
+            for (let i = 0; i < connectionIds.length; i++) {
+                if (platformStatuses[i] !== "offline") {
+                    const userConnection = chatHandler_1.chatRouterWs.sockets.get(connectionIds[i]);
+                    if (userConnection) {
+                        //sending updated message directly if user is online
+                        const message = await objects_1.database.message.findUnique({ where: { id: messageId } });
+                        userConnection.emit("response", { action: "recieveMessage", data: message });
+                        continue;
+                    }
                 }
+                if (recipientAccount.webLoggedIn && (i === 1 || i === 3)) {
+                    // application sync mechanism
+                    await objects_1.chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "browser");
+                    continue;
+                }
+                await objects_1.chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId);
             }
         }
         else {
@@ -278,21 +283,26 @@ class ChatService {
         const roomDetails = message.room;
         if (roomDetails.type === "private" && roomDetails.status === "active") {
             const recipientId = message.recipientId;
-            await objects_1.chatNotificationService.saveNotification(messageId, recipientId, "mobile", "deleteMessage");
-            const recipientAccount = await objects_1.database.user.findUnique({ where: { id: recipientId } });
-            // handling sync mechanism for the other user invloved with this message
-            if (recipientAccount.webLoggedIn) {
-                await objects_1.chatNotificationService.saveNotification(messageId, recipientId, "browser", "deleteMessage");
-            }
-            // handling sync mechanism for the sender of the message
-            if (webUser) {
-                await objects_1.chatNotificationService.saveNotification(messageId, userId, "mobile", "deleteMessage");
-            }
-            else {
-                const senderAccount = await objects_1.database.user.findUnique({ where: { id: userId } });
-                if (senderAccount.webLoggedIn) {
-                    await objects_1.chatNotificationService.saveNotification(messageId, userId, "browser", "deleteMessage");
+            const recipientAccount = (await objects_1.database.user.findUnique({ where: { id: recipientId } }));
+            const updaterAccount = (await objects_1.database.user.findUnique({ where: { id: userId } }));
+            const connectionIds = [recipientAccount.connectionId, recipientAccount.webConnectionId, updaterAccount.connectionId, updaterAccount.webConnectionId];
+            const platformStatuses = [recipientAccount.onlineStatus, recipientAccount.onlineStatusWeb, updaterAccount.onlineStatus, updaterAccount.onlineStatusWeb];
+            for (let i = 0; i < connectionIds.length; i++) {
+                if (platformStatuses[i] !== "offline") {
+                    const userConnection = chatHandler_1.chatRouterWs.sockets.get(connectionIds[i]);
+                    if (userConnection) {
+                        //sending updated message directly if user is online
+                        const message = await objects_1.database.message.findUnique({ where: { id: messageId } });
+                        userConnection.emit("response", { action: "recieveMessage", data: message });
+                        continue;
+                    }
                 }
+                if (recipientAccount.webLoggedIn && (i === 1 || i === 3)) {
+                    // application sync mechanism
+                    await objects_1.chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "browser");
+                    continue;
+                }
+                await objects_1.chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId);
             }
         }
         else {
