@@ -1,5 +1,5 @@
 import { Namespace } from "socket.io";
-import { chatService, ws } from "../../../common/constants/objects";
+import { appEvents, chatService, ws } from "../../../common/constants/objects";
 import { verifyJwtForWs } from "../../../common/middlewares/verifyJwt";
 import { chatController } from "./chatController";
 import { SocketV1 } from "../../../common/helpers/classes/socketV1";
@@ -26,6 +26,7 @@ export const chatRouterDef = (mainPath: string) => {
       console.log(`User has disconnected, socketId=${socket.id}`);
       await chatService.setUserOnlineStatus("offline", null, socket.id, (socket as SocketV1).isWebUser);
       await chatService.handleUserDisconnection((socket as SocketV1).authUserId);
+      appEvents.emit("alert-contacts-user-online-status", (socket as SocketV1).authUserId);
     });
   });
 };

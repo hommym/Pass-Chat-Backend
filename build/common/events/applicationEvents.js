@@ -28,6 +28,7 @@ class AppEvents {
         this.createListener("update-contacts-roomIds", objects_1.contactsService.updateContactsRommId);
         this.createListener("community-verification-email", sendCommunityVerificationEmail_1.sendCommunityVerificationEmail);
         this.createListener("community-call-notifier", objects_1.chatNotificationService.notifyOnlineMembersOfCall);
+        this.createListener("alert-contacts-user-online-status", objects_1.chatNotificationService.alertContactsOfUserOnlineStatus);
         console.log("Listeners Setup");
     }
     emit(eventName, data) {

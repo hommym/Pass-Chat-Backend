@@ -24,6 +24,7 @@ const chatRouterDef = (mainPath) => {
             console.log(`User has disconnected, socketId=${socket.id}`);
             await objects_1.chatService.setUserOnlineStatus("offline", null, socket.id, socket.isWebUser);
             await objects_1.chatService.handleUserDisconnection(socket.authUserId);
+            objects_1.appEvents.emit("alert-contacts-user-online-status", socket.authUserId);
         });
     });
 };

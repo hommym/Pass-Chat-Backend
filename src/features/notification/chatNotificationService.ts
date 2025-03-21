@@ -156,4 +156,34 @@ export class ChatNotificationService {
       })
     );
   }
+
+  async alertContactsOfUserOnlineStatus(userId: number) {
+    //this method is for alerting a user's contacts he or she chats with of his or her online status(ie online or offline)
+
+    //get user details
+    //get all contacts user chats with
+    const { contacts, updatedAt, onlineStatus, onlineStatusWeb } = (await database.user.findUnique({
+      where: { id: userId },
+      include: { contacts: { where: { roomId: { not: null }, status: { not: "blocked" } } } },
+    }))!;
+    const isUserOnline = onlineStatus !== "offline" || onlineStatusWeb !== "offline";
+    await Promise.all(
+      contacts.map(async (contact) => {
+        const userDetails = (await database.user.findUnique({ where: { phone: contact.phone } }))!;
+        let userConnection: Socket | undefined;
+        const connectionIds = [userDetails.connectionId!, userDetails.webConnectionId!];
+        const platformStatuses = [userDetails.onlineStatus, userDetails.onlineStatusWeb];
+
+        for (let i = 0; i < connectionIds.length; i++) {
+          if (platformStatuses[i] !== "offline") {
+            userConnection = chatRouterWs.sockets.get(connectionIds[i]);
+            if (userConnection) {
+              //send  data notifying the contacts who are online that this user is online or offline(nb: adding lastSeen for offline)
+              userConnection.emit("response", { action: "checkStatus", roomId: contact.roomId, userStatus: isUserOnline ? "online" : "offline", lastSeen: !isUserOnline ? updatedAt : null });
+            }
+          }
+        }
+      })
+    );
+  }
 }

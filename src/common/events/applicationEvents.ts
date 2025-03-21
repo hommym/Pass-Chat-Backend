@@ -13,10 +13,11 @@ type EventName = {
   "update-community-sub-count": { operation: "add" | "sub"; communityId: number };
   "set-community-members-notifications": SaveCommunityNotificationsArgs;
   "add-to-daily-users": { userId: number; platform: OS; timezone: string };
-  "add-to-active-communities": { communityId: number; userId: number ,type:CommunityType};
+  "add-to-active-communities": { communityId: number; userId: number; type: CommunityType };
   "update-contacts-roomIds": { roomId: number; contacts: { contact: string; ownerId: number }[] };
   "community-verification-email": CommunityVerificationEmail;
-  "community-call-notifier":CommunityCallNotifier;
+  "community-call-notifier": CommunityCallNotifier;
+  "alert-contacts-user-online-status": number;
 };
 
 export class AppEvents {
@@ -37,7 +38,8 @@ export class AppEvents {
     this.createListener("add-to-active-communities", dashboardService.addToActiveCommunities);
     this.createListener("update-contacts-roomIds", contactsService.updateContactsRommId);
     this.createListener("community-verification-email", sendCommunityVerificationEmail);
-    this.createListener("community-call-notifier",chatNotificationService.notifyOnlineMembersOfCall);
+    this.createListener("community-call-notifier", chatNotificationService.notifyOnlineMembersOfCall);
+    this.createListener("alert-contacts-user-online-status", chatNotificationService.alertContactsOfUserOnlineStatus);
     console.log("Listeners Setup");
   }
 
