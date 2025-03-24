@@ -19,9 +19,9 @@ class ChatService {
             //  console.log(`User with id=${user.id} is ${status}`);
         }
     }
-    async checkChatRoom(roomId) {
+    async checkChatRoom(roomId, userId = null) {
         // this method checks for a chat room exist
-        return await objects_1.database.chatRoom.findUnique({ where: { id: roomId }, include: { community: { include: { members: true } } } });
+        return await objects_1.database.chatRoom.findUnique({ where: { id: roomId }, include: { community: { include: { members: userId ? { where: { userId: { not: userId } } } : true } } } });
     }
     async checkUsersOnlineStatus(userId, checkForWebUser = false) {
         const account = await objects_1.database.user.findUnique({ where: { id: userId } });
@@ -36,7 +36,7 @@ class ChatService {
     async sendMessage(socket, message) {
         const { roomId, content, dataType, recipientId, senderId, replyTo, roomType, communityId } = message;
         let savedMessage;
-        const roomDetails = await this.checkChatRoom(roomId);
+        const roomDetails = await this.checkChatRoom(roomId, senderId);
         if (!roomDetails)
             throw new errorHandler_1.WsError("No ChatRoom with this id exist");
         else if (!roomType || roomType === "private") {

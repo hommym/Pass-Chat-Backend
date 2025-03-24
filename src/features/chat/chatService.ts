@@ -25,9 +25,9 @@ export class ChatService {
     }
   }
 
-  async checkChatRoom(roomId: number) {
+  async checkChatRoom(roomId: number, userId: number | null = null) {
     // this method checks for a chat room exist
-    return await database.chatRoom.findUnique({ where: { id: roomId }, include: { community: { include: { members: true } } } });
+    return await database.chatRoom.findUnique({ where: { id: roomId }, include: { community: { include: { members: userId ? { where: { userId: { not: userId } } } : true } } } });
   }
 
   private async checkUsersOnlineStatus(userId: number, checkForWebUser: boolean = false) {
@@ -42,7 +42,7 @@ export class ChatService {
   async sendMessage(socket: Socket, message: MessageDto) {
     const { roomId, content, dataType, recipientId, senderId, replyTo, roomType, communityId } = message;
     let savedMessage: Message;
-    const roomDetails = await this.checkChatRoom(roomId);
+    const roomDetails = await this.checkChatRoom(roomId, senderId);
     if (!roomDetails) throw new WsError("No ChatRoom with this id exist");
     else if (!roomType || roomType === "private") {
       if (!recipientId) throw new WsError("No value passed for recipientId");
@@ -304,25 +304,25 @@ export class ChatService {
       const connectionIds = [recipientAccount.connectionId, recipientAccount.webConnectionId, updaterAccount.connectionId, updaterAccount.webConnectionId];
       const platformStatuses = [recipientAccount.onlineStatus, recipientAccount.onlineStatusWeb, updaterAccount.onlineStatus, updaterAccount.onlineStatusWeb];
 
-       for (let i = 0; i < connectionIds.length; i++) {
-         if (platformStatuses[i] !== "offline") {
-           const userConnection = chatRouterWs.sockets.get(connectionIds[i]!);
-           if (userConnection) {
-             //sending updated message directly if user is online
-             const message = await database.message.findUnique({ where: { id: messageId } });
-             userConnection.emit("response", { action: "recieveMessage", data: message });
-             continue;
-           }
-         }
+      for (let i = 0; i < connectionIds.length; i++) {
+        if (platformStatuses[i] !== "offline") {
+          const userConnection = chatRouterWs.sockets.get(connectionIds[i]!);
+          if (userConnection) {
+            //sending updated message directly if user is online
+            const message = await database.message.findUnique({ where: { id: messageId } });
+            userConnection.emit("response", { action: "recieveMessage", data: message });
+            continue;
+          }
+        }
 
-         if (recipientAccount.webLoggedIn && (i === 1 || i === 3)) {
-           // application sync mechanism
-           await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "browser");
-           continue;
-         }
+        if (recipientAccount.webLoggedIn && (i === 1 || i === 3)) {
+          // application sync mechanism
+          await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "browser");
+          continue;
+        }
 
-         await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId);
-       }
+        await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId);
+      }
     } else {
       // for groups or channels message update
       const communityId = roomDetails.community[0].id;
