@@ -58,12 +58,7 @@ enum MessageType{
   poll
 }
 
-enum NotificationType{
-  private
-  system
-  call
-  community
-}
+
 
 enum ContactStatus{
   active
@@ -79,9 +74,9 @@ enum NotificationAction{
   updateMessage
   deleteMessage
   saveMessage
+  comunityInfoUpdate
   deleteCommunity
   phoneChange
-  showOtpCode
 }
 
 enum CallType{
@@ -247,19 +242,16 @@ model Message {
 model Notification {
   id                Int                 @id @default(autoincrement())
   userId            Int                 
-  type              NotificationType    @default(private)
+  action            NotificationAction
+  platform          Platform            @default(mobile)
   data              Json?
   messageId         Int?
   communityId       Int?
-  twoFactorAuthId   Int?                @unique
-  action            NotificationAction?
-  platform          Platform            @default(mobile)
   user              User                @relation(fields: [userId], references: [id])
-  message           Message?            @relation(fields:[messageId],references:[id])        
+  message           Message?            @relation(fields:[messageId],references:[id])   
+  community         Community?          @relation(fields:[communityId],references:[id])      
   createdAt         DateTime            @default(now())
 
-  @@unique([userId,messageId,platform])
-  @@unique([userId,communityId,platform])
   @@map("notifications")
 }
 
@@ -302,7 +294,8 @@ model Community {
    room                  ChatRoom               @relation(fields: [roomId], references: [id])
    ownerDetails          User                   @relation(fields: [ownerId], references: [id])
    activePeriods         ActiveCommunity[] 
-   callRoom              CallRoom[]                            
+   callRoom              CallRoom[]   
+   notifications         Notification[]                         
 
   @@unique([type,ownerId,name])
   @@map("communities")

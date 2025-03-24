@@ -270,7 +270,7 @@ class ChatService {
             const communityId = roomDetails.community[0].id;
             const allMembers = roomDetails.community[0].members;
             const membersIds = allMembers.map((member) => member.userId);
-            objects_1.appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId });
+            objects_1.appEvents.emit("set-community-members-notifications", { action: "updateMessage", communityId, membersIds, platform: "mobile", messageId });
         }
     }
     async deleteMessage(messageId, userId, webUser = false) {

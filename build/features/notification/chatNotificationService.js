@@ -10,11 +10,13 @@ const chatHandler_1 = require("../chat/ws/chatHandler");
 class ChatNotificationService {
     async saveNotification(messageId, recipientId, platform = "mobile", action = "updateMessage") {
         // this is for setting messages notifications
-        await objects_1.database.notification.upsert({
-            where: { userId_messageId_platform: { userId: recipientId, messageId, platform } },
-            create: { userId: recipientId, messageId, platform, action },
-            update: { action },
-        });
+        // check if any notification with the above details exist
+        const notifications = await objects_1.database.notification.findMany({ where: { userId: recipientId, messageId, platform } });
+        //create if it does not exist
+        if (notifications.length === 0)
+            await objects_1.database.notification.create({ data: { userId: recipientId, messageId, platform, action } });
+        else
+            await objects_1.database.notification.update({ where: { id: notifications[0].id }, data: { action } });
     }
     async saveCommunityNotifications(args) {
         // this a method for  updating  all members of a community about what is happening around a community(ie new messages, updated messages,deleted etc.)
@@ -34,20 +36,23 @@ class ChatNotificationService {
                         continue;
                     }
                 }
-                if (userDetails.webLoggedIn && i === 1) {
-                    // application sync mechanism
-                    await objects_1.database.notification.upsert({
-                        where: { userId_communityId_platform: { userId: memberId, communityId, platform: "browser" } },
-                        create: { userId: memberId, communityId, platform: "browser", action, type: "community", messageId },
-                        update: { action },
-                    });
-                    continue;
-                }
-                await objects_1.database.notification.upsert({
-                    where: { userId_communityId_platform: { userId: memberId, communityId, platform: "mobile" } },
-                    create: { userId: memberId, communityId, platform: "mobile", action, type: "community", messageId },
-                    update: { action },
+                // application sync mechanism
+                const isWebUser = userDetails.webLoggedIn && i === 1;
+                const isNotificationTypeMessage = action === "updateMessage" || action === "saveMessage" || action === "deleteMessage";
+                const notifications = await objects_1.database.notification.findMany({
+                    where: isNotificationTypeMessage
+                        ? { userId: memberId, messageId, platform: isWebUser ? "browser" : "mobile" }
+                        : { userId: memberId, communityId, platform: isWebUser ? "browser" : "mobile" },
                 });
+                //create if it does not exist
+                if (notifications.length === 0)
+                    await objects_1.database.notification.create({
+                        data: isNotificationTypeMessage
+                            ? { userId: memberId, messageId, platform: isWebUser ? "browser" : "mobile", action }
+                            : { userId: memberId, platform: isWebUser ? "browser" : "mobile", action, communityId },
+                    });
+                else
+                    await objects_1.database.notification.update({ where: { id: notifications[0].id }, data: { action } });
             }
         }));
     }
@@ -132,20 +137,38 @@ class ChatNotificationService {
         // get those notfications and then delete them
         (await objects_1.database.notification.findMany({
             where: {
-                OR: [
-                    { userId, platform: socket.isWebUser ? "browser" : "mobile", messageId: { not: null }, action: { not: null } },
-                    { userId, platform: socket.isWebUser ? "browser" : "mobile", action: { not: null }, communityId: { not: null } },
-                    { userId, platform: socket.isWebUser ? "browser" : "mobile", action: "phoneChange" },
-                ],
+                userId,
             },
-            include: { message: true },
+            include: { message: true, community: true },
         })).forEach((notification) => {
-            const dataToSend = {
-                messages: notification.message,
-                action: notification.action,
-                communityId: notification.communityId,
-                phones: notification.data,
-            };
+            let dataToSend;
+            switch (notification.action) {
+                case "deleteCommunity":
+                    dataToSend = {
+                        action: notification.action,
+                        communityId: notification.communityId,
+                    };
+                    break;
+                case "comunityInfoUpdate":
+                    dataToSend = {
+                        action: notification.action,
+                        communityId: notification.communityId,
+                        community: notification.community,
+                    };
+                    break;
+                case "phoneChange":
+                    dataToSend = {
+                        action: notification.action,
+                        phones: notification.data,
+                    };
+                    break;
+                default:
+                    dataToSend = {
+                        messages: notification.message,
+                        action: notification.action,
+                    };
+                    break;
+            }
             messages.push(dataToSend);
             notificationIds.push(notification.id);
         });

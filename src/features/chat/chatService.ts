@@ -283,7 +283,7 @@ export class ChatService {
       const allMembers = roomDetails.community[0].members;
 
       const membersIds = allMembers.map((member) => member.userId);
-      appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId });
+      appEvents.emit("set-community-members-notifications", { action: "updateMessage", communityId, membersIds, platform: "mobile", messageId });
     }
   }
 
