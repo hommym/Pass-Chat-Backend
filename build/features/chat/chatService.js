@@ -170,22 +170,29 @@ class ChatService {
         return { roomId: id, createdAt, roomType: type, participants: [user1Details, user2Details] };
     }
     async getAllChatRooms(userId) {
+        const { communities } = (await objects_1.database.user.findUnique({ where: { id: userId }, select: { communities: { select: { community: { select: { roomId: true } } } } } }));
+        const idsOfCommunitiesChatRomUserIsParticipant = communities.map((communityMemberInfo) => {
+            return communityMemberInfo.community.roomId;
+        });
         const rooms = await objects_1.database.chatRoom.findMany({
-            where: { OR: [{ user1Id: userId }, { user2Id: userId }], type: "private" },
-            select: { id: true, type: true, user1: { select: { phone: true, id: true } }, user2: { select: { phone: true, id: true } }, createdAt: true, pinnedMessages: true },
+            where: { OR: [{ user1Id: userId }, { user2Id: userId }, { id: { in: idsOfCommunitiesChatRomUserIsParticipant } }] },
+            select: { id: true, type: true, user1: { select: { phone: true, id: true } }, user2: { select: { phone: true, id: true } }, createdAt: true, pinnedMessages: true, community: true },
         });
         const dataToReturn = [];
         rooms.forEach((room) => {
-            const { id, createdAt, type, user1, user2, pinnedMessages } = room;
+            const { id, createdAt, type, user1, user2, pinnedMessages, community } = room;
             dataToReturn.push({
                 roomId: id,
                 roomType: type,
                 createdAt,
-                participants: [
-                    { id: user1.id, phone: user1.phone },
-                    { id: user2.id, phone: user2.phone },
-                ],
+                participants: type === "private"
+                    ? [
+                        { id: user1.id, phone: user1.phone },
+                        { id: user2.id, phone: user2.phone },
+                    ]
+                    : null,
                 pinnedMessages,
+                communityId: type !== "private" ? community[0].id : null,
             });
         });
         return dataToReturn;
