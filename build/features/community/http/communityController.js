@@ -75,7 +75,8 @@ exports.communityRouter.patch("/group/permissions", (0, bodyValidator_1.bodyVali
 }));
 exports.communityRouter.patch("/channel/permissions", (0, bodyValidator_1.bodyValidator)(permissionsDto_1.ChannelPermissionDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
     const _a = req.body, { verifiedUserId } = _a, updatePermissionsDto = __rest(_a, ["verifiedUserId"]);
-    res.status(200).json(await objects_1.communityService.updatePermissions(verifiedUserId, updatePermissionsDto, "channel"));
+    await objects_1.communityService.updatePermissions(verifiedUserId, updatePermissionsDto, "channel");
+    res.status(204).end();
 }));
 exports.communityRouter.get("/all/user", verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
     const { verifiedUserId } = req.body;

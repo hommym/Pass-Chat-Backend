@@ -31,6 +31,9 @@ class ReportService {
                 throw new errorHandler_1.AppError("No Community with this id exist", 404);
             await objects_1.database.community.update({ where: { id: communityId }, data: { status: "suspend" } });
             await objects_1.database.flaggedData.create({ data: { reason, type, date, communityId } });
+            const communityMembers = await objects_1.database.communityMember.findMany({ where: { communityId } });
+            const membersIds = communityMembers.map((member) => member.userId);
+            objects_1.appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId, membersIds, messageId: null, platform: "mobile", chatRoomId: null });
         }
         return { message: "Report Submitted Successfully" };
     }
@@ -78,6 +81,10 @@ class ReportService {
         else if (type === "community" && action === "approved") {
             //ban community
             await objects_1.database.community.update({ where: { id: flaggedData.communityId }, data: { status: "blocked" } });
+            const communityId = flaggedData.communityId;
+            const communityMembers = await objects_1.database.communityMember.findMany({ where: { communityId } });
+            const membersIds = communityMembers.map((member) => member.userId);
+            objects_1.appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId, membersIds, messageId: null, platform: "mobile", chatRoomId: null });
         }
     }
 }

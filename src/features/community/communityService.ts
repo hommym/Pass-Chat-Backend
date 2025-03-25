@@ -55,8 +55,16 @@ export class CommunityService {
 
   async updatePermissions(ownerId: number, permissionsDto: GroupPermissionsDto, type: "group" | "channel") {
     const { name, ...permissions } = permissionsDto;
-    if (!(await this.checkCommunity(type, name, ownerId))) throw new AppError(`This account does not own a ${type} with such name`, 404);
-    return await database.community.update({ where: { type_ownerId_name: { type, name, ownerId } }, data: { permissions } });
+    const doesUserOwnCommunity = await this.checkCommunity(type, name, ownerId);
+
+    if (!doesUserOwnCommunity) throw new AppError(`This account does not own a ${type} with such name`, 404);
+
+    await database.community.update({ where: { type_ownerId_name: { type, name, ownerId } }, data: { permissions } });
+
+    const communityMembers = await database.communityMember.findMany({ where: { communityId: doesUserOwnCommunity.id } });
+    const membersIds = communityMembers.map((member) => member.userId);
+
+    appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId: doesUserOwnCommunity.id, membersIds, messageId: null, platform: "mobile", chatRoomId: null });
   }
 
   async search(keyword: string) {
@@ -72,6 +80,10 @@ export class CommunityService {
     } else {
       await database.community.update({ where: { id: communityId }, data: { subscriberCount: { decrement: 1 } } });
     }
+
+    const communityMembers = await database.communityMember.findMany({ where: { communityId } });
+    const membersIds = communityMembers.map((member) => member.userId);
+    appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId, membersIds, messageId: null, platform: "mobile", chatRoomId: null });
   }
 
   async isMember(communityId: number, userId: number) {
@@ -107,14 +119,18 @@ export class CommunityService {
 
     if (!communityDetails) throw new AppError(`No ${type} with this name exist`, 404);
     else if (ownerId !== communityDetails.ownerId) throw new AppError(`Only the owner of the ${type} can change members roles`, 402);
-    const { id, description, name, profile, subscriberCount } = communityDetails;
+    const { id} = communityDetails;
 
     const memberAccount = await database.user.findUnique({ where: { phone: memberPhone } });
 
     if (!memberAccount) throw new AppError("No account with this phone exist", 404);
     else if (!(await this.isMember(communityDetails.id, memberAccount.id))) throw new AppError(`User is not a member of the ${type}`, 404);
 
-    await database.communityMember.update({ where: { communityId_userId: { communityId: communityDetails.id, userId: memberAccount.id } }, data: { role: newRole } });
+    await database.communityMember.update({ where: { communityId_userId: { communityId: id, userId: memberAccount.id } }, data: { role: newRole } });
+
+    
+    const membersIds = [ownerId, memberAccount.id];
+    appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId:id, membersIds, messageId: null, platform: "mobile", chatRoomId: null });
   }
 
   async getAllUsersCommunities(userId: number) {
@@ -124,8 +140,11 @@ export class CommunityService {
       allMemberShipData.map(async (memberShipData) => {
         const communityDetails = await database.community.findUnique({
           where: { id: memberShipData.communityId },
-          include: { members: memberShipData.role === "owner" ? { select: { role: true, userDetails: { select: { phone: true, profile: true } } } } : false },
+          include: { members: { select: { role: true, userDetails: { select: { phone: true, profile: true } } } } },
         });
+        if (memberShipData.role !== "owner") {
+          communityDetails!.members = [];
+        }
         return { communityDetails, memberShipType: memberShipData.role };
       })
     );
@@ -155,7 +174,7 @@ export class CommunityService {
 
     const membersIds = allMembers.map((member) => member.userId);
 
-    appEvents.emit("set-community-members-notifications", { communityId, membersIds, action: "deleteCommunity", platform: "mobile", messageId: null ,chatRoomId:null});
+    appEvents.emit("set-community-members-notifications", { communityId, membersIds, action: "deleteCommunity", platform: "mobile", messageId: null, chatRoomId: null });
   }
 
   async verifyCommunity(ownerId: number, verificationData: VerifyCommunityDto) {

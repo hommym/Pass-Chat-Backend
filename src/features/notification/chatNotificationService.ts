@@ -40,11 +40,23 @@ export class ChatNotificationService {
             if (userConnection) {
               const message = messageId ? await database.message.findUnique({ where: { id: messageId } }) : null;
               const chatRoom = chatRoomId ? await database.chatRoom.findUnique({ where: { id: chatRoomId } }) : null;
+              const community = communityId
+                ? await database.community.findUnique({ where: { id: communityId }, include: { members: { select: { role: true, userDetails: { select: { profile: true, phone: true } } } } } })
+                : null;
+
+              if (communityId && community) {
+                if (community.ownerId !== memberId) {
+                  community.members = [];
+                }
+              }
+
               const response =
                 action === "saveMessage" || action === "updateMessage" || action === "deleteMessage"
                   ? { action: "recieveMessage", data: message }
                   : action === "updateChatRoom"
                   ? { action: "updateChatRoom", chatRoom }
+                  : action === "comunityInfoUpdate"
+                  ? { action: "comunityInfoUpdate", community }
                   : { action: "deleteCommunity", communityId };
 
               userConnection.emit("response", response);
@@ -160,7 +172,7 @@ export class ChatNotificationService {
         },
         include: {
           message: true,
-          community: true,
+          community: { include: { members: { select: { role: true, userDetails: { select: { phone: true, profile: true } } } } } },
           chatRoom: { select: { id: true, type: true, createdAt: true, user1: { select: { id: true, phone: true } }, user2: { select: { id: true, phone: true } }, pinnedMessages: true } },
         },
       })
@@ -175,9 +187,11 @@ export class ChatNotificationService {
           };
           break;
         case "comunityInfoUpdate":
+          if (userId !== notification.community!.ownerId) {
+            notification.community!.members = [];
+          }
           dataToSend = {
             action: notification.action,
-            communityId: notification.communityId,
             community: notification.community,
           };
           break;

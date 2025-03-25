@@ -23,6 +23,9 @@ export class ReportService {
       else if (!(await database.community.findUnique({ where: { id: communityId } }))) throw new AppError("No Community with this id exist", 404);
       await database.community.update({ where: { id: communityId }, data: { status: "suspend" } });
       await database.flaggedData.create({ data: { reason, type, date, communityId } });
+       const communityMembers = await database.communityMember.findMany({ where: { communityId } });
+       const membersIds = communityMembers.map((member) => member.userId);
+       appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId, membersIds, messageId: null, platform: "mobile", chatRoomId: null });
     }
     return { message: "Report Submitted Successfully" };
   }
@@ -69,6 +72,11 @@ export class ReportService {
     } else if (type === "community" && action === "approved") {
       //ban community
       await database.community.update({ where: { id: flaggedData.communityId! }, data: { status: "blocked" } });
+       const communityId = flaggedData.communityId!;
+       const communityMembers = await database.communityMember.findMany({ where: { communityId } });
+       const membersIds = communityMembers.map((member) => member.userId);
+       appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId, membersIds, messageId:null, platform: "mobile", chatRoomId: null });
+      
     }
   }
 }

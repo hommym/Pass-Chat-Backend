@@ -93,7 +93,8 @@ communityRouter.patch(
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
     const { verifiedUserId, ...updatePermissionsDto } = req.body;
-    res.status(200).json(await communityService.updatePermissions(verifiedUserId, updatePermissionsDto, "channel"));
+    await communityService.updatePermissions(verifiedUserId, updatePermissionsDto, "channel");
+    res.status(204).end();
   })
 );
 

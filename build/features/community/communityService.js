@@ -62,9 +62,13 @@ class CommunityService {
     }
     async updatePermissions(ownerId, permissionsDto, type) {
         const { name } = permissionsDto, permissions = __rest(permissionsDto, ["name"]);
-        if (!(await this.checkCommunity(type, name, ownerId)))
+        const doesUserOwnCommunity = await this.checkCommunity(type, name, ownerId);
+        if (!doesUserOwnCommunity)
             throw new errorHandler_1.AppError(`This account does not own a ${type} with such name`, 404);
-        return await objects_1.database.community.update({ where: { type_ownerId_name: { type, name, ownerId } }, data: { permissions } });
+        await objects_1.database.community.update({ where: { type_ownerId_name: { type, name, ownerId } }, data: { permissions } });
+        const communityMembers = await objects_1.database.communityMember.findMany({ where: { communityId: doesUserOwnCommunity.id } });
+        const membersIds = communityMembers.map((member) => member.userId);
+        objects_1.appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId: doesUserOwnCommunity.id, membersIds, messageId: null, platform: "mobile", chatRoomId: null });
     }
     async search(keyword) {
         return await objects_1.database.community.findMany({
@@ -79,6 +83,9 @@ class CommunityService {
         else {
             await objects_1.database.community.update({ where: { id: communityId }, data: { subscriberCount: { decrement: 1 } } });
         }
+        const communityMembers = await objects_1.database.communityMember.findMany({ where: { communityId } });
+        const membersIds = communityMembers.map((member) => member.userId);
+        objects_1.appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId, membersIds, messageId: null, platform: "mobile", chatRoomId: null });
     }
     async isMember(communityId, userId) {
         return await objects_1.database.communityMember.findUnique({ where: { communityId_userId: { communityId, userId }, deleteFlag: false } });
@@ -112,13 +119,15 @@ class CommunityService {
             throw new errorHandler_1.AppError(`No ${type} with this name exist`, 404);
         else if (ownerId !== communityDetails.ownerId)
             throw new errorHandler_1.AppError(`Only the owner of the ${type} can change members roles`, 402);
-        const { id, description, name, profile, subscriberCount } = communityDetails;
+        const { id } = communityDetails;
         const memberAccount = await objects_1.database.user.findUnique({ where: { phone: memberPhone } });
         if (!memberAccount)
             throw new errorHandler_1.AppError("No account with this phone exist", 404);
         else if (!(await this.isMember(communityDetails.id, memberAccount.id)))
             throw new errorHandler_1.AppError(`User is not a member of the ${type}`, 404);
-        await objects_1.database.communityMember.update({ where: { communityId_userId: { communityId: communityDetails.id, userId: memberAccount.id } }, data: { role: newRole } });
+        await objects_1.database.communityMember.update({ where: { communityId_userId: { communityId: id, userId: memberAccount.id } }, data: { role: newRole } });
+        const membersIds = [ownerId, memberAccount.id];
+        objects_1.appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId: id, membersIds, messageId: null, platform: "mobile", chatRoomId: null });
     }
     async getAllUsersCommunities(userId) {
         // this method gets all communities a user is part of
@@ -126,8 +135,11 @@ class CommunityService {
         return Promise.all(allMemberShipData.map(async (memberShipData) => {
             const communityDetails = await objects_1.database.community.findUnique({
                 where: { id: memberShipData.communityId },
-                include: { members: memberShipData.role === "owner" ? { select: { role: true, userDetails: { select: { phone: true, profile: true } } } } : false },
+                include: { members: { select: { role: true, userDetails: { select: { phone: true, profile: true } } } } },
             });
+            if (memberShipData.role !== "owner") {
+                communityDetails.members = [];
+            }
             return { communityDetails, memberShipType: memberShipData.role };
         }));
     }
