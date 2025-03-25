@@ -48,8 +48,9 @@ exports.chatRouter.delete("/message", verifyJwt_1.verifyJwt, (0, express_async_h
 }));
 exports.chatRouter.patch("/pin/message/:messageId", verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
     const { messageId } = req.params;
+    const { verifiedUserId } = req.body;
     try {
-        res.status(200).json(await objects_1.chatService.pinMessage(+messageId));
+        res.status(200).json(await objects_1.chatService.pinMessage(+messageId, verifiedUserId));
     }
     catch (error) {
         if (error instanceof errorHandler_1.AppError)

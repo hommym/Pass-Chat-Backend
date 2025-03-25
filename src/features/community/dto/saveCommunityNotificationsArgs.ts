@@ -6,4 +6,5 @@ export class SaveCommunityNotificationsArgs {
   action: NotificationAction;
   platform: Platform = "mobile";
   messageId: number | null = null;
+  chatRoomId:number| null=null;
 }

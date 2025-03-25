@@ -181,7 +181,7 @@ class CallService {
             data: { senderId: callerId, content: JSON.stringify({ content: `on-going-${callType}-call`, content_id: (0, uuid_1.v4)() }), type: "call", roomId, callType },
         });
         const membersIds = members.map((member) => member.userId);
-        objects_1.appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId: message.id });
+        objects_1.appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId: message.id, chatRoomId: null });
         // alerting online mmebers of the community that a group call has been started
         objects_1.appEvents.emit("community-call-notifier", { allMembersIds: membersIds, callerId, chatRoomId: roomId, callRoomId: callRoomDetails.id });
     }

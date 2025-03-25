@@ -61,7 +61,7 @@ export class ReportService {
         const communityId = room.community[0].id;
         const communityMembers = await database.communityMember.findMany({ where: { communityId } });
         const membersIds = communityMembers.map((member) => member.userId);
-        appEvents.emit("set-community-members-notifications", { action: "updateMessage", communityId, membersIds, messageId: flaggedData.messageId, platform: "mobile" });
+        appEvents.emit("set-community-members-notifications", { action: "updateMessage", communityId, membersIds, messageId: flaggedData.messageId, platform: "mobile" ,chatRoomId:null});
       }
     } else if (type === "account" && action === "approved") {
       // ban account

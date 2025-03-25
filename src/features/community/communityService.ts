@@ -155,7 +155,7 @@ export class CommunityService {
 
     const membersIds = allMembers.map((member) => member.userId);
 
-    appEvents.emit("set-community-members-notifications", { communityId, membersIds, action: "deleteCommunity", platform: "mobile", messageId: null });
+    appEvents.emit("set-community-members-notifications", { communityId, membersIds, action: "deleteCommunity", platform: "mobile", messageId: null ,chatRoomId:null});
   }
 
   async verifyCommunity(ownerId: number, verificationData: VerifyCommunityDto) {

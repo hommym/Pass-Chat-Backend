@@ -150,7 +150,7 @@ class CommunityService {
         await objects_1.database.communityMember.updateMany({ where: { communityId: memberShipDetails.communityId }, data: { deleteFlag: true } });
         const allMembers = await objects_1.database.communityMember.findMany({ where: { communityId } });
         const membersIds = allMembers.map((member) => member.userId);
-        objects_1.appEvents.emit("set-community-members-notifications", { communityId, membersIds, action: "deleteCommunity", platform: "mobile", messageId: null });
+        objects_1.appEvents.emit("set-community-members-notifications", { communityId, membersIds, action: "deleteCommunity", platform: "mobile", messageId: null, chatRoomId: null });
     }
     async verifyCommunity(ownerId, verificationData) {
         const { communityId } = verificationData;

@@ -68,7 +68,7 @@ class ReportService {
                 const communityId = room.community[0].id;
                 const communityMembers = await objects_1.database.communityMember.findMany({ where: { communityId } });
                 const membersIds = communityMembers.map((member) => member.userId);
-                objects_1.appEvents.emit("set-community-members-notifications", { action: "updateMessage", communityId, membersIds, messageId: flaggedData.messageId, platform: "mobile" });
+                objects_1.appEvents.emit("set-community-members-notifications", { action: "updateMessage", communityId, membersIds, messageId: flaggedData.messageId, platform: "mobile", chatRoomId: null });
             }
         }
         else if (type === "account" && action === "approved") {

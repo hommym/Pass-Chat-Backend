@@ -190,7 +190,7 @@ export class CallService {
     });
 
     const membersIds = members.map((member) => member.userId);
-    appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId: message.id });
+    appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId: message.id ,chatRoomId:null});
 
     // alerting online mmebers of the community that a group call has been started
     appEvents.emit("community-call-notifier", { allMembersIds: membersIds, callerId, chatRoomId: roomId, callRoomId: callRoomDetails.id });

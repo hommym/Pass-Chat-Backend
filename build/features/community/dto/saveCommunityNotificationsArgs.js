@@ -5,6 +5,7 @@ class SaveCommunityNotificationsArgs {
     constructor() {
         this.platform = "mobile";
         this.messageId = null;
+        this.chatRoomId = null;
     }
 }
 exports.SaveCommunityNotificationsArgs = SaveCommunityNotificationsArgs;
