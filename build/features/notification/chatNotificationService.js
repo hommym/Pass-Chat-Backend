@@ -21,6 +21,7 @@ class ChatNotificationService {
     async saveCommunityNotifications(args) {
         // this a method for  updating  all members of a community about what is happening around a community(ie new messages, updated messages,deleted etc.)
         const { action, communityId, membersIds, messageId, chatRoomId } = args;
+        const isNotificationTypeMessage = action === "updateMessage" || action === "saveMessage" || action === "deleteMessage";
         await Promise.all(membersIds.map(async (memberId) => {
             const userDetails = (await objects_1.database.user.findUnique({ where: { id: memberId } }));
             const connectionIds = [userDetails.connectionId, userDetails.webConnectionId];
@@ -30,9 +31,9 @@ class ChatNotificationService {
                 if (platformStatuses[i] !== "offline") {
                     userConnection = chatHandler_1.chatRouterWs.sockets.get(connectionIds[i]);
                     if (userConnection) {
-                        const message = messageId ? await objects_1.database.message.findUnique({ where: { id: messageId } }) : null;
-                        const chatRoom = chatRoomId ? await objects_1.database.chatRoom.findUnique({ where: { id: chatRoomId } }) : null;
-                        const community = communityId
+                        const message = messageId && isNotificationTypeMessage ? await objects_1.database.message.findUnique({ where: { id: messageId } }) : null;
+                        const chatRoom = chatRoomId && action === "updateChatRoom" ? await objects_1.database.chatRoom.findUnique({ where: { id: chatRoomId } }) : null;
+                        const community = communityId && action === "comunityInfoUpdate"
                             ? await objects_1.database.community.findUnique({ where: { id: communityId }, include: { members: { select: { role: true, userDetails: { select: { profile: true, phone: true } } } } } })
                             : null;
                         if (communityId && community) {
@@ -40,7 +41,7 @@ class ChatNotificationService {
                                 community.members = [];
                             }
                         }
-                        const response = action === "saveMessage" || action === "updateMessage" || action === "deleteMessage"
+                        const response = isNotificationTypeMessage
                             ? { action: "recieveMessage", data: message }
                             : action === "updateChatRoom"
                                 ? { action: "updateChatRoom", chatRoom }
@@ -53,7 +54,6 @@ class ChatNotificationService {
                 }
                 // application sync mechanism
                 const isWebUser = userDetails.webLoggedIn && i === 1;
-                const isNotificationTypeMessage = action === "updateMessage" || action === "saveMessage" || action === "deleteMessage";
                 const notifications = await objects_1.database.notification.findMany({
                     where: isNotificationTypeMessage
                         ? { userId: memberId, messageId, platform: isWebUser ? "browser" : "mobile" }
