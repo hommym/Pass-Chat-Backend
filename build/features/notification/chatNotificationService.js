@@ -8,19 +8,19 @@ const errorHandler_1 = require("../../common/middlewares/errorHandler");
 const communityChatNotificationsDto_1 = require("./dto/communityChatNotificationsDto");
 const chatHandler_1 = require("../chat/ws/chatHandler");
 class ChatNotificationService {
-    async saveNotification(messageId, recipientId, platform = "mobile", action = "updateMessage") {
-        // this is for setting messages notifications
+    async saveNotification(messageId, recipientId, platform = "mobile", action = "updateMessage", chatRoomId = null) {
+        // this is for setting messages notifications and chatroom updates notifications
         // check if any notification with the above details exist
-        const notifications = await objects_1.database.notification.findMany({ where: { userId: recipientId, messageId, platform } });
+        const notifications = await objects_1.database.notification.findMany({ where: chatRoomId ? { userId: recipientId, chatRoomId, platform } : { userId: recipientId, messageId, platform } });
         //create if it does not exist
         if (notifications.length === 0)
-            await objects_1.database.notification.create({ data: { userId: recipientId, messageId, platform, action } });
+            await objects_1.database.notification.create({ data: chatRoomId ? { userId: recipientId, messageId, platform, action } : { userId: recipientId, chatRoomId, platform, action } });
         else
             await objects_1.database.notification.update({ where: { id: notifications[0].id }, data: { action } });
     }
     async saveCommunityNotifications(args) {
         // this a method for  updating  all members of a community about what is happening around a community(ie new messages, updated messages,deleted etc.)
-        const { action, communityId, membersIds, messageId } = args;
+        const { action, communityId, membersIds, messageId, chatRoomId } = args;
         await Promise.all(membersIds.map(async (memberId) => {
             const userDetails = (await objects_1.database.user.findUnique({ where: { id: memberId } }));
             const connectionIds = [userDetails.connectionId, userDetails.webConnectionId];
@@ -31,7 +31,12 @@ class ChatNotificationService {
                     userConnection = chatHandler_1.chatRouterWs.sockets.get(connectionIds[i]);
                     if (userConnection) {
                         const message = messageId ? await objects_1.database.message.findUnique({ where: { id: messageId } }) : null;
-                        const response = action === "saveMessage" || action === "updateMessage" || action === "deleteMessage" ? { action: "recieveMessage", data: message } : { action: "deleteCommunity", communityId };
+                        const chatRoom = chatRoomId ? await objects_1.database.chatRoom.findUnique({ where: { id: chatRoomId } }) : null;
+                        const response = action === "saveMessage" || action === "updateMessage" || action === "deleteMessage"
+                            ? { action: "recieveMessage", data: message }
+                            : action === "updateChatRoom"
+                                ? { action: "updateChatRoom", chatRoom }
+                                : { action: "deleteCommunity", communityId };
                         userConnection.emit("response", response);
                         continue;
                     }
@@ -42,14 +47,18 @@ class ChatNotificationService {
                 const notifications = await objects_1.database.notification.findMany({
                     where: isNotificationTypeMessage
                         ? { userId: memberId, messageId, platform: isWebUser ? "browser" : "mobile" }
-                        : { userId: memberId, communityId, platform: isWebUser ? "browser" : "mobile" },
+                        : action === "updateChatRoom"
+                            ? { userId: memberId, chatRoomId, platform: isWebUser ? "browser" : "mobile" }
+                            : { userId: memberId, communityId, platform: isWebUser ? "browser" : "mobile" },
                 });
                 //create if it does not exist
                 if (notifications.length === 0)
                     await objects_1.database.notification.create({
                         data: isNotificationTypeMessage
                             ? { userId: memberId, messageId, platform: isWebUser ? "browser" : "mobile", action }
-                            : { userId: memberId, platform: isWebUser ? "browser" : "mobile", action, communityId },
+                            : action === "updateChatRoom"
+                                ? { userId: memberId, platform: isWebUser ? "browser" : "mobile", action, chatRoomId }
+                                : { userId: memberId, platform: isWebUser ? "browser" : "mobile", action, communityId },
                     });
                 else
                     await objects_1.database.notification.update({ where: { id: notifications[0].id }, data: { action } });
@@ -127,7 +136,7 @@ class ChatNotificationService {
                 await objects_1.database.message.update({ where: { id: messageId }, data: { reactions } });
             }
             const membersIds = communityMembers.map((member) => member.userId);
-            objects_1.appEvents.emit("set-community-members-notifications", { action: "updateMessage", communityId, membersIds, messageId, platform: "mobile" });
+            objects_1.appEvents.emit("set-community-members-notifications", { action: "updateMessage", communityId, membersIds, messageId, platform: "mobile", chatRoomId: null });
         }
     }
     async getNotification(socket) {
@@ -139,7 +148,11 @@ class ChatNotificationService {
             where: {
                 userId,
             },
-            include: { message: true, community: true },
+            include: {
+                message: true,
+                community: true,
+                chatRoom: { select: { id: true, type: true, createdAt: true, user1: { select: { id: true, phone: true } }, user2: { select: { id: true, phone: true } }, pinnedMessages: true } },
+            },
         })).forEach((notification) => {
             let dataToSend;
             switch (notification.action) {
@@ -162,10 +175,37 @@ class ChatNotificationService {
                         phones: notification.data,
                     };
                     break;
+                case "updateChatRoom":
+                    const roomDetails = notification.chatRoom;
+                    dataToSend =
+                        roomDetails.type === "private"
+                            ? {
+                                action: notification.action,
+                                chatRoom: {
+                                    roomId: roomDetails.id,
+                                    roomType: roomDetails.type,
+                                    createdAt: roomDetails.createdAt,
+                                    pinnedMessages: roomDetails.pinnedMessages,
+                                    communityId: null,
+                                    participants: [roomDetails.user1, roomDetails.user2],
+                                },
+                            }
+                            : {
+                                action: notification.action,
+                                chatRoom: {
+                                    roomId: roomDetails.id,
+                                    roomType: roomDetails.type,
+                                    createdAt: roomDetails.createdAt,
+                                    pinnedMessages: roomDetails.pinnedMessages,
+                                    communityId: notification.communityId,
+                                    participants: null,
+                                },
+                            };
+                    break;
                 default:
                     dataToSend = {
-                        messages: notification.message,
                         action: notification.action,
+                        messages: notification.message,
                     };
                     break;
             }

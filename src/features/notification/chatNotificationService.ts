@@ -12,20 +12,21 @@ import { CommunityCallNotifier } from "../community/type/communityCallNotifier";
 import { chatRouterWs } from "../chat/ws/chatHandler";
 
 export class ChatNotificationService {
-  async saveNotification(messageId: number, recipientId: number, platform: Platform = "mobile", action: NotificationAction = "updateMessage") {
-    // this is for setting messages notifications
+  async saveNotification(messageId: number, recipientId: number, platform: Platform = "mobile", action: NotificationAction = "updateMessage", chatRoomId: number | null = null) {
+    // this is for setting messages notifications and chatroom updates notifications
 
     // check if any notification with the above details exist
-    const notifications = await database.notification.findMany({ where: { userId: recipientId, messageId, platform } });
+    const notifications = await database.notification.findMany({ where: chatRoomId ? { userId: recipientId, chatRoomId, platform } : { userId: recipientId, messageId, platform } });
 
     //create if it does not exist
-    if (notifications.length === 0) await database.notification.create({ data: { userId: recipientId, messageId, platform, action} });
+    if (notifications.length === 0)
+      await database.notification.create({ data: chatRoomId ? { userId: recipientId, messageId, platform, action } : { userId: recipientId, chatRoomId, platform, action } });
     else await database.notification.update({ where: { id: notifications[0].id }, data: { action } });
   }
 
   async saveCommunityNotifications(args: SaveCommunityNotificationsArgs) {
     // this a method for  updating  all members of a community about what is happening around a community(ie new messages, updated messages,deleted etc.)
-    const { action, communityId, membersIds, messageId } = args;
+    const { action, communityId, membersIds, messageId, chatRoomId } = args;
     await Promise.all(
       membersIds.map(async (memberId) => {
         const userDetails = (await database.user.findUnique({ where: { id: memberId } }))!;
@@ -38,8 +39,13 @@ export class ChatNotificationService {
             userConnection = chatRouterWs.sockets.get(connectionIds[i]!);
             if (userConnection) {
               const message = messageId ? await database.message.findUnique({ where: { id: messageId } }) : null;
+              const chatRoom = chatRoomId ? await database.chatRoom.findUnique({ where: { id: chatRoomId } }) : null;
               const response =
-                action === "saveMessage" || action === "updateMessage" || action === "deleteMessage" ? { action: "recieveMessage", data: message } : { action: "deleteCommunity", communityId };
+                action === "saveMessage" || action === "updateMessage" || action === "deleteMessage"
+                  ? { action: "recieveMessage", data: message }
+                  : action === "updateChatRoom"
+                  ? { action: "updateChatRoom", chatRoom }
+                  : { action: "deleteCommunity", communityId };
 
               userConnection.emit("response", response);
               continue;
@@ -51,6 +57,8 @@ export class ChatNotificationService {
           const notifications = await database.notification.findMany({
             where: isNotificationTypeMessage
               ? { userId: memberId, messageId, platform: isWebUser ? "browser" : "mobile" }
+              : action === "updateChatRoom"
+              ? { userId: memberId, chatRoomId, platform: isWebUser ? "browser" : "mobile" }
               : { userId: memberId, communityId, platform: isWebUser ? "browser" : "mobile" },
           });
 
@@ -59,6 +67,8 @@ export class ChatNotificationService {
             await database.notification.create({
               data: isNotificationTypeMessage
                 ? { userId: memberId, messageId, platform: isWebUser ? "browser" : "mobile", action }
+                : action === "updateChatRoom"
+                ? { userId: memberId, platform: isWebUser ? "browser" : "mobile", action, chatRoomId }
                 : { userId: memberId, platform: isWebUser ? "browser" : "mobile", action, communityId },
             });
           else await database.notification.update({ where: { id: notifications[0].id }, data: { action } });
@@ -134,7 +144,7 @@ export class ChatNotificationService {
         await database.message.update({ where: { id: messageId }, data: { reactions } });
       }
       const membersIds = communityMembers.map((member) => member.userId);
-      appEvents.emit("set-community-members-notifications", { action: "updateMessage", communityId, membersIds, messageId, platform: "mobile" });
+      appEvents.emit("set-community-members-notifications", { action: "updateMessage", communityId, membersIds, messageId, platform: "mobile", chatRoomId: null });
     }
   }
 
@@ -148,7 +158,11 @@ export class ChatNotificationService {
         where: {
           userId,
         },
-        include: { message: true, community: true },
+        include: {
+          message: true,
+          community: true,
+          chatRoom: { select: { id: true, type: true, createdAt: true, user1: { select: { id: true, phone: true } }, user2: { select: { id: true, phone: true } }, pinnedMessages: true } },
+        },
       })
     ).forEach((notification) => {
       let dataToSend: any;
@@ -173,10 +187,37 @@ export class ChatNotificationService {
             phones: notification.data as any,
           };
           break;
+        case "updateChatRoom":
+          const roomDetails = notification.chatRoom!;
+          dataToSend =
+            roomDetails.type === "private"
+              ? {
+                  action: notification.action,
+                  chatRoom: {
+                    roomId: roomDetails.id,
+                    roomType: roomDetails.type,
+                    createdAt: roomDetails.createdAt,
+                    pinnedMessages: roomDetails.pinnedMessages,
+                    communityId: null,
+                    participants: [roomDetails.user1, roomDetails.user2],
+                  },
+                }
+              : {
+                  action: notification.action,
+                  chatRoom: {
+                    roomId: roomDetails.id,
+                    roomType: roomDetails.type,
+                    createdAt: roomDetails.createdAt,
+                    pinnedMessages: roomDetails.pinnedMessages,
+                    communityId: notification.communityId,
+                    participants: null,
+                  },
+                };
+          break;
         default:
           dataToSend = {
-            messages: notification.message,
             action: notification.action,
+            messages: notification.message,
           };
           break;
       }

@@ -95,7 +95,7 @@ export class ChatService {
       // await database.communityMember.findMany({ where: { communityId } });
 
       const membersIds = allMembers.map((member) => member.userId);
-      appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId: savedMessage.id });
+      appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId: savedMessage.id ,chatRoomId:null});
     }
   }
 
@@ -291,7 +291,7 @@ export class ChatService {
       const allMembers = roomDetails.community[0].members;
 
       const membersIds = allMembers.map((member) => member.userId);
-      appEvents.emit("set-community-members-notifications", { action: "updateMessage", communityId, membersIds, platform: "mobile", messageId });
+      appEvents.emit("set-community-members-notifications", { action: "updateMessage", communityId, membersIds, platform: "mobile", messageId ,chatRoomId:null});
     }
   }
 
@@ -337,17 +337,53 @@ export class ChatService {
       const allMembers = roomDetails.community[0].members;
 
       const membersIds = allMembers.map((member) => member.userId);
-      appEvents.emit("set-community-members-notifications", { action: "deleteMessage", communityId, membersIds, platform: "mobile", messageId });
+      appEvents.emit("set-community-members-notifications", { action: "deleteMessage", communityId, membersIds, platform: "mobile", messageId ,chatRoomId:null});
     }
   }
 
-  async pinMessage(messageId: number) {
-    const message = await database.message.findUnique({ where: { id: messageId }, include: { room: true } });
+  async pinMessage(messageId: number,userId:number) {
+    const message = await database.message.findUnique({ where: { id: messageId }, include: { room: { include: { community: { include: { members: true } } } } } });
     if (!message) throw new AppError("No Message With this Id Exist", 404);
-    const { id, pinnedMessages } = message.room;
-    const pinnedMessageIds = pinnedMessages ? (pinnedMessages as number[]) : [];
+    const roomDetails= message.room;
+    const pinnedMessageIds = roomDetails.pinnedMessages ? (roomDetails.pinnedMessages as number[]) : [];
     pinnedMessageIds.push(messageId);
-    await database.chatRoom.update({ where: { id: id }, data: { pinnedMessages: pinnedMessageIds } });
+    await database.chatRoom.update({ where: { id: roomDetails.id }, data: { pinnedMessages: pinnedMessageIds } });
+
+       if (roomDetails.type === "private" && roomDetails.status === "active") {
+         const recipientId = message.recipientId!;
+         const recipientAccount = (await database.user.findUnique({ where: { id: recipientId } }))!;
+         const updaterAccount = (await database.user.findUnique({ where: { id: userId } }))!;
+
+         const connectionIds = [recipientAccount.connectionId, recipientAccount.webConnectionId, updaterAccount.connectionId, updaterAccount.webConnectionId];
+         const platformStatuses = [recipientAccount.onlineStatus, recipientAccount.onlineStatusWeb, updaterAccount.onlineStatus, updaterAccount.onlineStatusWeb];
+
+         for (let i = 0; i < connectionIds.length; i++) {
+           if (platformStatuses[i] !== "offline") {
+             const userConnection = chatRouterWs.sockets.get(connectionIds[i]!);
+             if (userConnection) {
+               //sending updated message directly if user is online
+               const updatedChatRoom = await database.chatRoom.findUnique({ where: { id: roomDetails.id } });
+               userConnection.emit("response", { action: "updateChatRoom", chatRoom:updatedChatRoom });
+               continue;
+             }
+           }
+
+           if (recipientAccount.webLoggedIn && (i === 1 || i === 3)) {
+             // application sync mechanism
+             await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "browser","updateChatRoom",roomDetails.id);
+             continue;
+           }
+
+           await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId,"mobile","updateChatRoom",roomDetails.id);
+         }
+       } else {
+         // for groups or channels message update
+         const communityId = roomDetails.community[0].id;
+         const allMembers = roomDetails.community[0].members;
+
+         const membersIds = allMembers.map((member) => member.userId);
+         appEvents.emit("set-community-members-notifications", { action: "updateChatRoom", communityId, membersIds, platform: "mobile", messageId ,chatRoomId:roomDetails.id});
+       }
     return { message: "Message Pinned Sucessfully" };
   }
 
