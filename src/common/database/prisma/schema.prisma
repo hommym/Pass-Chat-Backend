@@ -76,6 +76,7 @@ enum NotificationAction{
   saveMessage
   comunityInfoUpdate
   deleteCommunity
+  updateChatRoom
   phoneChange
 }
 
@@ -205,6 +206,7 @@ model ChatRoom {
   createdAt      DateTime         @default(now())
   messages       Message[]
   community      Community[]
+  notifications  Notification[]
 
   @@unique([user1Id,user2Id])
   @@map("chat_rooms")
@@ -247,9 +249,11 @@ model Notification {
   data              Json?
   messageId         Int?
   communityId       Int?
+  chatRoomId        Int?
   user              User                @relation(fields: [userId], references: [id])
   message           Message?            @relation(fields:[messageId],references:[id])   
-  community         Community?          @relation(fields:[communityId],references:[id])      
+  community         Community?          @relation(fields:[communityId],references:[id])     
+  chatRoom          ChatRoom?           @relation(fields:[chatRoomId],references:[id])     
   createdAt         DateTime            @default(now())
 
   @@map("notifications")
