@@ -26,7 +26,6 @@ fileRouter.post(
 
 fileRouter.get(
   "/:mediaType/:date/:fileName",
-  verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
     const { date, mediaType, fileName } = req.params as { date: string; mediaType: "video" | "image" | "audio"|"doc"; fileName: string };
     res.status(200).sendFile(await fileService.getPath({ date, mediaType, fileName }));

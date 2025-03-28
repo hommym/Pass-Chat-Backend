@@ -19,7 +19,7 @@ exports.fileRouter.post("/upload", (0, multer_1.getFile)("file"), verifyJwt_1.ve
     const { date, mediaType, fileName } = req.body;
     res.status(201).json({ link: `${process.env.BackendUrl}/file/${mediaType}/${date}/${fileName}` });
 }));
-exports.fileRouter.get("/:mediaType/:date/:fileName", verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
+exports.fileRouter.get("/:mediaType/:date/:fileName", (0, express_async_handler_1.default)(async (req, res) => {
     const { date, mediaType, fileName } = req.params;
     res.status(200).sendFile(await objects_1.fileService.getPath({ date, mediaType, fileName }));
 }));
