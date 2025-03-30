@@ -42,8 +42,17 @@ export class ContactsService {
   }
 
   async getSavedContacts(userId: number) {
-    const { contacts } = (await database.user.findUnique({ where: { id: userId }, select: { contacts: { omit: { id: true, ownerId: true } } } }))!;
-    return contacts;
+    const { contacts } = (await database.user.findUnique({ where: { id: userId }, select: { contacts: { omit: { id: true, ownerId: true }} } }))!;
+    return Promise.all(
+      contacts.map(async (contact) => {
+        const { phone } = contact;
+        const user = await database.user.findUnique({ where: { phone } });
+        const newContactData = contact as any;
+        newContactData.bio = user!.bio;
+        newContactData.username = user!.username;
+        return newContactData;
+      })
+    );
   }
 
   async updateContactsRommId(args: { roomId: number; contacts: { contact: string; ownerId: number }[] }) {

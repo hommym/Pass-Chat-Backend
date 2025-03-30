@@ -40,7 +40,14 @@ class ContactsService {
     }
     async getSavedContacts(userId) {
         const { contacts } = (await objects_1.database.user.findUnique({ where: { id: userId }, select: { contacts: { omit: { id: true, ownerId: true } } } }));
-        return contacts;
+        return Promise.all(contacts.map(async (contact) => {
+            const { phone } = contact;
+            const user = await objects_1.database.user.findUnique({ where: { phone } });
+            const newContactData = contact;
+            newContactData.bio = user.bio;
+            newContactData.username = user.username;
+            return newContactData;
+        }));
     }
     async updateContactsRommId(args) {
         const { contacts, roomId } = args;
