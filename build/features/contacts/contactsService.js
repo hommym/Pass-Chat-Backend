@@ -49,6 +49,20 @@ class ContactsService {
             return newContactData;
         }));
     }
+    async getGlobalContacts(userId) {
+        const userContacts = (await this.getSavedContacts(userId)).map((contact) => {
+            return contact.phone;
+        });
+        // getting all users and filtering out the users contacts(temp)
+        const allUsers = await objects_1.database.user.findMany({ where: { type: "user", id: { not: userId } }, select: { phone: true, profile: true, bio: true, username: true, fullName: true } });
+        const globalContact = [];
+        for (let user of allUsers) {
+            if (!userContacts.includes(user.phone)) {
+                globalContact.push(user);
+            }
+        }
+        return globalContact;
+    }
     async updateContactsRommId(args) {
         const { contacts, roomId } = args;
         await Promise.all(contacts.map(async (item) => {

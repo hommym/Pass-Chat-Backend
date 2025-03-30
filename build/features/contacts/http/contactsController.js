@@ -32,6 +32,10 @@ exports.contactsRouter.get("/save", verifyJwt_1.verifyJwt, (0, express_async_han
     const { verifiedUserId } = req.body;
     res.status(200).json(await objects_1.contactsService.getSavedContacts(verifiedUserId));
 }));
+exports.contactsRouter.get("/global", verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
+    const { verifiedUserId } = req.body;
+    res.status(200).json(await objects_1.contactsService.getGlobalContacts(verifiedUserId));
+}));
 exports.contactsRouter.patch("/block", (0, bodyValidator_1.bodyValidator)(blockContactDto_1.BlockContactDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
     const _a = req.body, { verifiedUserId } = _a, blockContactDto = __rest(_a, ["verifiedUserId"]);
     res.status(200).json(await objects_1.contactsService.blockContact(verifiedUserId, blockContactDto));

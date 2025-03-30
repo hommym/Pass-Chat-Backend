@@ -29,6 +29,15 @@ contactsRouter.get(
   })
 );
 
+contactsRouter.get(
+  "/global",
+  verifyJwt,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { verifiedUserId } = req.body;
+    res.status(200).json(await contactsService.getGlobalContacts(verifiedUserId));
+  })
+);
+
 contactsRouter.patch(
   "/block",
   bodyValidator(BlockContactDto),

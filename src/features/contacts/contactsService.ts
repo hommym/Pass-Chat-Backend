@@ -42,7 +42,7 @@ export class ContactsService {
   }
 
   async getSavedContacts(userId: number) {
-    const { contacts } = (await database.user.findUnique({ where: { id: userId }, select: { contacts: { omit: { id: true, ownerId: true }} } }))!;
+    const { contacts } = (await database.user.findUnique({ where: { id: userId }, select: { contacts: { omit: { id: true, ownerId: true } } } }))!;
     return Promise.all(
       contacts.map(async (contact) => {
         const { phone } = contact;
@@ -53,6 +53,24 @@ export class ContactsService {
         return newContactData;
       })
     );
+  }
+
+  async getGlobalContacts(userId: number) {
+    const userContacts = (await this.getSavedContacts(userId)).map((contact) => {
+      return contact.phone as string;
+    });
+
+    // getting all users and filtering out the users contacts(temp)
+    const allUsers = await database.user.findMany({ where: { type: "user", id: { not: userId } }, select: { phone: true, profile: true, bio: true, username: true, fullName: true } });
+    const globalContact: any[] = [];
+
+    for (let user of allUsers) {
+      if (!userContacts.includes(user.phone!)) {
+        globalContact.push(user);
+      }
+    }
+
+    return globalContact;
   }
 
   async updateContactsRommId(args: { roomId: number; contacts: { contact: string; ownerId: number }[] }) {
