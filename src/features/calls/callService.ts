@@ -141,14 +141,13 @@ export class CallService {
     await bodyValidatorWs(CancelCallDto, cancelCallDto);
     const { participantsIds } = cancelCallDto;
     const enderId = socket.authUserId;
-    const isWebUser= socket.isWebUser;
 
     const users = await database.user.findMany({ where: { id: { in: participantsIds } }, select: { onlineStatus: true, connectionId: true, webConnectionId: true, onlineStatusWeb: true, id: true } });
     await Promise.all(
       users.map(async (user) => {
-        await database.user.update({ where: { id: user.id }, data: !isWebUser ? { onlineStatus: "online" } : { onlineStatusWeb: "online" } });
+        await database.user.update({ where: { id: user.id }, data: user.onlineStatus === "call" ? { onlineStatus: "online" } : user.onlineStatusWeb === "call" ? { onlineStatusWeb: "online" } : {} });
         if ((user.onlineStatus === "call" || user.onlineStatusWeb === "call") && user.id !== enderId) {
-          const userConnection = chatRouterWs.sockets.get(!isWebUser ? user.connectionId! : user.webConnectionId!);
+          const userConnection = chatRouterWs.sockets.get(user.onlineStatus === "call" ? user.connectionId! : user.webConnectionId!);
           if (userConnection) {
             userConnection.emit("callResponse", { type: "endCall" });
           }
@@ -191,7 +190,7 @@ export class CallService {
     });
 
     const membersIds = members.map((member) => member.userId);
-    appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId: message.id ,chatRoomId:null});
+    appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId: message.id, chatRoomId: null });
 
     // alerting online mmebers of the community that a group call has been started
     appEvents.emit("community-call-notifier", { allMembersIds: membersIds, callerId, chatRoomId: roomId, callRoomId: callRoomDetails.id });
