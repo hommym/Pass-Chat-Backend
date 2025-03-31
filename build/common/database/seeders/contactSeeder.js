@@ -37,13 +37,13 @@ const ContactSeeder = async () => {
         "Grace Roberts",
     ];
     for (let i = 0; i < allMobileUsers.length; i++) {
-        allMobileUsers.forEach(async (user) => {
+        await Promise.all(allMobileUsers.map(async (user) => {
             const currentUser = allMobileUsers[i];
             if (currentUser !== user) {
                 const randomName = `${names[objects_1.randomData.num(0, names.length - 1)]}${objects_1.randomData.num(1000, 9999)}`;
                 await objects_1.contactsService.saveContacts([{ phone: user.phone, contactName: randomName }], currentUser.id);
             }
-        });
+        }));
     }
 };
 exports.ContactSeeder = ContactSeeder;

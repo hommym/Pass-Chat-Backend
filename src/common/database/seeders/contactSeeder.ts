@@ -36,12 +36,14 @@ export const ContactSeeder = async () => {
   ];
 
   for (let i = 0; i < allMobileUsers.length; i++) {
-    allMobileUsers.forEach(async (user) => {
-      const currentUser = allMobileUsers[i];
-      if (currentUser !== user) {
-        const randomName = `${names[randomData.num(0, names.length - 1)]}${randomData.num(1000, 9999)}`;
-        await contactsService.saveContacts([{ phone: user.phone!, contactName: randomName }], currentUser.id);
-      }
-    });
+    await Promise.all(
+      allMobileUsers.map(async (user) => {
+        const currentUser = allMobileUsers[i];
+        if (currentUser !== user) {
+          const randomName = `${names[randomData.num(0, names.length - 1)]}${randomData.num(1000, 9999)}`;
+          await contactsService.saveContacts([{ phone: user.phone!, contactName: randomName }], currentUser.id);
+        }
+      })
+    );
   }
 };
