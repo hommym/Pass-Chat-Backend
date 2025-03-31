@@ -212,7 +212,7 @@ export class AuthService {
     if (type === "user" && oldInfo!.type !== "user") throw new AppError("Account been updated must be an user account", 401);
     else if (type === "user" && (updatedData as UpdateUserAccountDto).email) {
       const details = await database.user.findUnique({ where: { email: (updatedData as UpdateUserAccountDto).email } });
-      if (details) throw new AppError("An Account with this email exist", 404);
+      if (details && details.id !== userId) throw new AppError("An Account with this email exist", 404);
     } else if (type === "admin" && oldInfo!.type !== "admin") throw new AppError("Account been updated must be an admin account", 401);
     await database.user.upsert({ where: { id: userId }, create: {}, update: updatedData });
     return { message: "Account Updated sucessfull" };
