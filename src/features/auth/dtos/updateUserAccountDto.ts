@@ -19,7 +19,6 @@ export class UpdateUserAccountDto {
 
   @Expose()
   @IsOptional()
-  @IsBase64()
   profile?: string;
 
   @Expose()
