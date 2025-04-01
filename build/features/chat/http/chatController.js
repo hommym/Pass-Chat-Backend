@@ -24,9 +24,10 @@ const objects_1 = require("../../../common/constants/objects");
 const updateMessageDto_1 = require("../dto/updateMessageDto");
 const errorHandler_1 = require("../../../common/middlewares/errorHandler");
 exports.chatRouter = (0, express_1.Router)();
-exports.chatRouter.post("/room", verifyJwt_1.verifyJwt, (0, bodyValidator_1.bodyValidator)(chatRoomDto_1.ChatRoomDto), (0, express_async_handler_1.default)(async (req, res) => {
-    const { user1Phone, user2Phone } = req.body;
-    res.status(201).json(await objects_1.chatService.creatChatRoomDeatils(user1Phone, user2Phone));
+exports.chatRouter.post("/room", (0, bodyValidator_1.bodyValidator)(chatRoomDto_1.ChatRoomDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
+    const _a = req.body, { verifiedUserId } = _a, phoneNumbers = __rest(_a, ["verifiedUserId"]);
+    const { user1Phone, user2Phone } = phoneNumbers;
+    res.status(201).json(await objects_1.chatService.creatChatRoomDeatils(user1Phone, user2Phone, verifiedUserId));
 }));
 exports.chatRouter.get("/room", verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
     const { verifiedUserId } = req.body;

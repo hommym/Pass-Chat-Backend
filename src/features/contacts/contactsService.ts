@@ -88,7 +88,7 @@ export class ContactsService {
     //get user account details
     //get chat room details
     const account = await database.user.findUnique({ where: { id: userId } });
-    const { roomId, participants } = await chatService.creatChatRoomDeatils(phone, account!.phone!);
+    const { roomId, participants } = await chatService.creatChatRoomDeatils(phone, account!.phone!,userId);
 
     if (action == "block") {
       //set chat room status to block

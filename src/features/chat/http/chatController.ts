@@ -12,11 +12,12 @@ export const chatRouter = Router();
 
 chatRouter.post(
   "/room",
-  verifyJwt,
   bodyValidator(ChatRoomDto),
+  verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
-    const { user1Phone, user2Phone } = req.body as ChatRoomDto;
-    res.status(201).json(await chatService.creatChatRoomDeatils(user1Phone, user2Phone));
+    const { verifiedUserId, ...phoneNumbers } = req.body;
+    const { user1Phone, user2Phone } = phoneNumbers as ChatRoomDto;
+    res.status(201).json(await chatService.creatChatRoomDeatils(user1Phone, user2Phone, verifiedUserId));
   })
 );
 
@@ -58,9 +59,9 @@ chatRouter.patch(
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
     const { messageId } = req.params;
-     const { verifiedUserId } = req.body;
+    const { verifiedUserId } = req.body;
     try {
-      res.status(200).json(await chatService.pinMessage(+messageId,verifiedUserId));
+      res.status(200).json(await chatService.pinMessage(+messageId, verifiedUserId));
     } catch (error) {
       if (error instanceof AppError) throw error;
       else throw new AppError("Url parameter messageId should be an integer", 400);
