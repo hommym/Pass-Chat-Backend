@@ -187,9 +187,17 @@ class ChatService {
         if (!user1Details || !user2Details) {
             throw new errorHandler_1.AppError(!user1Details ? `No Account with ${phone1} exist` : `No Account with ${phone2} exist`, 404);
         }
-        const roomDetails = await objects_1.database.chatRoom.findUnique({ where: { user1Id_user2Id: { user1Id: user2Details.id, user2Id: user1Details.id } }, select: { id: true, createdAt: true, type: true } });
-        const { type, createdAt, id } = roomDetails
-            ? roomDetails
+        const roomDetails = await objects_1.database.chatRoom.findMany({
+            where: {
+                OR: [
+                    { user1Id: user1Details.id, user2Id: user2Details.id },
+                    { user1Id: user2Details.id, user2Id: user1Details.id },
+                ],
+            },
+            select: { id: true, createdAt: true, type: true },
+        });
+        const { type, createdAt, id } = roomDetails.length !== 0
+            ? roomDetails[0]
             : await objects_1.database.chatRoom.upsert({
                 where: { user1Id_user2Id: { user1Id: user1Details.id, user2Id: user2Details.id } },
                 create: { user1Id: user1Details.id, user2Id: user2Details.id, status: "active" },
