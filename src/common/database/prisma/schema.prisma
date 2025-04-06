@@ -427,6 +427,6 @@ model File{
   subFiles              File[]                      @relation("SubFiles")
 
   
-   @@unique([ownerId,parentId,name])
+   @@unique([ownerId,parentId,name,type])
    @@map("files")
 }
