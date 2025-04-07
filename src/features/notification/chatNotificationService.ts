@@ -52,14 +52,13 @@ export class ChatNotificationService {
                 }
               }
 
-              const response =
-                isNotificationTypeMessage
-                  ? { action: "recieveMessage", data: message }
-                  : action === "updateChatRoom"
-                  ? { action: "updateChatRoom", chatRoom }
-                  : action === "comunityInfoUpdate"
-                  ? { action: "comunityInfoUpdate", community }
-                  : { action: "deleteCommunity", communityId };
+              const response = isNotificationTypeMessage
+                ? { action: "recieveMessage", data: message }
+                : action === "updateChatRoom"
+                ? { action: "updateChatRoom", chatRoom }
+                : action === "comunityInfoUpdate"
+                ? { action: "comunityInfoUpdate", community }
+                : { action: "deleteCommunity", communityId };
 
               userConnection.emit("response", response);
               continue;
@@ -100,7 +99,10 @@ export class ChatNotificationService {
         await database.message.update({ where: { id: messageId }, data: { read: true } });
       } else if (messageAction === "reaction") {
         if (!reaction) throw new WsError("No Value passed for reaction");
-        await database.message.update({ where: { id: messageId }, data: { reactions: message.reactions ? (message.reactions as string[]).push(reaction) : undefined } });
+        const oldReaction = message.reactions ? (message.reactions as string[]) : []; 
+        // adding new reactionto the old ones 
+        oldReaction.push(reaction)
+        await database.message.update({ where: { id: messageId }, data: { reactions:oldReaction } });
       } else {
         await database.message.update({ where: { id: messageId }, data: { recieved: true } });
       }

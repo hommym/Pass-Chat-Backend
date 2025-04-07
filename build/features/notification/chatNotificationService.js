@@ -88,7 +88,10 @@ class ChatNotificationService {
             else if (messageAction === "reaction") {
                 if (!reaction)
                     throw new errorHandler_1.WsError("No Value passed for reaction");
-                await objects_1.database.message.update({ where: { id: messageId }, data: { reactions: message.reactions ? message.reactions.push(reaction) : undefined } });
+                const oldReaction = message.reactions ? message.reactions : [];
+                // adding new reactionto the old ones 
+                oldReaction.push(reaction);
+                await objects_1.database.message.update({ where: { id: messageId }, data: { reactions: oldReaction } });
             }
             else {
                 await objects_1.database.message.update({ where: { id: messageId }, data: { recieved: true } });
