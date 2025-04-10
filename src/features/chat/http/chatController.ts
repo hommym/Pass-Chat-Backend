@@ -7,6 +7,7 @@ import { ChatRoomDto } from "../dto/chatRoomDto";
 import { chatService } from "../../../common/constants/objects";
 import { UpdateMessageDto } from "../dto/updateMessageDto";
 import { AppError } from "../../../common/middlewares/errorHandler";
+import { DeleteMessageDto } from "../dto/deleteMessageDto";
 
 export const chatRouter = Router();
 
@@ -44,12 +45,13 @@ chatRouter.patch(
 
 chatRouter.delete(
   "/message",
+  bodyValidator(DeleteMessageDto),
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
-    const { verifiedUserId, messageId } = req.body;
+    const { verifiedUserId, messageId, deleteFor } = req.body;
     const webUser = req.params.webUser ? true : false;
     if (!messageId) throw new AppError("No value passed for messageId", 400);
-    await chatService.deleteMessage(+messageId, verifiedUserId, webUser);
+    await chatService.deleteMessage(+messageId, verifiedUserId, deleteFor,webUser);
     res.status(204).end();
   })
 );

@@ -23,6 +23,7 @@ const chatRoomDto_1 = require("../dto/chatRoomDto");
 const objects_1 = require("../../../common/constants/objects");
 const updateMessageDto_1 = require("../dto/updateMessageDto");
 const errorHandler_1 = require("../../../common/middlewares/errorHandler");
+const deleteMessageDto_1 = require("../dto/deleteMessageDto");
 exports.chatRouter = (0, express_1.Router)();
 exports.chatRouter.post("/room", (0, bodyValidator_1.bodyValidator)(chatRoomDto_1.ChatRoomDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
     const _a = req.body, { verifiedUserId } = _a, phoneNumbers = __rest(_a, ["verifiedUserId"]);
@@ -39,12 +40,12 @@ exports.chatRouter.patch("/message", (0, bodyValidator_1.bodyValidator)(updateMe
     await objects_1.chatService.updateMessage(verifiedUserId, messageData, webUser);
     res.status(204).end();
 }));
-exports.chatRouter.delete("/message", verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
-    const { verifiedUserId, messageId } = req.body;
+exports.chatRouter.delete("/message", (0, bodyValidator_1.bodyValidator)(deleteMessageDto_1.DeleteMessageDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
+    const { verifiedUserId, messageId, deleteFor } = req.body;
     const webUser = req.params.webUser ? true : false;
     if (!messageId)
         throw new errorHandler_1.AppError("No value passed for messageId", 400);
-    await objects_1.chatService.deleteMessage(+messageId, verifiedUserId, webUser);
+    await objects_1.chatService.deleteMessage(+messageId, verifiedUserId, deleteFor, webUser);
     res.status(204).end();
 }));
 exports.chatRouter.patch("/pin/message/:messageId", verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {

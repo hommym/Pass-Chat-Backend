@@ -208,7 +208,7 @@ export class ChatService {
     });
 
     const { type, createdAt, id } =
-      roomDetails.length !==0
+      roomDetails.length !== 0
         ? roomDetails[0]
         : await database.chatRoom.upsert({
             where: { user1Id_user2Id: { user1Id: user1Details.id, user2Id: user2Details.id } },
@@ -265,10 +265,11 @@ export class ChatService {
       if (!(await communityService.isMember(chatRoomDetails.community[0]?.id, clientId))) throw new WsError(`Messages cannot be retrived, client not a member of ${chatRoomDetails.type}`);
     }
 
+    // add code for excluding clear chats 
+
     if (all) {
       const messages = await database.message.findMany({
         where: {
-          deleteFlag: false,
           roomId: chatRoomId,
           reportFlag: false,
         },
@@ -283,7 +284,6 @@ export class ChatService {
       const messages = await database.message.findMany({
         where: {
           createdAt: { gte: fromZonedTime(startOfDayInUserTimeZone, timeZone), lt: fromZonedTime(endOfDayInUserTimeZone, timeZone) },
-          deleteFlag: false,
           roomId: chatRoomId,
           reportFlag: false,
         },
@@ -341,13 +341,13 @@ export class ChatService {
     }
   }
 
-  async deleteMessage(messageId: number, userId: number, webUser: boolean = false) {
+  async deleteMessage(messageId: number, userId: number, deleteFor: "sender" | "all" = "sender", webUser: boolean = false) {
     const message = await database.message.findUnique({ where: { id: messageId }, include: { room: { include: { community: { include: { members: true } } } } } });
 
     if (!message) throw new AppError("No message with this id exist", 404);
     else if (message.senderId !== userId) throw new AppError("You cannot delete messages you did not send", 402);
 
-    await database.message.update({ where: { id: messageId }, data: { deleteFlag: true } });
+    await database.message.update({ where: { id: messageId }, data: { deleteFlag: deleteFor } });
     const roomDetails = message.room;
 
     if (roomDetails.type === "private" && roomDetails.status === "active") {

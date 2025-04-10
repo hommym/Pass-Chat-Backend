@@ -251,10 +251,10 @@ class ChatService {
             if (!(await objects_1.communityService.isMember((_a = chatRoomDetails.community[0]) === null || _a === void 0 ? void 0 : _a.id, clientId)))
                 throw new errorHandler_1.WsError(`Messages cannot be retrived, client not a member of ${chatRoomDetails.type}`);
         }
+        // add code for excluding clear chats 
         if (all) {
             const messages = await objects_1.database.message.findMany({
                 where: {
-                    deleteFlag: false,
                     roomId: chatRoomId,
                     reportFlag: false,
                 },
@@ -269,7 +269,6 @@ class ChatService {
             const messages = await objects_1.database.message.findMany({
                 where: {
                     createdAt: { gte: (0, date_fns_tz_1.fromZonedTime)(startOfDayInUserTimeZone, timeZone), lt: (0, date_fns_tz_1.fromZonedTime)(endOfDayInUserTimeZone, timeZone) },
-                    deleteFlag: false,
                     roomId: chatRoomId,
                     reportFlag: false,
                 },
@@ -321,13 +320,13 @@ class ChatService {
             objects_1.appEvents.emit("set-community-members-notifications", { action: "updateMessage", communityId, membersIds, platform: "mobile", messageId, chatRoomId: null });
         }
     }
-    async deleteMessage(messageId, userId, webUser = false) {
+    async deleteMessage(messageId, userId, deleteFor = "sender", webUser = false) {
         const message = await objects_1.database.message.findUnique({ where: { id: messageId }, include: { room: { include: { community: { include: { members: true } } } } } });
         if (!message)
             throw new errorHandler_1.AppError("No message with this id exist", 404);
         else if (message.senderId !== userId)
             throw new errorHandler_1.AppError("You cannot delete messages you did not send", 402);
-        await objects_1.database.message.update({ where: { id: messageId }, data: { deleteFlag: true } });
+        await objects_1.database.message.update({ where: { id: messageId }, data: { deleteFlag: deleteFor } });
         const roomDetails = message.room;
         if (roomDetails.type === "private" && roomDetails.status === "active") {
             const recipientId = message.recipientId;
