@@ -152,6 +152,11 @@ enum FileType {
   dir  // for directories or folders
 }
 
+enum MessageDeleteFlag{
+  sender
+  all
+}
+
 model User {
   id                Int             @id @default(autoincrement())
   email             String?         @unique
@@ -214,23 +219,23 @@ model ChatRoom {
 
 
 model Message {
-  id             Int           @id @default(autoincrement())
-  type           MessageType   @default(text)
+  id             Int                      @id @default(autoincrement())
+  type           MessageType              @default(text)
   content        Json
   senderId       Int
   recipientId    Int?
   communityId    Int?
   roomId         Int
-  replyTo        Int?          // id of message this message is a reply to
-  createdAt      DateTime      @default(now())
-  read           Boolean       @default(false)
-  recieved       Boolean       @default(false) 
-  deleteFlag     Boolean       @default(false)
-  reportFlag     Boolean       @default(false)
-  views          Int           @default(0)   // this should only be used in community kinds of chats
-  comments       Json?         // array of strings
-  reactions      Json?         // array of strings
-  room           ChatRoom      @relation(fields: [roomId], references: [id])
+  replyTo        Int?                     // id of message this message is a reply to
+  createdAt      DateTime                 @default(now())
+  read           Boolean                  @default(false)
+  recieved       Boolean                  @default(false) 
+  deleteFlag     MessageDeleteFlag?      
+  reportFlag     Boolean                  @default(false)
+  views          Int                      @default(0)   // this should only be used in community kinds of chats
+  comments       Json?                    // array of strings
+  reactions      Json?                    // array of strings
+  room           ChatRoom                 @relation(fields: [roomId], references: [id])
   callType       CallType?
   notifications  Notification[]
   @@map("messages")
@@ -292,7 +297,7 @@ model Community {
    status                AccountStatus          @default(active)
    isVerified            Boolean                @default(false)
    createdAt             DateTime               @default(now())
-   deleteFlag            Boolean                @default(false)
+   deleteFlag            Boolean                @default(false)              
    members               CommunityMember[]
    communityVerf         CommunityVerification[]
    room                  ChatRoom               @relation(fields: [roomId], references: [id])
