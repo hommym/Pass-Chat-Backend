@@ -9,5 +9,5 @@ export class DeleteMessageDto {
 
   @Expose()
   @IsEnum(MessageDeleteFlag)
-  deleteFor: MessageDeleteFlag;
+  deleteFlag: MessageDeleteFlag;
 }

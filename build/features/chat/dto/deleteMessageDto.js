@@ -25,4 +25,4 @@ __decorate([
     (0, class_transformer_1.Expose)(),
     (0, class_validator_1.IsEnum)(client_1.MessageDeleteFlag),
     __metadata("design:type", String)
-], DeleteMessageDto.prototype, "deleteFor", void 0);
+], DeleteMessageDto.prototype, "deleteFlag", void 0);

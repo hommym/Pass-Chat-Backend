@@ -140,7 +140,7 @@ class CommunityService {
             if (memberShipData.role !== "owner") {
                 communityDetails.members = [];
             }
-            return { communityDetails, memberShipType: memberShipData.role };
+            return { communityDetails, memberShipType: memberShipData.role, senderId: memberShipData.userId };
         }));
     }
     async getCommunityDetailsForUser(userId, communityId) {

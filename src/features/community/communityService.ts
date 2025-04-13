@@ -119,7 +119,7 @@ export class CommunityService {
 
     if (!communityDetails) throw new AppError(`No ${type} with this name exist`, 404);
     else if (ownerId !== communityDetails.ownerId) throw new AppError(`Only the owner of the ${type} can change members roles`, 402);
-    const { id} = communityDetails;
+    const { id } = communityDetails;
 
     const memberAccount = await database.user.findUnique({ where: { phone: memberPhone } });
 
@@ -128,9 +128,8 @@ export class CommunityService {
 
     await database.communityMember.update({ where: { communityId_userId: { communityId: id, userId: memberAccount.id } }, data: { role: newRole } });
 
-    
     const membersIds = [ownerId, memberAccount.id];
-    appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId:id, membersIds, messageId: null, platform: "mobile", chatRoomId: null });
+    appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId: id, membersIds, messageId: null, platform: "mobile", chatRoomId: null });
   }
 
   async getAllUsersCommunities(userId: number) {
@@ -145,7 +144,7 @@ export class CommunityService {
         if (memberShipData.role !== "owner") {
           communityDetails!.members = [];
         }
-        return { communityDetails, memberShipType: memberShipData.role };
+        return { communityDetails, memberShipType: memberShipData.role, senderId: memberShipData.userId };
       })
     );
   }

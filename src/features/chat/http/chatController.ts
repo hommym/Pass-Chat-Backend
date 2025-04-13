@@ -48,10 +48,10 @@ chatRouter.delete(
   bodyValidator(DeleteMessageDto),
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
-    const { verifiedUserId, messageId, deleteFor } = req.body;
+    const { verifiedUserId, messageId, deleteFlag } = req.body;
     const webUser = req.params.webUser ? true : false;
     if (!messageId) throw new AppError("No value passed for messageId", 400);
-    await chatService.deleteMessage(+messageId, verifiedUserId, deleteFor,webUser);
+    await chatService.deleteMessage(+messageId, verifiedUserId, deleteFlag,webUser);
     res.status(204).end();
   })
 );

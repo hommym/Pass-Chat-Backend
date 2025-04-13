@@ -41,11 +41,11 @@ exports.chatRouter.patch("/message", (0, bodyValidator_1.bodyValidator)(updateMe
     res.status(204).end();
 }));
 exports.chatRouter.delete("/message", (0, bodyValidator_1.bodyValidator)(deleteMessageDto_1.DeleteMessageDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
-    const { verifiedUserId, messageId, deleteFor } = req.body;
+    const { verifiedUserId, messageId, deleteFlag } = req.body;
     const webUser = req.params.webUser ? true : false;
     if (!messageId)
         throw new errorHandler_1.AppError("No value passed for messageId", 400);
-    await objects_1.chatService.deleteMessage(+messageId, verifiedUserId, deleteFor, webUser);
+    await objects_1.chatService.deleteMessage(+messageId, verifiedUserId, deleteFlag, webUser);
     res.status(204).end();
 }));
 exports.chatRouter.patch("/pin/message/:messageId", verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
