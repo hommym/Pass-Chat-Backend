@@ -8,6 +8,7 @@ import { chatService } from "../../../common/constants/objects";
 import { UpdateMessageDto } from "../dto/updateMessageDto";
 import { AppError } from "../../../common/middlewares/errorHandler";
 import { DeleteMessageDto } from "../dto/deleteMessageDto";
+import { ClearChatDto } from "../dto/clearChatsDto";
 
 export const chatRouter = Router();
 
@@ -51,7 +52,7 @@ chatRouter.delete(
     const { verifiedUserId, messageId, deleteFlag } = req.body;
     const webUser = req.params.webUser ? true : false;
     if (!messageId) throw new AppError("No value passed for messageId", 400);
-    await chatService.deleteMessage(+messageId, verifiedUserId, deleteFlag,webUser);
+    await chatService.deleteMessage(+messageId, verifiedUserId, deleteFlag, webUser);
     res.status(204).end();
   })
 );
@@ -68,5 +69,16 @@ chatRouter.patch(
       if (error instanceof AppError) throw error;
       else throw new AppError("Url parameter messageId should be an integer", 400);
     }
+  })
+);
+
+chatRouter.delete(
+  "/clear-all-chats",
+  bodyValidator(ClearChatDto),
+  verifyJwt,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { verifiedUserId, ...clearChatDto } = req.body;
+    await chatService.clearAllChats(clearChatDto, verifiedUserId);
+    res.status(204).end();
   })
 );

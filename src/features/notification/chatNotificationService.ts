@@ -1,7 +1,7 @@
-import { Message, NotificationAction, Platform, RoomType } from "@prisma/client";
+import { CommunityMember, Message, NotificationAction, Platform, RoomType } from "@prisma/client";
 import { bodyValidator, bodyValidatorWs } from "../../common/middlewares/bodyValidator";
 import { PrivateChatNotificationDto } from "./dto/privateChatNotficationDto";
-import { appEvents, database } from "../../common/constants/objects";
+import { appEvents, chatNotificationService, database } from "../../common/constants/objects";
 import { WsError } from "../../common/middlewares/errorHandler";
 import { Socket } from "socket.io";
 import { SocketV1 } from "../../common/helpers/classes/socketV1";
@@ -12,7 +12,7 @@ import { CommunityCallNotifier } from "../community/type/communityCallNotifier";
 import { chatRouterWs } from "../chat/ws/chatHandler";
 
 export class ChatNotificationService {
-  async saveNotification(messageId: number, recipientId: number, platform: Platform = "mobile", action: NotificationAction = "updateMessage", chatRoomId: number | null = null) {
+  async saveNotification(messageId: number|null, recipientId: number, platform: Platform = "mobile", action: NotificationAction = "updateMessage", chatRoomId: number | null = null) {
     // this is for setting messages notifications and chatroom updates notifications
 
     // check if any notification with the above details exist
@@ -58,6 +58,8 @@ export class ChatNotificationService {
                 ? { action: "updateChatRoom", chatRoom }
                 : action === "comunityInfoUpdate"
                 ? { action: "comunityInfoUpdate", community }
+                : action === "clearChat"
+                ? { action: "clearChat", chatRoomId }
                 : { action: "deleteCommunity", communityId };
 
               userConnection.emit("response", response);
@@ -69,8 +71,8 @@ export class ChatNotificationService {
           const notifications = await database.notification.findMany({
             where: isNotificationTypeMessage
               ? { userId: memberId, messageId, platform: isWebUser ? "browser" : "mobile" }
-              : action === "updateChatRoom"
-              ? { userId: memberId, chatRoomId, platform: isWebUser ? "browser" : "mobile" }
+              : action === "updateChatRoom" || action === "clearChat"
+              ? { userId: memberId, chatRoomId, platform: isWebUser ? "browser" : "mobile", action }
               : { userId: memberId, communityId, platform: isWebUser ? "browser" : "mobile" },
           });
 
@@ -79,7 +81,7 @@ export class ChatNotificationService {
             await database.notification.create({
               data: isNotificationTypeMessage
                 ? { userId: memberId, messageId, platform: isWebUser ? "browser" : "mobile", action }
-                : action === "updateChatRoom"
+                : action === "updateChatRoom" || action === "clearChat"
                 ? { userId: memberId, platform: isWebUser ? "browser" : "mobile", action, chatRoomId }
                 : { userId: memberId, platform: isWebUser ? "browser" : "mobile", action, communityId },
             });
@@ -99,10 +101,10 @@ export class ChatNotificationService {
         await database.message.update({ where: { id: messageId }, data: { read: true } });
       } else if (messageAction === "reaction") {
         if (!reaction) throw new WsError("No Value passed for reaction");
-        const oldReaction = message.reactions ? (message.reactions as string[]) : []; 
-        // adding new reactionto the old ones 
-        oldReaction.push(reaction)
-        await database.message.update({ where: { id: messageId }, data: { reactions:oldReaction } });
+        const oldReaction = message.reactions ? (message.reactions as string[]) : [];
+        // adding new reactionto the old ones
+        oldReaction.push(reaction);
+        await database.message.update({ where: { id: messageId }, data: { reactions: oldReaction } });
       } else {
         await database.message.update({ where: { id: messageId }, data: { recieved: true } });
       }
@@ -260,8 +262,10 @@ export class ChatNotificationService {
         const connectionIds = [connectionId, webConnectionId];
         let statusTracker = 0;
         for (let id of connectionIds) {
-          if (!id) continue;
-          else if ((statusTracker === 0 && onlineStatus === "call") || (statusTracker === 1 && onlineStatusWeb === "call")) return;
+          if (!id || (statusTracker === 0 && onlineStatus === "call") || (statusTracker === 1 && onlineStatusWeb === "call")) {
+            statusTracker++;
+            continue;
+          }
           const userConnection = chatRouterWs.sockets.get(id);
           if (userConnection) {
             userConnection.emit("groupCallResponse", { type: "groupCallAlert", chatRoomId, callRoomId });
@@ -300,5 +304,42 @@ export class ChatNotificationService {
         }
       })
     );
+  }
+
+  async notifyUsersOfClearedPrivateChats(args: { userIds: number[]; chatRoomId: number }) {
+    const { userIds, chatRoomId } = args;
+    await Promise.all(
+      userIds.map(async (userId) => {
+        const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId, webLoggedIn } = (await database.user.findUnique({ where: { id: userId } }))!;
+
+        const connectionIds = [connectionId, webConnectionId];
+
+        const platformStatuses = [onlineStatus, onlineStatusWeb];
+
+        for (let i = 0; i < connectionIds.length; i++) {
+          if (platformStatuses[i] !== "offline") {
+            const userConnection = chatRouterWs.sockets.get(connectionIds[i]!);
+            if (userConnection) {
+              userConnection.emit("response", { action: "clearChat", chatRoomId });
+              continue;
+            }
+          }
+
+          if (webLoggedIn && i === 1) {
+            // application sync mechanism
+            await chatNotificationService.saveNotification(null, userId, "browser", "clearChat", chatRoomId);
+            continue;
+          }
+
+          await chatNotificationService.saveNotification(null, userId, "mobile", "clearChat", chatRoomId);
+        }
+      })
+    );
+  }
+
+  async notifyUsersOfClearedCommunityChats(args: { comunityMembers: CommunityMember[]; chatRoomId: number }) {
+    const { chatRoomId, comunityMembers } = args;
+    const membersIds = comunityMembers.map((member) => member.userId);
+    appEvents.emit("set-community-members-notifications", { action: "clearChat", chatRoomId, communityId: 0, membersIds, messageId: 0, platform: "mobile" });
   }
 }

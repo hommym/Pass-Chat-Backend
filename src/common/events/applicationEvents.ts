@@ -2,7 +2,7 @@ import Event from "events";
 import { RegistrationOtpEmailI, sendRegistrationEmail } from "../../features/email/sendRegisterationEmail";
 import { LoginOtpEmailI, sendLogInEmail } from "../../features/email/sendLoginEmail";
 import { chatNotificationService, communityService, contactsService, dashboardService } from "../constants/objects";
-import { CommunityType, NotificationAction, OS, Platform } from "@prisma/client";
+import { CommunityMember, CommunityType, NotificationAction, OS, Platform } from "@prisma/client";
 import { SaveCommunityNotificationsArgs } from "../../features/community/dto/saveCommunityNotificationsArgs";
 import { CommunityVerificationEmail, sendCommunityVerificationEmail } from "../../features/email/sendCommunityVerificationEmail";
 import { CommunityCallNotifier } from "../../features/community/type/communityCallNotifier";
@@ -18,6 +18,8 @@ type EventName = {
   "community-verification-email": CommunityVerificationEmail;
   "community-call-notifier": CommunityCallNotifier;
   "alert-contacts-user-online-status": number;
+  "cleared-private-chat-alert": { userIds: number[]; chatRoomId: number };
+  "clear-community-chat-alert":{comunityMembers: CommunityMember[]; chatRoomId: number };
 };
 
 export class AppEvents {
@@ -40,6 +42,8 @@ export class AppEvents {
     this.createListener("community-verification-email", sendCommunityVerificationEmail);
     this.createListener("community-call-notifier", chatNotificationService.notifyOnlineMembersOfCall);
     this.createListener("alert-contacts-user-online-status", chatNotificationService.alertContactsOfUserOnlineStatus);
+    this.createListener("cleared-private-chat-alert",chatNotificationService.notifyUsersOfClearedPrivateChats)
+    this.createListener("clear-community-chat-alert",chatNotificationService.notifyUsersOfClearedCommunityChats)
     console.log("Listeners Setup");
   }
 

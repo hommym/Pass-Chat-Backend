@@ -251,12 +251,27 @@ class ChatService {
             if (!(await objects_1.communityService.isMember((_a = chatRoomDetails.community[0]) === null || _a === void 0 ? void 0 : _a.id, clientId)))
                 throw new errorHandler_1.WsError(`Messages cannot be retrived, client not a member of ${chatRoomDetails.type}`);
         }
-        // add code for excluding clear chats 
+        // add code for excluding clear chats
         if (all) {
+            const clearChatsId = [];
+            const clearedChats = await objects_1.database.clearedChatsTracker.findMany({
+                where: chatRoomDetails.type === "private"
+                    ? { roomId: chatRoomId, ownerId: clientId }
+                    : {
+                        OR: [
+                            { roomId: chatRoomId, ownerId: clientId, communityId: chatRoomDetails.community[0].id },
+                            { roomId: chatRoomId, ownerId: 0, communityId: chatRoomDetails.community[0].id },
+                        ],
+                    },
+            });
+            clearedChats.forEach(item => {
+                clearChatsId.push(...item.clearedMessages);
+            });
             const messages = await objects_1.database.message.findMany({
                 where: {
                     roomId: chatRoomId,
                     reportFlag: false,
+                    id: { notIn: clearChatsId }
                 },
                 orderBy: { createdAt: "desc" },
             });
@@ -400,6 +415,57 @@ class ChatService {
             objects_1.appEvents.emit("set-community-members-notifications", { action: "updateChatRoom", communityId, membersIds, platform: "mobile", messageId, chatRoomId: roomDetails.id });
         }
         return { message: "Message Pinned Sucessfully" };
+    }
+    async clearAllChats(clearChatDto, userId) {
+        const { chatRoomId, forAll } = clearChatDto;
+        // let clearChatsTracker: ClearedChatsTracker | ClearedChatsTracker[] | null = null;
+        let participantsIds;
+        const roomDetails = await objects_1.database.chatRoom.findUnique({ where: { id: chatRoomId }, include: { community: { include: { members: { where: { userId: { not: userId } } } } } } });
+        if (!roomDetails) {
+            throw new errorHandler_1.AppError("No ChatRoom with this id exist", 404);
+        }
+        const { user1Id, user2Id, community } = roomDetails;
+        if (roomDetails.type === "private") {
+            participantsIds = forAll ? [userId, user1Id !== userId ? user1Id : user2Id] : [userId];
+            await Promise.all(participantsIds.map(async (participantId) => {
+                const clearChatsTracker = await objects_1.database.clearedChatsTracker.findUnique({
+                    where: { roomId_ownerId_communityId: { roomId: chatRoomId, ownerId: participantId, communityId: 0 } },
+                });
+                const alreadyClearedMessagesIds = clearChatsTracker ? clearChatsTracker.clearedMessages : [];
+                const messagesToClear = await objects_1.database.message.findMany({ where: { id: { notIn: alreadyClearedMessagesIds } }, select: { id: true } });
+                // adding the ids of  messages to be cleared to the already cleared ones
+                messagesToClear.forEach((item) => {
+                    alreadyClearedMessagesIds.push(item.id);
+                });
+                await objects_1.database.clearedChatsTracker.upsert({
+                    where: { roomId_ownerId_communityId: { roomId: chatRoomId, ownerId: participantId, communityId: 0 } },
+                    create: { roomId: chatRoomId, ownerId: participantId, clearedMessages: alreadyClearedMessagesIds },
+                    update: { clearedMessages: alreadyClearedMessagesIds },
+                });
+            }));
+            // alert members of cleared message
+            objects_1.appEvents.emit("cleared-private-chat-alert", { chatRoomId, userIds: participantsIds });
+        }
+        else {
+            const clearChatsTracker = await objects_1.database.clearedChatsTracker.findUnique({
+                where: { roomId_ownerId_communityId: forAll ? { roomId: chatRoomId, ownerId: 0, communityId: community[0].id } : { roomId: chatRoomId, ownerId: userId, communityId: community[0].id } },
+            });
+            const alreadyClearedMessagesIds = clearChatsTracker ? clearChatsTracker.clearedMessages : [];
+            const messagesToClear = await objects_1.database.message.findMany({ where: { id: { notIn: alreadyClearedMessagesIds } }, select: { id: true } });
+            // adding the ids of  messages to be cleared to the already cleared ones
+            messagesToClear.forEach((item) => {
+                alreadyClearedMessagesIds.push(item.id);
+            });
+            await objects_1.database.clearedChatsTracker.upsert({
+                where: { roomId_ownerId_communityId: forAll ? { roomId: chatRoomId, ownerId: 0, communityId: community[0].id } : { roomId: chatRoomId, ownerId: userId, communityId: community[0].id } },
+                create: { roomId: chatRoomId, ownerId: forAll ? 0 : userId, clearedMessages: alreadyClearedMessagesIds, communityId: community[0].id },
+                update: { clearedMessages: alreadyClearedMessagesIds },
+            });
+            if (forAll) {
+                // alert members of cleared message
+                objects_1.appEvents.emit("clear-community-chat-alert", { chatRoomId, comunityMembers: community[0].members });
+            }
+        }
     }
     async handleUserDisconnection(userId) {
         // check if user is in CallRoom

@@ -47,7 +47,9 @@ class ChatNotificationService {
                                 ? { action: "updateChatRoom", chatRoom }
                                 : action === "comunityInfoUpdate"
                                     ? { action: "comunityInfoUpdate", community }
-                                    : { action: "deleteCommunity", communityId };
+                                    : action === "clearChat"
+                                        ? { action: "clearChat", chatRoomId }
+                                        : { action: "deleteCommunity", communityId };
                         userConnection.emit("response", response);
                         continue;
                     }
@@ -57,8 +59,8 @@ class ChatNotificationService {
                 const notifications = await objects_1.database.notification.findMany({
                     where: isNotificationTypeMessage
                         ? { userId: memberId, messageId, platform: isWebUser ? "browser" : "mobile" }
-                        : action === "updateChatRoom"
-                            ? { userId: memberId, chatRoomId, platform: isWebUser ? "browser" : "mobile" }
+                        : action === "updateChatRoom" || action === "clearChat"
+                            ? { userId: memberId, chatRoomId, platform: isWebUser ? "browser" : "mobile", action }
                             : { userId: memberId, communityId, platform: isWebUser ? "browser" : "mobile" },
                 });
                 //create if it does not exist
@@ -66,7 +68,7 @@ class ChatNotificationService {
                     await objects_1.database.notification.create({
                         data: isNotificationTypeMessage
                             ? { userId: memberId, messageId, platform: isWebUser ? "browser" : "mobile", action }
-                            : action === "updateChatRoom"
+                            : action === "updateChatRoom" || action === "clearChat"
                                 ? { userId: memberId, platform: isWebUser ? "browser" : "mobile", action, chatRoomId }
                                 : { userId: memberId, platform: isWebUser ? "browser" : "mobile", action, communityId },
                     });
@@ -89,7 +91,7 @@ class ChatNotificationService {
                 if (!reaction)
                     throw new errorHandler_1.WsError("No Value passed for reaction");
                 const oldReaction = message.reactions ? message.reactions : [];
-                // adding new reactionto the old ones 
+                // adding new reactionto the old ones
                 oldReaction.push(reaction);
                 await objects_1.database.message.update({ where: { id: messageId }, data: { reactions: oldReaction } });
             }
@@ -242,10 +244,10 @@ class ChatNotificationService {
             const connectionIds = [connectionId, webConnectionId];
             let statusTracker = 0;
             for (let id of connectionIds) {
-                if (!id)
+                if (!id || (statusTracker === 0 && onlineStatus === "call") || (statusTracker === 1 && onlineStatusWeb === "call")) {
+                    statusTracker++;
                     continue;
-                else if ((statusTracker === 0 && onlineStatus === "call") || (statusTracker === 1 && onlineStatusWeb === "call"))
-                    return;
+                }
                 const userConnection = chatHandler_1.chatRouterWs.sockets.get(id);
                 if (userConnection) {
                     userConnection.emit("groupCallResponse", { type: "groupCallAlert", chatRoomId, callRoomId });
@@ -278,6 +280,34 @@ class ChatNotificationService {
                 }
             }
         }));
+    }
+    async notifyUsersOfClearedPrivateChats(args) {
+        const { userIds, chatRoomId } = args;
+        await Promise.all(userIds.map(async (userId) => {
+            const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId, webLoggedIn } = (await objects_1.database.user.findUnique({ where: { id: userId } }));
+            const connectionIds = [connectionId, webConnectionId];
+            const platformStatuses = [onlineStatus, onlineStatusWeb];
+            for (let i = 0; i < connectionIds.length; i++) {
+                if (platformStatuses[i] !== "offline") {
+                    const userConnection = chatHandler_1.chatRouterWs.sockets.get(connectionIds[i]);
+                    if (userConnection) {
+                        userConnection.emit("response", { action: "clearChat", chatRoomId });
+                        continue;
+                    }
+                }
+                if (webLoggedIn && i === 1) {
+                    // application sync mechanism
+                    await objects_1.chatNotificationService.saveNotification(null, userId, "browser", "clearChat", chatRoomId);
+                    continue;
+                }
+                await objects_1.chatNotificationService.saveNotification(null, userId, "mobile", "clearChat", chatRoomId);
+            }
+        }));
+    }
+    async notifyUsersOfClearedCommunityChats(args) {
+        const { chatRoomId, comunityMembers } = args;
+        const membersIds = comunityMembers.map((member) => member.userId);
+        objects_1.appEvents.emit("set-community-members-notifications", { action: "clearChat", chatRoomId, communityId: 0, membersIds, messageId: 0, platform: "mobile" });
     }
 }
 exports.ChatNotificationService = ChatNotificationService;

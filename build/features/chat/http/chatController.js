@@ -24,6 +24,7 @@ const objects_1 = require("../../../common/constants/objects");
 const updateMessageDto_1 = require("../dto/updateMessageDto");
 const errorHandler_1 = require("../../../common/middlewares/errorHandler");
 const deleteMessageDto_1 = require("../dto/deleteMessageDto");
+const clearChatsDto_1 = require("../dto/clearChatsDto");
 exports.chatRouter = (0, express_1.Router)();
 exports.chatRouter.post("/room", (0, bodyValidator_1.bodyValidator)(chatRoomDto_1.ChatRoomDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
     const _a = req.body, { verifiedUserId } = _a, phoneNumbers = __rest(_a, ["verifiedUserId"]);
@@ -60,4 +61,9 @@ exports.chatRouter.patch("/pin/message/:messageId", verifyJwt_1.verifyJwt, (0, e
         else
             throw new errorHandler_1.AppError("Url parameter messageId should be an integer", 400);
     }
+}));
+exports.chatRouter.delete("/clear-all-chats", (0, bodyValidator_1.bodyValidator)(clearChatsDto_1.ClearChatDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
+    const _a = req.body, { verifiedUserId } = _a, clearChatDto = __rest(_a, ["verifiedUserId"]);
+    await objects_1.chatService.clearAllChats(clearChatDto, verifiedUserId);
+    res.status(204).end();
 }));
