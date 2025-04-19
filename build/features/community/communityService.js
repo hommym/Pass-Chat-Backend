@@ -135,12 +135,10 @@ class CommunityService {
         return Promise.all(allMemberShipData.map(async (memberShipData) => {
             const communityDetails = await objects_1.database.community.findUnique({
                 where: { id: memberShipData.communityId },
-                include: { members: { select: { role: true, userDetails: { select: { phone: true, profile: true } } } } },
+                include: { members: { select: { role: true, userDetails: { select: { id: true, phone: true, bio: true, fullName: true, username: true, profile: true } } } } },
+                omit: { ownerId: true },
             });
-            if (memberShipData.role !== "owner") {
-                communityDetails.members = [];
-            }
-            return { communityDetails, memberShipType: memberShipData.role, senderId: memberShipData.userId };
+            return { senderId: memberShipData.userId, memberShipType: memberShipData.role, communityDetails };
         }));
     }
     async getCommunityDetailsForUser(userId, communityId) {
