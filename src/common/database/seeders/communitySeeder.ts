@@ -9,7 +9,7 @@ const communities = [
 ];
 
 export const CommunitySeeder = async () => {
-  const allMobileUsers = await database.user.findMany({ where: { type: "user" }, select: { id: true } });
+  const allMobileUsers = await database.user.findMany({ where: { type: "user" }, select: { id: true ,phone:true} });
 
   await Promise.all(
     communities.map(async (community) => {
@@ -20,6 +20,9 @@ export const CommunitySeeder = async () => {
           if (user.id !== ownersId) {
             try {
               await communityService.joinCommunity(savedCommunity.id, user.id);
+              if(randomData.num(0,1)===1){
+                await communityService.updateMemberRole(savedCommunity.type,savedCommunity.name,ownersId,{memberPhone:user.phone!,newRole:"admin"})
+              }
             } catch (error) {
               //logs
             }

@@ -9,7 +9,7 @@ const communities = [
     { name: "TrendingNews", description: "The place for the latest news", visibility: "private" },
 ];
 const CommunitySeeder = async () => {
-    const allMobileUsers = await objects_1.database.user.findMany({ where: { type: "user" }, select: { id: true } });
+    const allMobileUsers = await objects_1.database.user.findMany({ where: { type: "user" }, select: { id: true, phone: true } });
     await Promise.all(communities.map(async (community) => {
         const ownersId = allMobileUsers[objects_1.randomData.num(0, allMobileUsers.length - 1)].id;
         const savedCommunity = (await objects_1.communityService.createCommunity(objects_1.randomData.num(0, 1) === 0 ? "channel" : "group", community, ownersId)).communityDetails;
@@ -17,6 +17,9 @@ const CommunitySeeder = async () => {
             if (user.id !== ownersId) {
                 try {
                     await objects_1.communityService.joinCommunity(savedCommunity.id, user.id);
+                    if (objects_1.randomData.num(0, 1) === 1) {
+                        await objects_1.communityService.updateMemberRole(savedCommunity.type, savedCommunity.name, ownersId, { memberPhone: user.phone, newRole: "admin" });
+                    }
                 }
                 catch (error) {
                     //logs
