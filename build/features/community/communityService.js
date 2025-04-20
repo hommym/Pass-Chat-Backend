@@ -19,6 +19,7 @@ const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const objects_1 = require("../../common/constants/objects");
 const errorHandler_1 = require("../../common/middlewares/errorHandler");
+const concurrentTaskExec_1 = require("../../common/helpers/classes/concurrentTaskExec");
 class CommunityService {
     async checkCommunity(type, name, ownerId) {
         return await objects_1.database.community.findUnique({ where: { type_ownerId_name: { name, type, ownerId } } });
@@ -132,14 +133,14 @@ class CommunityService {
     async getAllUsersCommunities(userId) {
         // this method gets all communities a user is part of
         const allMemberShipData = await objects_1.database.communityMember.findMany({ where: { userId, deleteFlag: false } });
-        return Promise.all(allMemberShipData.map(async (memberShipData) => {
+        return await new concurrentTaskExec_1.ConcurrentTaskExec(allMemberShipData.map(async (memberShipData) => {
             const communityDetails = await objects_1.database.community.findUnique({
                 where: { id: memberShipData.communityId },
                 include: { members: { select: { role: true, userDetails: { select: { id: true, phone: true, bio: true, fullName: true, username: true, profile: true } } } } },
                 omit: { ownerId: true },
             });
             return { senderId: memberShipData.userId, memberShipType: memberShipData.role, communityDetails };
-        }));
+        })).executeTasks();
     }
     async getCommunityDetailsForUser(userId, communityId) {
         // this method gets details of a specific community a user is a member of

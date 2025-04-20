@@ -13,6 +13,7 @@ const cancelCallDto_1 = require("./dto/cancelCallDto");
 const publicGroupCallDto_1 = require("./dto/publicGroupCallDto");
 const joinOrLeaveGroupCallDto_1 = require("./dto/joinOrLeaveGroupCallDto");
 const privateGroupCallDto_1 = require("./dto/privateGroupCallDto");
+const concurrentTaskExec_1 = require("../../common/helpers/classes/concurrentTaskExec");
 class CallService {
     async isUserAlreadyInACall(userId, details = null) {
         const userDetails = details ? details : await objects_1.database.user.findUnique({ where: { id: userId } });
@@ -142,15 +143,18 @@ class CallService {
         const { participantsIds } = cancelCallDto;
         const enderId = socket.authUserId;
         const users = await objects_1.database.user.findMany({ where: { id: { in: participantsIds } }, select: { onlineStatus: true, connectionId: true, webConnectionId: true, onlineStatusWeb: true, id: true } });
-        await Promise.all(users.map(async (user) => {
-            await objects_1.database.user.update({ where: { id: user.id }, data: user.onlineStatus === "call" ? { onlineStatus: "online" } : user.onlineStatusWeb === "call" ? { onlineStatusWeb: "online" } : {} });
+        await new concurrentTaskExec_1.ConcurrentTaskExec(users.map(async (user) => {
+            await objects_1.database.user.update({
+                where: { id: user.id },
+                data: user.onlineStatus === "call" ? { onlineStatus: "online" } : user.onlineStatusWeb === "call" ? { onlineStatusWeb: "online" } : {},
+            });
             if ((user.onlineStatus === "call" || user.onlineStatusWeb === "call") && user.id !== enderId) {
                 const userConnection = chatHandler_1.chatRouterWs.sockets.get(user.onlineStatus === "call" ? user.connectionId : user.webConnectionId);
                 if (userConnection) {
                     userConnection.emit("callResponse", { type: "endCall" });
                 }
             }
-        }));
+        })).executeTasks();
     }
     async startPublicGroupCall(publicGroupCallDto, socket) {
         await (0, bodyValidator_1.bodyValidatorWs)(publicGroupCallDto_1.PublicGroupCallDto, publicGroupCallDto);
@@ -264,7 +268,7 @@ class CallService {
             return;
         }
         //alert all participants of this room that a new user is has joined or an old one left
-        await Promise.all(callRoomDetails.participants.map(async (participant) => {
+        await new concurrentTaskExec_1.ConcurrentTaskExec(callRoomDetails.participants.map(async (participant) => {
             const { connectionId, onlineStatus, onlineStatusWeb, webConnectionId, id } = participant.participant;
             if (id !== userId) {
                 const statuses = [onlineStatus, onlineStatusWeb];
@@ -284,7 +288,7 @@ class CallService {
                     tracker++;
                 }
             }
-        }));
+        })).executeTasks();
     }
 }
 exports.CallService = CallService;

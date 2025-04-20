@@ -7,6 +7,7 @@ import { AppError } from "../../common/middlewares/errorHandler";
 import { GroupPermissionsDto } from "./dto/permissionsDto";
 import { UpdateRoleDto } from "./dto/updateRoleDto";
 import { VerifyCommunityDto } from "./dto/verifyCommunityDto";
+import { ConcurrentTaskExec } from "../../common/helpers/classes/concurrentTaskExec";
 
 export class CommunityService {
   async checkCommunity(type: "channel" | "group", name: string, ownerId: number) {
@@ -135,7 +136,7 @@ export class CommunityService {
   async getAllUsersCommunities(userId: number) {
     // this method gets all communities a user is part of
     const allMemberShipData = await database.communityMember.findMany({ where: { userId, deleteFlag: false } });
-    return Promise.all(
+    return await new ConcurrentTaskExec(
       allMemberShipData.map(async (memberShipData) => {
         const communityDetails = await database.community.findUnique({
           where: { id: memberShipData.communityId },
@@ -145,7 +146,7 @@ export class CommunityService {
 
         return { senderId: memberShipData.userId, memberShipType: memberShipData.role, communityDetails };
       })
-    );
+    ).executeTasks();
   }
 
   async getCommunityDetailsForUser(userId: number, communityId: number) {

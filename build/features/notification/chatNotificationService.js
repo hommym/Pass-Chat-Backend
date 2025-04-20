@@ -7,6 +7,7 @@ const objects_1 = require("../../common/constants/objects");
 const errorHandler_1 = require("../../common/middlewares/errorHandler");
 const communityChatNotificationsDto_1 = require("./dto/communityChatNotificationsDto");
 const chatHandler_1 = require("../chat/ws/chatHandler");
+const concurrentTaskExec_1 = require("../../common/helpers/classes/concurrentTaskExec");
 class ChatNotificationService {
     async saveNotification(messageId, recipientId, platform = "mobile", action = "updateMessage", chatRoomId = null) {
         // this is for setting messages notifications and chatroom updates notifications
@@ -22,7 +23,7 @@ class ChatNotificationService {
         // this a method for  updating  all members of a community about what is happening around a community(ie new messages, updated messages,deleted etc.)
         const { action, communityId, membersIds, messageId, chatRoomId } = args;
         const isNotificationTypeMessage = action === "updateMessage" || action === "saveMessage" || action === "deleteMessage";
-        await Promise.all(membersIds.map(async (memberId) => {
+        await new concurrentTaskExec_1.ConcurrentTaskExec(membersIds.map(async (memberId) => {
             const userDetails = (await objects_1.database.user.findUnique({ where: { id: memberId } }));
             const connectionIds = [userDetails.connectionId, userDetails.webConnectionId];
             const platformStatuses = [userDetails.onlineStatus, userDetails.onlineStatusWeb];
@@ -75,7 +76,7 @@ class ChatNotificationService {
                 else
                     await objects_1.database.notification.update({ where: { id: notifications[0].id }, data: { action } });
             }
-        }));
+        })).executeTasks();
     }
     async setNotification(chatType, data, socket) {
         if (chatType === "private") {
@@ -236,7 +237,7 @@ class ChatNotificationService {
     async notifyOnlineMembersOfCall(args) {
         // this method will send an alert to online members of a particular community that a group call for that community has started
         const { allMembersIds, chatRoomId, callerId, callRoomId } = args;
-        await Promise.all(allMembersIds.map(async (userId) => {
+        await new concurrentTaskExec_1.ConcurrentTaskExec(allMembersIds.map(async (userId) => {
             const user = await objects_1.database.user.findUnique({ where: { id: userId } });
             const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId } = user;
             if (callerId === userId)
@@ -254,7 +255,7 @@ class ChatNotificationService {
                 }
                 statusTracker++;
             }
-        }));
+        })).executeTasks();
     }
     async alertContactsOfUserOnlineStatus(userId) {
         //this method is for alerting a user's contacts he or she chats with of his or her online status(ie online or offline)
@@ -265,7 +266,7 @@ class ChatNotificationService {
             include: { contacts: { where: { roomId: { not: null }, status: { not: "blocked" } } } },
         }));
         const isUserOnline = onlineStatus !== "offline" || onlineStatusWeb !== "offline";
-        await Promise.all(contacts.map(async (contact) => {
+        await new concurrentTaskExec_1.ConcurrentTaskExec(contacts.map(async (contact) => {
             const userDetails = (await objects_1.database.user.findUnique({ where: { phone: contact.phone } }));
             let userConnection;
             const connectionIds = [userDetails.connectionId, userDetails.webConnectionId];
@@ -279,11 +280,11 @@ class ChatNotificationService {
                     }
                 }
             }
-        }));
+        })).executeTasks();
     }
     async notifyUsersOfClearedPrivateChats(args) {
         const { userIds, chatRoomId } = args;
-        await Promise.all(userIds.map(async (userId) => {
+        await new concurrentTaskExec_1.ConcurrentTaskExec(userIds.map(async (userId) => {
             const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId, webLoggedIn } = (await objects_1.database.user.findUnique({ where: { id: userId } }));
             const connectionIds = [connectionId, webConnectionId];
             const platformStatuses = [onlineStatus, onlineStatusWeb];
@@ -302,7 +303,7 @@ class ChatNotificationService {
                 }
                 await objects_1.chatNotificationService.saveNotification(null, userId, "mobile", "clearChat", chatRoomId);
             }
-        }));
+        })).executeTasks();
     }
     async notifyUsersOfClearedCommunityChats(args) {
         const { chatRoomId, comunityMembers } = args;

@@ -5,6 +5,7 @@ const objects_1 = require("../../common/constants/objects");
 const errorHandler_1 = require("../../common/middlewares/errorHandler");
 const chatHandler_1 = require("./ws/chatHandler");
 const date_fns_tz_1 = require("date-fns-tz");
+const concurrentTaskExec_1 = require("../../common/helpers/classes/concurrentTaskExec");
 class ChatService {
     async setUserOnlineStatus(status, userId, connectionId, isWebUser = false) {
         if (userId) {
@@ -264,14 +265,14 @@ class ChatService {
                         ],
                     },
             });
-            clearedChats.forEach(item => {
+            clearedChats.forEach((item) => {
                 clearChatsId.push(...item.clearedMessages);
             });
             const messages = await objects_1.database.message.findMany({
                 where: {
                     roomId: chatRoomId,
                     reportFlag: false,
-                    id: { notIn: clearChatsId }
+                    id: { notIn: clearChatsId },
                 },
                 orderBy: { createdAt: "desc" },
             });
@@ -427,7 +428,7 @@ class ChatService {
         const { user1Id, user2Id, community } = roomDetails;
         if (roomDetails.type === "private") {
             participantsIds = forAll ? [userId, user1Id !== userId ? user1Id : user2Id] : [userId];
-            await Promise.all(participantsIds.map(async (participantId) => {
+            await new concurrentTaskExec_1.ConcurrentTaskExec(participantsIds.map(async (participantId) => {
                 const clearChatsTracker = await objects_1.database.clearedChatsTracker.findUnique({
                     where: { roomId_ownerId_communityId: { roomId: chatRoomId, ownerId: participantId, communityId: 0 } },
                 });
@@ -442,7 +443,7 @@ class ChatService {
                     create: { roomId: chatRoomId, ownerId: participantId, clearedMessages: alreadyClearedMessagesIds },
                     update: { clearedMessages: alreadyClearedMessagesIds },
                 });
-            }));
+            })).executeTasks();
             // alert members of cleared message
             objects_1.appEvents.emit("cleared-private-chat-alert", { chatRoomId, userIds: participantsIds });
         }
@@ -492,7 +493,7 @@ class ChatService {
             include: { participants: { include: { participant: { select: { profile: true, phone: true, username: true } } } } },
         });
         // Alert all participants of this room that the user has left
-        await Promise.all(callRoomDetails.participants.map(async (participant) => {
+        await new concurrentTaskExec_1.ConcurrentTaskExec(callRoomDetails.participants.map(async (participant) => {
             const { connectionId, onlineStatus, onlineStatusWeb, webConnectionId } = participant.participant;
             const statuses = [onlineStatus, onlineStatusWeb];
             let tracker = 0;
@@ -510,7 +511,7 @@ class ChatService {
                 }
                 tracker++;
             }
-        }));
+        })).executeTasks();
     }
 }
 exports.ChatService = ChatService;

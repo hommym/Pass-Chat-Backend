@@ -1,4 +1,5 @@
 import { contactsService, database, randomData } from "../../constants/objects";
+import { ConcurrentTaskExec } from "../../helpers/classes/concurrentTaskExec";
 
 export const ContactSeeder = async () => {
   const allMobileUsers = await database.user.findMany({ where: { phone: { not: null }, type: "user" } });
@@ -36,7 +37,8 @@ export const ContactSeeder = async () => {
   ];
 
   for (let i = 0; i < allMobileUsers.length; i++) {
-    await Promise.all(
+    // console.log("Contact Seeder")
+    const parallelTask = new ConcurrentTaskExec(
       allMobileUsers.map(async (user) => {
         const currentUser = allMobileUsers[i];
         if (currentUser !== user) {
@@ -45,5 +47,7 @@ export const ContactSeeder = async () => {
         }
       })
     );
+
+    await parallelTask.executeTasks();
   }
 };

@@ -1,5 +1,6 @@
 import { CommunityVisibility } from "@prisma/client";
 import { communityService, database, randomData } from "../../constants/objects";
+import { ConcurrentTaskExec } from "../../helpers/classes/concurrentTaskExec";
 
 const communities = [
   { name: "Netflix", description: "We are all about latest movies", visibility: "public" as CommunityVisibility },
@@ -9,19 +10,21 @@ const communities = [
 ];
 
 export const CommunitySeeder = async () => {
-  const allMobileUsers = await database.user.findMany({ where: { type: "user" }, select: { id: true ,phone:true} });
+  const allMobileUsers = await database.user.findMany({ where: { type: "user" }, select: { id: true, phone: true } });
 
-  await Promise.all(
+ 
+//  console.log("Community Seeder");
+  const parallelTask = new ConcurrentTaskExec(
     communities.map(async (community) => {
       const ownersId = allMobileUsers[randomData.num(0, allMobileUsers.length - 1)].id;
       const savedCommunity = (await communityService.createCommunity(randomData.num(0, 1) === 0 ? "channel" : "group", community, ownersId)).communityDetails;
-      await Promise.all(
+      await new ConcurrentTaskExec(
         allMobileUsers.map(async (user) => {
           if (user.id !== ownersId) {
             try {
               await communityService.joinCommunity(savedCommunity.id, user.id);
-              if(randomData.num(0,1)===1){
-                await communityService.updateMemberRole(savedCommunity.type,savedCommunity.name,ownersId,{memberPhone:user.phone!,newRole:"admin"})
+              if (randomData.num(0, 1) === 1) {
+                await communityService.updateMemberRole(savedCommunity.type, savedCommunity.name, ownersId, { memberPhone: user.phone!, newRole: "admin" });
               }
             } catch (error) {
               //logs
@@ -29,7 +32,9 @@ export const CommunitySeeder = async () => {
             // await communityService.updateCommunitySubCount({communityId:savedCommunity.id,operation:"add"})
           }
         })
-      );
+      ).executeTasks();
     })
   );
+
+  await parallelTask.executeTasks();
 };

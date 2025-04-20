@@ -1,4 +1,5 @@
 import { chatService, database } from "../../common/constants/objects";
+import { ConcurrentTaskExec } from "../../common/helpers/classes/concurrentTaskExec";
 import { BlockContactDto } from "./dtos/blockContactDto";
 import { ContactDto } from "./dtos/contactDto";
 import { SavedContactsDto } from "./dtos/savedContactsDto";
@@ -10,7 +11,7 @@ export class ContactsService {
 
     if (contactsWithAccount.length === 0) return [];
     // const res: { phone: string; profile: string | null }[] = [];
-    await Promise.all(
+    await new ConcurrentTaskExec(
       contactsWithAccount.map(async (data) => {
         let contactName: string | null = null;
         const phone = data.phone!;
@@ -38,12 +39,12 @@ export class ContactsService {
           },
         });
       })
-    );
+    ).executeTasks();
   }
 
   async getSavedContacts(userId: number) {
     const { contacts } = (await database.user.findUnique({ where: { id: userId }, select: { contacts: { omit: { id: true, ownerId: true } } } }))!;
-    return Promise.all(
+    return await new ConcurrentTaskExec(
       contacts.map(async (contact) => {
         const { phone } = contact;
         const user = await database.user.findUnique({ where: { phone } });
@@ -52,7 +53,7 @@ export class ContactsService {
         newContactData.username = user!.username;
         return newContactData;
       })
-    );
+    ).executeTasks();
   }
 
   async getGlobalContacts(userId: number) {
@@ -75,12 +76,12 @@ export class ContactsService {
 
   async updateContactsRommId(args: { roomId: number; contacts: { contact: string; ownerId: number }[] }) {
     const { contacts, roomId } = args;
-    await Promise.all(
+    await new ConcurrentTaskExec(
       contacts.map(async (item) => {
         const { contact, ownerId } = item;
         await database.userContact.upsert({ where: { ownerId_phone: { ownerId, phone: contact } }, create: { ownerId, phone: contact, roomId }, update: { roomId } });
       })
-    );
+    ).executeTasks();
   }
 
   async blockContact(userId: number, blockContactDto: BlockContactDto) {
@@ -88,7 +89,7 @@ export class ContactsService {
     //get user account details
     //get chat room details
     const account = await database.user.findUnique({ where: { id: userId } });
-    const { roomId, participants } = await chatService.creatChatRoomDeatils(phone, account!.phone!,userId);
+    const { roomId, participants } = await chatService.creatChatRoomDeatils(phone, account!.phone!, userId);
 
     if (action == "block") {
       //set chat room status to block

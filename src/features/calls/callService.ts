@@ -12,6 +12,7 @@ import { PublicGroupCallDto } from "./dto/publicGroupCallDto";
 import { Message, User } from "@prisma/client";
 import { JoinOrLeaveGroupCallDto } from "./dto/joinOrLeaveGroupCallDto";
 import { PrivateGroupCallDto } from "./dto/privateGroupCallDto";
+import { ConcurrentTaskExec } from "../../common/helpers/classes/concurrentTaskExec";
 
 export class CallService {
   async isUserAlreadyInACall(userId: number, details: User | null = null) {
@@ -143,9 +144,12 @@ export class CallService {
     const enderId = socket.authUserId;
 
     const users = await database.user.findMany({ where: { id: { in: participantsIds } }, select: { onlineStatus: true, connectionId: true, webConnectionId: true, onlineStatusWeb: true, id: true } });
-    await Promise.all(
+    await new ConcurrentTaskExec(
       users.map(async (user) => {
-        await database.user.update({ where: { id: user.id }, data: user.onlineStatus === "call" ? { onlineStatus: "online" } : user.onlineStatusWeb === "call" ? { onlineStatusWeb: "online" } : {} });
+        await database.user.update({
+          where: { id: user.id },
+          data: user.onlineStatus === "call" ? { onlineStatus: "online" } : user.onlineStatusWeb === "call" ? { onlineStatusWeb: "online" } : {},
+        });
         if ((user.onlineStatus === "call" || user.onlineStatusWeb === "call") && user.id !== enderId) {
           const userConnection = chatRouterWs.sockets.get(user.onlineStatus === "call" ? user.connectionId! : user.webConnectionId!);
           if (userConnection) {
@@ -153,7 +157,7 @@ export class CallService {
           }
         }
       })
-    );
+    ).executeTasks();
   }
 
   async startPublicGroupCall(publicGroupCallDto: PublicGroupCallDto, socket: SocketV1) {
@@ -291,7 +295,7 @@ export class CallService {
     }
 
     //alert all participants of this room that a new user is has joined or an old one left
-    await Promise.all(
+    await new ConcurrentTaskExec(
       callRoomDetails.participants.map(async (participant) => {
         const { connectionId, onlineStatus, onlineStatusWeb, webConnectionId, id } = participant.participant;
         if (id !== userId) {
@@ -311,6 +315,6 @@ export class CallService {
           }
         }
       })
-    );
+    ).executeTasks();
   }
 }

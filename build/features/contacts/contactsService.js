@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ContactsService = void 0;
 const objects_1 = require("../../common/constants/objects");
+const concurrentTaskExec_1 = require("../../common/helpers/classes/concurrentTaskExec");
 class ContactsService {
     async saveContacts(contactsWithNames, userId) {
         const contacts = contactsWithNames.map((items) => items.phone);
@@ -9,7 +10,7 @@ class ContactsService {
         if (contactsWithAccount.length === 0)
             return [];
         // const res: { phone: string; profile: string | null }[] = [];
-        await Promise.all(contactsWithAccount.map(async (data) => {
+        await new concurrentTaskExec_1.ConcurrentTaskExec(contactsWithAccount.map(async (data) => {
             let contactName = null;
             const phone = data.phone;
             for (let item of contactsWithNames) {
@@ -36,18 +37,18 @@ class ContactsService {
                     contactName,
                 },
             });
-        }));
+        })).executeTasks();
     }
     async getSavedContacts(userId) {
         const { contacts } = (await objects_1.database.user.findUnique({ where: { id: userId }, select: { contacts: { omit: { id: true, ownerId: true } } } }));
-        return Promise.all(contacts.map(async (contact) => {
+        return await new concurrentTaskExec_1.ConcurrentTaskExec(contacts.map(async (contact) => {
             const { phone } = contact;
             const user = await objects_1.database.user.findUnique({ where: { phone } });
             const newContactData = contact;
             newContactData.bio = user.bio;
             newContactData.username = user.username;
             return newContactData;
-        }));
+        })).executeTasks();
     }
     async getGlobalContacts(userId) {
         const userContacts = (await this.getSavedContacts(userId)).map((contact) => {
@@ -65,10 +66,10 @@ class ContactsService {
     }
     async updateContactsRommId(args) {
         const { contacts, roomId } = args;
-        await Promise.all(contacts.map(async (item) => {
+        await new concurrentTaskExec_1.ConcurrentTaskExec(contacts.map(async (item) => {
             const { contact, ownerId } = item;
             await objects_1.database.userContact.upsert({ where: { ownerId_phone: { ownerId, phone: contact } }, create: { ownerId, phone: contact, roomId }, update: { roomId } });
-        }));
+        })).executeTasks();
     }
     async blockContact(userId, blockContactDto) {
         const { action, phone } = blockContactDto;

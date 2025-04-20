@@ -1,10 +1,13 @@
 import { dashboardService, database, randomData } from "../../constants/objects";
+import { ConcurrentTaskExec } from "../../helpers/classes/concurrentTaskExec";
 
 export const ActiveCommunitySeeder = async () => {
   const allUsers = await database.user.findMany({ where: { type: "user" } });
   const allCommunities = await database.community.findMany({ where: { type: "group" } });
 
-  await Promise.all(
+ 
+//  console.log("ActiveCommunity Seeder");
+  await new ConcurrentTaskExec(
     allCommunities.map(async (item) => {
       const randomNum = randomData.num(0, allUsers.length);
 
@@ -12,5 +15,5 @@ export const ActiveCommunitySeeder = async () => {
         await dashboardService.addToActiveCommunities({ communityId: item.id, type: "group", userId: allUsers[index].id });
       }
     })
-  );
+  ).executeTasks();
 };

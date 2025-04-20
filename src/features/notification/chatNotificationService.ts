@@ -10,9 +10,10 @@ import { SaveCommunityNotificationsArgs } from "../community/dto/saveCommunityNo
 import { JsonArray } from "@prisma/client/runtime/library";
 import { CommunityCallNotifier } from "../community/type/communityCallNotifier";
 import { chatRouterWs } from "../chat/ws/chatHandler";
+import { ConcurrentTaskExec } from "../../common/helpers/classes/concurrentTaskExec";
 
 export class ChatNotificationService {
-  async saveNotification(messageId: number|null, recipientId: number, platform: Platform = "mobile", action: NotificationAction = "updateMessage", chatRoomId: number | null = null) {
+  async saveNotification(messageId: number | null, recipientId: number, platform: Platform = "mobile", action: NotificationAction = "updateMessage", chatRoomId: number | null = null) {
     // this is for setting messages notifications and chatroom updates notifications
 
     // check if any notification with the above details exist
@@ -28,7 +29,7 @@ export class ChatNotificationService {
     // this a method for  updating  all members of a community about what is happening around a community(ie new messages, updated messages,deleted etc.)
     const { action, communityId, membersIds, messageId, chatRoomId } = args;
     const isNotificationTypeMessage = action === "updateMessage" || action === "saveMessage" || action === "deleteMessage";
-    await Promise.all(
+    await new ConcurrentTaskExec(
       membersIds.map(async (memberId) => {
         const userDetails = (await database.user.findUnique({ where: { id: memberId } }))!;
         const connectionIds = [userDetails.connectionId, userDetails.webConnectionId];
@@ -88,7 +89,7 @@ export class ChatNotificationService {
           else await database.notification.update({ where: { id: notifications[0].id }, data: { action } });
         }
       })
-    );
+    ).executeTasks();
   }
 
   async setNotification(chatType: RoomType, data: any, socket: SocketV1) {
@@ -253,7 +254,7 @@ export class ChatNotificationService {
     // this method will send an alert to online members of a particular community that a group call for that community has started
     const { allMembersIds, chatRoomId, callerId, callRoomId } = args;
 
-    await Promise.all(
+    await new ConcurrentTaskExec(
       allMembersIds.map(async (userId) => {
         const user = await database.user.findUnique({ where: { id: userId } });
         const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId } = user!;
@@ -273,7 +274,7 @@ export class ChatNotificationService {
           statusTracker++;
         }
       })
-    );
+    ).executeTasks();
   }
 
   async alertContactsOfUserOnlineStatus(userId: number) {
@@ -286,7 +287,7 @@ export class ChatNotificationService {
       include: { contacts: { where: { roomId: { not: null }, status: { not: "blocked" } } } },
     }))!;
     const isUserOnline = onlineStatus !== "offline" || onlineStatusWeb !== "offline";
-    await Promise.all(
+    await new ConcurrentTaskExec(
       contacts.map(async (contact) => {
         const userDetails = (await database.user.findUnique({ where: { phone: contact.phone } }))!;
         let userConnection: Socket | undefined;
@@ -303,12 +304,12 @@ export class ChatNotificationService {
           }
         }
       })
-    );
+    ).executeTasks();
   }
 
   async notifyUsersOfClearedPrivateChats(args: { userIds: number[]; chatRoomId: number }) {
     const { userIds, chatRoomId } = args;
-    await Promise.all(
+    await new ConcurrentTaskExec(
       userIds.map(async (userId) => {
         const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId, webLoggedIn } = (await database.user.findUnique({ where: { id: userId } }))!;
 
@@ -334,7 +335,7 @@ export class ChatNotificationService {
           await chatNotificationService.saveNotification(null, userId, "mobile", "clearChat", chatRoomId);
         }
       })
-    );
+    ).executeTasks();
   }
 
   async notifyUsersOfClearedCommunityChats(args: { comunityMembers: CommunityMember[]; chatRoomId: number }) {
