@@ -78,6 +78,8 @@ enum NotificationAction{
   deleteCommunity
   updateChatRoom
   clearChat
+  addStory
+  removeStory
   phoneChange
 }
 
@@ -156,6 +158,13 @@ enum FileType {
 enum MessageDeleteFlag{
   sender
   all
+}
+
+
+enum PostType{
+  text
+  image
+  video
 }
 
 model User {
@@ -270,6 +279,7 @@ model Notification {
   messageId         Int?
   communityId       Int?
   chatRoomId        Int?
+  storyId           Int?
   user              User                @relation(fields: [userId], references: [id])
   message           Message?            @relation(fields:[messageId],references:[id])   
   community         Community?          @relation(fields:[communityId],references:[id])     
@@ -449,4 +459,18 @@ model File{
   
    @@unique([ownerId,parentId,name,type])
    @@map("files")
+}
+
+
+
+model Story{
+    id                    Int                         @id @default(autoincrement())
+    ownerId               Int
+    type                  PostType                    @default(image)
+    content               String                      // stringified Json
+    exclude               Json?                       // user contact accounts which were excluded from seeing this post
+    createdAt             DateTime                    @default(now())
+   
+
+  @@map("stories")
 }
