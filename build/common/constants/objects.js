@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.reportService = exports.dashboardService = exports.communityService = exports.callService = exports.chatNotificationService = exports.fileService = exports.contactsService = exports.chatService = exports.appEvents = exports.randomData = exports.authService = exports.ws = exports.server = exports.app = exports.database = void 0;
+exports.jobManager = exports.postsService = exports.reportService = exports.dashboardService = exports.communityService = exports.callService = exports.chatNotificationService = exports.fileService = exports.contactsService = exports.chatService = exports.appEvents = exports.randomData = exports.authService = exports.ws = exports.server = exports.app = exports.database = void 0;
 const client_1 = require("@prisma/client");
 const express_1 = __importDefault(require("express"));
 const socket_io_1 = require("socket.io");
@@ -19,6 +19,8 @@ const callService_1 = require("../../features/calls/callService");
 const communityService_1 = require("../../features/community/communityService");
 const dashboardService_1 = require("../../features/dashboard/dashboardService");
 const reportService_1 = require("../../features/report/reportService");
+const postsService_1 = require("../../features/posts/postsService");
+const jobManager_1 = require("../helpers/classes/jobManager");
 // singletons
 exports.database = new client_1.PrismaClient();
 exports.app = (0, express_1.default)();
@@ -35,3 +37,5 @@ exports.callService = new callService_1.CallService();
 exports.communityService = new communityService_1.CommunityService();
 exports.dashboardService = new dashboardService_1.DashboardService();
 exports.reportService = new reportService_1.ReportService();
+exports.postsService = new postsService_1.PostsService();
+exports.jobManager = new jobManager_1.JobManager();

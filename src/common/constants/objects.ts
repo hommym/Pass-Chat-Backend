@@ -13,6 +13,8 @@ import { CallService } from "../../features/calls/callService";
 import { CommunityService } from "../../features/community/communityService";
 import { DashboardService } from "../../features/dashboard/dashboardService";
 import { ReportService } from "../../features/report/reportService";
+import { PostsService } from "../../features/posts/postsService";
+import { JobManager } from "../helpers/classes/jobManager";
 
 // singletons
 
@@ -45,3 +47,7 @@ export const communityService = new CommunityService();
 export const dashboardService = new DashboardService();
 
 export const reportService = new ReportService();
+
+export const postsService= new PostsService();
+
+export const jobManager= new JobManager()

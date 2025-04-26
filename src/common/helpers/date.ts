@@ -1,15 +1,15 @@
-export const getCurrentDate = () => {
+export const getCurrentDate = (returnISOForm: boolean = false) => {
   const now = new Date(); // Current date and time
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0"); // Add 1 to month since it's 0-indexed
   const day = String(now.getDate()).padStart(2, "0"); // Ensure 2-digit format
 
   // Return date in "YYYY-MM-DD" format
+  if (returnISOForm) return now.toISOString();
   return `${year}-${month}-${day}`;
 };
 
-
-export const getYesterdayDate= (dateString:string)=>{
+export const getYesterdayDate = (dateString: string) => {
   // Parse the input date
   const date = new Date(dateString);
 
@@ -23,4 +23,12 @@ export const getYesterdayDate= (dateString:string)=>{
 
   // Return the date in "YYYY-MM-DD" format
   return `${year}-${month}-${day}`;
-}
+};
+
+export const getNextDayDate = (dateString: string) => {
+  const dateObject = new Date(dateString);
+  dateObject.setHours(dateObject.getHours() + 24);
+  // dateObject.setMinutes(dateObject.getMinutes()+1) // for testing
+  // console.log(dateObject.toISOString());
+  return dateObject;
+};

@@ -31,6 +31,7 @@ class AppEvents {
         this.createListener("alert-contacts-user-online-status", objects_1.chatNotificationService.alertContactsOfUserOnlineStatus);
         this.createListener("cleared-private-chat-alert", objects_1.chatNotificationService.notifyUsersOfClearedPrivateChats.bind(objects_1.chatNotificationService));
         this.createListener("clear-community-chat-alert", objects_1.chatNotificationService.notifyUsersOfClearedCommunityChats.bind(objects_1.chatNotificationService));
+        this.createListener("story-update", objects_1.chatNotificationService.notifyUsersOfStory.bind(objects_1.chatNotificationService));
         console.log("Listeners Setup");
     }
     emit(eventName, data) {

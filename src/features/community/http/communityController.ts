@@ -28,13 +28,14 @@ communityRouter.post(
   "/:communityId/join",
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
-    const { communityId } = req.params;
+    let communityId: number;
     const { verifiedUserId } = req.body;
     try {
-      res.status(201).json(await communityService.joinCommunity(+communityId, verifiedUserId));
+      communityId = +req.params.communityId;
     } catch (error) {
       throw new AppError("Url parameter communityId must be an integer", 400);
     }
+    res.status(201).json(await communityService.joinCommunity(+communityId, verifiedUserId));
   })
 );
 
@@ -42,14 +43,15 @@ communityRouter.delete(
   "/:communityId/exit",
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
-    const { communityId } = req.params;
+    let communityId: number;
     const { verifiedUserId } = req.body;
     try {
-      await communityService.exitCommunity(+communityId, verifiedUserId);
-      res.status(204).end();
+      communityId = +req.params.communityId;
     } catch (error) {
       throw new AppError("Url parameter communityId must be an integer", 400);
     }
+    await communityService.exitCommunity(+communityId, verifiedUserId);
+    res.status(204).end();
   })
 );
 

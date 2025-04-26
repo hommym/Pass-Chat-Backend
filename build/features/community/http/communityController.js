@@ -34,25 +34,27 @@ exports.communityRouter.post("/:type", (0, bodyValidator_1.bodyValidator)(create
     res.status(201).json(await objects_1.communityService.createCommunity(type, creatCommunityDto, verifiedUserId));
 }));
 exports.communityRouter.post("/:communityId/join", verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
-    const { communityId } = req.params;
+    let communityId;
     const { verifiedUserId } = req.body;
     try {
-        res.status(201).json(await objects_1.communityService.joinCommunity(+communityId, verifiedUserId));
+        communityId = +req.params.communityId;
     }
     catch (error) {
         throw new errorHandler_1.AppError("Url parameter communityId must be an integer", 400);
     }
+    res.status(201).json(await objects_1.communityService.joinCommunity(+communityId, verifiedUserId));
 }));
 exports.communityRouter.delete("/:communityId/exit", verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
-    const { communityId } = req.params;
+    let communityId;
     const { verifiedUserId } = req.body;
     try {
-        await objects_1.communityService.exitCommunity(+communityId, verifiedUserId);
-        res.status(204).end();
+        communityId = +req.params.communityId;
     }
     catch (error) {
         throw new errorHandler_1.AppError("Url parameter communityId must be an integer", 400);
     }
+    await objects_1.communityService.exitCommunity(+communityId, verifiedUserId);
+    res.status(204).end();
 }));
 exports.communityRouter.delete("/", verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
     const { verifiedUserId, communityId } = req.body;

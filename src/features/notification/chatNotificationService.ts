@@ -1,4 +1,4 @@
-import { CommunityMember, Message, NotificationAction, Platform, RoomType } from "@prisma/client";
+import { CommunityMember, Message, NotificationAction, Platform, PostType, RoomType, Story } from "@prisma/client";
 import { bodyValidator, bodyValidatorWs } from "../../common/middlewares/bodyValidator";
 import { PrivateChatNotificationDto } from "./dto/privateChatNotficationDto";
 import { appEvents, chatNotificationService, database } from "../../common/constants/objects";
@@ -7,21 +7,27 @@ import { Socket } from "socket.io";
 import { SocketV1 } from "../../common/helpers/classes/socketV1";
 import { CommunityChatNotificationDto } from "./dto/communityChatNotificationsDto";
 import { SaveCommunityNotificationsArgs } from "../community/dto/saveCommunityNotificationsArgs";
-import { JsonArray } from "@prisma/client/runtime/library";
 import { CommunityCallNotifier } from "../community/type/communityCallNotifier";
 import { chatRouterWs } from "../chat/ws/chatHandler";
 import { ConcurrentTaskExec } from "../../common/helpers/classes/concurrentTaskExec";
 
 export class ChatNotificationService {
-  async saveNotification(messageId: number | null, recipientId: number, platform: Platform = "mobile", action: NotificationAction = "updateMessage", chatRoomId: number | null = null) {
+  async saveNotification(
+    messageId: number | null,
+    recipientId: number,
+    platform: Platform = "mobile",
+    action: NotificationAction = "updateMessage",
+    chatRoomId: number | null = null,
+    storyId: number | null = null
+  ) {
     // this is for setting messages notifications and chatroom updates notifications
 
     // check if any notification with the above details exist
-    const notifications = await database.notification.findMany({ where: chatRoomId ? { userId: recipientId, chatRoomId, platform } : { userId: recipientId, messageId, platform } });
+    const notifications = await database.notification.findMany({ where: chatRoomId ? { userId: recipientId, chatRoomId, platform } : { userId: recipientId, messageId, platform, storyId } });
 
     //create if it does not exist
     if (notifications.length === 0)
-      await database.notification.create({ data: chatRoomId ? { userId: recipientId, messageId, platform, action } : { userId: recipientId, chatRoomId, platform, action } });
+      await database.notification.create({ data: chatRoomId ? { userId: recipientId, messageId, platform, action } : { userId: recipientId, chatRoomId, platform, action, storyId } });
     else await database.notification.update({ where: { id: notifications[0].id }, data: { action } });
   }
 
@@ -29,9 +35,10 @@ export class ChatNotificationService {
     // this a method for  updating  all members of a community about what is happening around a community(ie new messages, updated messages,deleted etc.)
     const { action, communityId, membersIds, messageId, chatRoomId } = args;
     const isNotificationTypeMessage = action === "updateMessage" || action === "saveMessage" || action === "deleteMessage";
+    const members = await database.user.findMany({ where: { id: { in: membersIds } } });
     await new ConcurrentTaskExec(
-      membersIds.map(async (memberId) => {
-        const userDetails = (await database.user.findUnique({ where: { id: memberId } }))!;
+      members.map(async (member) => {
+        const userDetails = member;
         const connectionIds = [userDetails.connectionId, userDetails.webConnectionId];
         const platformStatuses = [userDetails.onlineStatus, userDetails.onlineStatusWeb];
         let userConnection: Socket | undefined;
@@ -48,7 +55,7 @@ export class ChatNotificationService {
                   : null;
 
               if (communityId && community) {
-                if (community.ownerId !== memberId) {
+                if (community.ownerId !== member.id) {
                   community.members = [];
                 }
               }
@@ -71,20 +78,20 @@ export class ChatNotificationService {
           const isWebUser = userDetails.webLoggedIn && i === 1;
           const notifications = await database.notification.findMany({
             where: isNotificationTypeMessage
-              ? { userId: memberId, messageId, platform: isWebUser ? "browser" : "mobile" }
+              ? { userId: member.id, messageId, platform: isWebUser ? "browser" : "mobile" }
               : action === "updateChatRoom" || action === "clearChat"
-              ? { userId: memberId, chatRoomId, platform: isWebUser ? "browser" : "mobile", action }
-              : { userId: memberId, communityId, platform: isWebUser ? "browser" : "mobile" },
+              ? { userId: member.id, chatRoomId, platform: isWebUser ? "browser" : "mobile", action }
+              : { userId: member.id, communityId, platform: isWebUser ? "browser" : "mobile" },
           });
 
           //create if it does not exist
           if (notifications.length === 0)
             await database.notification.create({
               data: isNotificationTypeMessage
-                ? { userId: memberId, messageId, platform: isWebUser ? "browser" : "mobile", action }
+                ? { userId: member.id, messageId, platform: isWebUser ? "browser" : "mobile", action }
                 : action === "updateChatRoom" || action === "clearChat"
-                ? { userId: memberId, platform: isWebUser ? "browser" : "mobile", action, chatRoomId }
-                : { userId: memberId, platform: isWebUser ? "browser" : "mobile", action, communityId },
+                ? { userId: member.id, platform: isWebUser ? "browser" : "mobile", action, chatRoomId }
+                : { userId: member.id, platform: isWebUser ? "browser" : "mobile", action, communityId },
             });
           else await database.notification.update({ where: { id: notifications[0].id }, data: { action } });
         }
@@ -171,18 +178,18 @@ export class ChatNotificationService {
     const messages: any[] = [];
     const notificationIds: number[] = [];
     // get those notfications and then delete them
-    (
-      await database.notification.findMany({
-        where: {
-          userId,
-        },
-        include: {
-          message: true,
-          community: { include: { members: { select: { role: true, userDetails: { select: { phone: true, profile: true } } } } } },
-          chatRoom: { select: { id: true, type: true, createdAt: true, user1: { select: { id: true, phone: true } }, user2: { select: { id: true, phone: true } }, pinnedMessages: true } },
-        },
-      })
-    ).forEach((notification) => {
+    const notifications = await database.notification.findMany({
+      where: {
+        userId,
+      },
+      include: {
+        message: true,
+        community: { include: { members: { select: { role: true, userDetails: { select: { phone: true, profile: true } } } } } },
+        chatRoom: { select: { id: true, type: true, createdAt: true, user1: { select: { id: true, phone: true } }, user2: { select: { id: true, phone: true } }, pinnedMessages: true } },
+      },
+    });
+
+    for (let notification of notifications) {
       let dataToSend: any;
 
       switch (notification.action) {
@@ -190,6 +197,20 @@ export class ChatNotificationService {
           dataToSend = {
             action: notification.action,
             communityId: notification.communityId,
+          };
+          break;
+        case "addStory":
+          const story = await database.story.findUnique({ where: { id: notification.storyId! }, omit: { exclude: true, ownerId: true } });
+          if (!story) continue;
+          dataToSend = {
+            action: notification.action,
+            story,
+          };
+          break;
+        case "removeStory":
+          dataToSend = {
+            action: notification.action,
+            storyId: notification.storyId,
           };
           break;
         case "comunityInfoUpdate":
@@ -244,7 +265,7 @@ export class ChatNotificationService {
 
       messages.push(dataToSend);
       notificationIds.push(notification.id);
-    });
+    }
     // console.log(messages);
     socket.emit("response", { action: "getNotification", data: messages });
     await database.notification.deleteMany({ where: { id: { in: notificationIds } } });
@@ -309,9 +330,13 @@ export class ChatNotificationService {
 
   async notifyUsersOfClearedPrivateChats(args: { userIds: number[]; chatRoomId: number }) {
     const { userIds, chatRoomId } = args;
+    const users = await database.user.findMany({
+      where: { id: { in: userIds } },
+      select: { onlineStatus: true, onlineStatusWeb: true, connectionId: true, webConnectionId: true, id: true, webLoggedIn: true },
+    });
     await new ConcurrentTaskExec(
-      userIds.map(async (userId) => {
-        const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId, webLoggedIn } = (await database.user.findUnique({ where: { id: userId } }))!;
+      users.map(async (user) => {
+        const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId, webLoggedIn } = user;
 
         const connectionIds = [connectionId, webConnectionId];
 
@@ -328,11 +353,11 @@ export class ChatNotificationService {
 
           if (webLoggedIn && i === 1) {
             // application sync mechanism
-            await this.saveNotification(null, userId, "browser", "clearChat", chatRoomId);
+            await this.saveNotification(null, user.id, "browser", "clearChat", chatRoomId);
             continue;
           }
 
-          await this.saveNotification(null, userId, "mobile", "clearChat", chatRoomId);
+          await this.saveNotification(null, user.id, "mobile", "clearChat", chatRoomId);
         }
       })
     ).executeTasks();
@@ -342,5 +367,54 @@ export class ChatNotificationService {
     const { chatRoomId, comunityMembers } = args;
     const membersIds = comunityMembers.map((member) => member.userId);
     appEvents.emit("set-community-members-notifications", { action: "clearChat", chatRoomId, communityId: 0, membersIds, messageId: 0, platform: "mobile" });
+  }
+
+  async notifyUsersOfStory(args: {
+    action: "add" | "remove";
+    story: {
+      content: string;
+      id: number;
+      type: PostType;
+      createdAt: Date;
+    };
+    contacts: string[];
+    ownerPhone: string;
+  }) {
+    const { action, contacts, story, ownerPhone } = args;
+    // get accounts of contacts
+    const users = await database.user.findMany({
+      where: { phone: { in: contacts } },
+      select: { onlineStatus: true, onlineStatusWeb: true, connectionId: true, webConnectionId: true, id: true, webLoggedIn: true },
+    });
+
+    // for each user send the alert or set notification
+    await new ConcurrentTaskExec(
+      users.map(async (user) => {
+        const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId, webLoggedIn } = user;
+
+        const connectionIds = [connectionId, webConnectionId];
+
+        const platformStatuses = [onlineStatus, onlineStatusWeb];
+
+        for (let i = 0; i < connectionIds.length; i++) {
+          if (platformStatuses[i] !== "offline") {
+            const userConnection = chatRouterWs.sockets.get(connectionIds[i]!);
+            if (userConnection) {
+              if (action === "add") userConnection.emit("response", { action: "addStory", ownerPhone, story });
+              else userConnection.emit("response", { action: "removeStory", storyId: story.id });
+              continue;
+            }
+          }
+
+          if (webLoggedIn && i === 1) {
+            // application sync mechanism
+            await this.saveNotification(null, user.id, "browser", action === "add" ? "addStory" : "removeStory", null, story.id);
+            continue;
+          }
+
+          await this.saveNotification(null, user.id, "mobile", action === "add" ? "addStory" : "removeStory", null, story.id);
+        }
+      })
+    ).executeTasks();
   }
 }

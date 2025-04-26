@@ -2,10 +2,11 @@ import Event from "events";
 import { RegistrationOtpEmailI, sendRegistrationEmail } from "../../features/email/sendRegisterationEmail";
 import { LoginOtpEmailI, sendLogInEmail } from "../../features/email/sendLoginEmail";
 import { chatNotificationService, communityService, contactsService, dashboardService } from "../constants/objects";
-import { CommunityMember, CommunityType, NotificationAction, OS, Platform } from "@prisma/client";
+import { CommunityMember, CommunityType, NotificationAction, OS, Platform, PostType, Story } from "@prisma/client";
 import { SaveCommunityNotificationsArgs } from "../../features/community/dto/saveCommunityNotificationsArgs";
 import { CommunityVerificationEmail, sendCommunityVerificationEmail } from "../../features/email/sendCommunityVerificationEmail";
 import { CommunityCallNotifier } from "../../features/community/type/communityCallNotifier";
+
 
 type EventName = {
   "login-otp-email": LoginOtpEmailI;
@@ -20,6 +21,17 @@ type EventName = {
   "alert-contacts-user-online-status": number;
   "cleared-private-chat-alert": { userIds: number[]; chatRoomId: number };
   "clear-community-chat-alert": { comunityMembers: CommunityMember[]; chatRoomId: number };
+  "story-update": {
+    action: "add" | "remove";
+    story: {
+      content: string;
+      id: number;
+      type: PostType;
+      createdAt: Date;
+    };
+    contacts: string[];
+    ownerPhone: string;
+  };
 };
 
 export class AppEvents {
@@ -44,6 +56,7 @@ export class AppEvents {
     this.createListener("alert-contacts-user-online-status", chatNotificationService.alertContactsOfUserOnlineStatus);
     this.createListener("cleared-private-chat-alert", chatNotificationService.notifyUsersOfClearedPrivateChats.bind(chatNotificationService));
     this.createListener("clear-community-chat-alert", chatNotificationService.notifyUsersOfClearedCommunityChats.bind(chatNotificationService));
+    this.createListener("story-update", chatNotificationService.notifyUsersOfStory.bind(chatNotificationService));
     console.log("Listeners Setup");
   }
 
