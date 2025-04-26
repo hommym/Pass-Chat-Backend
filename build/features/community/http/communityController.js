@@ -89,7 +89,8 @@ exports.communityRouter.get("/details", verifyJwt_1.verifyJwt, (0, express_async
     res.status(200).json(await objects_1.communityService.getCommunityDetailsForUser(verifiedUserId, communityId));
 }));
 exports.communityRouter.get("/search", verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
-    const { verifiedUserId, keyword } = req.body;
+    // const { verifiedUserId } = req.body;
+    const { keyword } = req.query;
     if (!keyword)
         throw new errorHandler_1.AppError("No Value passed for group or channel name", 400);
     res.status(200).json(await objects_1.communityService.search(keyword));

@@ -41,6 +41,8 @@ export class CommunityService {
       where: { type_ownerId_name: { name, type, ownerId } },
       create: { name, type, description, visibility, permissions, profile, roomId: chatRoom! ? chatRoom.id : 0, ownerId },
       update: community?.deleteFlag ? { name, type, description, visibility, profile, deleteFlag: false, permissions } : { name, type, description, visibility, profile },
+      omit: { ownerId: true },
+      include: { members: { select: { role: true, userDetails: { select: { id: true, phone: true, bio: true, fullName: true, username: true, profile: true } } } } },
     });
 
     await database.community.update({ where: { id: communityDetails.id }, data: { invitationLink: `${process.env.BackendUrl}/community/${communityDetails.id}/join` } });
@@ -51,7 +53,7 @@ export class CommunityService {
       update: { deleteFlag: false },
     });
 
-    return { communityDetails, memberShipType: "owner" };
+    return { senderId: ownerId, memberShipType: "owner", communityDetails };
   }
 
   async updatePermissions(ownerId: number, permissionsDto: GroupPermissionsDto, type: "group" | "channel") {
@@ -70,7 +72,7 @@ export class CommunityService {
 
   async search(keyword: string) {
     return await database.community.findMany({
-      where: { name: { startsWith: keyword }, visibility: "public", status: "active" },
+      where: { name: { startsWith: keyword }, visibility: "public", status: "active" },omit:{ownerId:true}
     });
   }
 

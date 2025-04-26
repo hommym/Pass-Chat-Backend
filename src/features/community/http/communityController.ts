@@ -121,9 +121,10 @@ communityRouter.get(
   "/search",
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
-    const { verifiedUserId, keyword } = req.body;
+    // const { verifiedUserId } = req.body;
+    const { keyword } = req.query;
     if (!keyword) throw new AppError("No Value passed for group or channel name", 400);
-    res.status(200).json(await communityService.search(keyword));
+    res.status(200).json(await communityService.search(keyword as string));
   })
 );
 

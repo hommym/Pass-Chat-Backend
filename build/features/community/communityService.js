@@ -52,6 +52,8 @@ class CommunityService {
             where: { type_ownerId_name: { name, type, ownerId } },
             create: { name, type, description, visibility, permissions, profile, roomId: chatRoom ? chatRoom.id : 0, ownerId },
             update: (community === null || community === void 0 ? void 0 : community.deleteFlag) ? { name, type, description, visibility, profile, deleteFlag: false, permissions } : { name, type, description, visibility, profile },
+            omit: { ownerId: true },
+            include: { members: { select: { role: true, userDetails: { select: { id: true, phone: true, bio: true, fullName: true, username: true, profile: true } } } } },
         });
         await objects_1.database.community.update({ where: { id: communityDetails.id }, data: { invitationLink: `${process.env.BackendUrl}/community/${communityDetails.id}/join` } });
         await objects_1.database.communityMember.upsert({
@@ -59,7 +61,7 @@ class CommunityService {
             create: { communityId: communityDetails.id, userId: ownerId, role: "owner" },
             update: { deleteFlag: false },
         });
-        return { communityDetails, memberShipType: "owner" };
+        return { senderId: ownerId, memberShipType: "owner", communityDetails };
     }
     async updatePermissions(ownerId, permissionsDto, type) {
         const { name } = permissionsDto, permissions = __rest(permissionsDto, ["name"]);
@@ -73,7 +75,7 @@ class CommunityService {
     }
     async search(keyword) {
         return await objects_1.database.community.findMany({
-            where: { name: { startsWith: keyword }, visibility: "public", status: "active" },
+            where: { name: { startsWith: keyword }, visibility: "public", status: "active" }, omit: { ownerId: true }
         });
     }
     async updateCommunitySubCount(arg) {
