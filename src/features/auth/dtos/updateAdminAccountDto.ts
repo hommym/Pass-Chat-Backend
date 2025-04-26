@@ -1,5 +1,5 @@
 import { Expose } from "class-transformer";
-import { IsBase64, IsNotEmpty, IsOptional } from "class-validator";
+import {  IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export class UpdateAdminAccountDto {
   @Expose()
@@ -14,6 +14,7 @@ export class UpdateAdminAccountDto {
 
   @Expose()
   @IsOptional()
-  @IsBase64()
+  @IsString()
+  @IsNotEmpty()
   profile?: string;
 }

@@ -1,7 +1,6 @@
 import { CommunityVisibility } from "@prisma/client";
 import { Expose, Type } from "class-transformer";
-import { IsBase64, IsEnum, IsNotEmpty, IsOptional, IsString, } from "class-validator";
-
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export class CreateCommunityDto {
   @Expose()
@@ -21,7 +20,6 @@ export class CreateCommunityDto {
   @Expose()
   @IsOptional()
   @IsString()
-  @IsBase64()
+  @IsNotEmpty()
   profile?: string;
-
 }
