@@ -298,10 +298,10 @@ class ChatNotificationService {
                 }
                 if (webLoggedIn && i === 1) {
                     // application sync mechanism
-                    await objects_1.chatNotificationService.saveNotification(null, userId, "browser", "clearChat", chatRoomId);
+                    await this.saveNotification(null, userId, "browser", "clearChat", chatRoomId);
                     continue;
                 }
-                await objects_1.chatNotificationService.saveNotification(null, userId, "mobile", "clearChat", chatRoomId);
+                await this.saveNotification(null, userId, "mobile", "clearChat", chatRoomId);
             }
         })).executeTasks();
     }

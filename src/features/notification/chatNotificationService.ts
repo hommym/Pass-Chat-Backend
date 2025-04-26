@@ -328,11 +328,11 @@ export class ChatNotificationService {
 
           if (webLoggedIn && i === 1) {
             // application sync mechanism
-            await chatNotificationService.saveNotification(null, userId, "browser", "clearChat", chatRoomId);
+            await this.saveNotification(null, userId, "browser", "clearChat", chatRoomId);
             continue;
           }
 
-          await chatNotificationService.saveNotification(null, userId, "mobile", "clearChat", chatRoomId);
+          await this.saveNotification(null, userId, "mobile", "clearChat", chatRoomId);
         }
       })
     ).executeTasks();

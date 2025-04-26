@@ -19,7 +19,7 @@ type EventName = {
   "community-call-notifier": CommunityCallNotifier;
   "alert-contacts-user-online-status": number;
   "cleared-private-chat-alert": { userIds: number[]; chatRoomId: number };
-  "clear-community-chat-alert":{comunityMembers: CommunityMember[]; chatRoomId: number };
+  "clear-community-chat-alert": { comunityMembers: CommunityMember[]; chatRoomId: number };
 };
 
 export class AppEvents {
@@ -42,8 +42,8 @@ export class AppEvents {
     this.createListener("community-verification-email", sendCommunityVerificationEmail);
     this.createListener("community-call-notifier", chatNotificationService.notifyOnlineMembersOfCall);
     this.createListener("alert-contacts-user-online-status", chatNotificationService.alertContactsOfUserOnlineStatus);
-    this.createListener("cleared-private-chat-alert",chatNotificationService.notifyUsersOfClearedPrivateChats)
-    this.createListener("clear-community-chat-alert",chatNotificationService.notifyUsersOfClearedCommunityChats)
+    this.createListener("cleared-private-chat-alert", chatNotificationService.notifyUsersOfClearedPrivateChats.bind(chatNotificationService));
+    this.createListener("clear-community-chat-alert", chatNotificationService.notifyUsersOfClearedCommunityChats.bind(chatNotificationService));
     console.log("Listeners Setup");
   }
 

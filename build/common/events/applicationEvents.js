@@ -29,8 +29,8 @@ class AppEvents {
         this.createListener("community-verification-email", sendCommunityVerificationEmail_1.sendCommunityVerificationEmail);
         this.createListener("community-call-notifier", objects_1.chatNotificationService.notifyOnlineMembersOfCall);
         this.createListener("alert-contacts-user-online-status", objects_1.chatNotificationService.alertContactsOfUserOnlineStatus);
-        this.createListener("cleared-private-chat-alert", objects_1.chatNotificationService.notifyUsersOfClearedPrivateChats);
-        this.createListener("clear-community-chat-alert", objects_1.chatNotificationService.notifyUsersOfClearedCommunityChats);
+        this.createListener("cleared-private-chat-alert", objects_1.chatNotificationService.notifyUsersOfClearedPrivateChats.bind(objects_1.chatNotificationService));
+        this.createListener("clear-community-chat-alert", objects_1.chatNotificationService.notifyUsersOfClearedCommunityChats.bind(objects_1.chatNotificationService));
         console.log("Listeners Setup");
     }
     emit(eventName, data) {
