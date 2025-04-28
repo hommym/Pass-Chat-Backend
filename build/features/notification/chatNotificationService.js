@@ -36,12 +36,16 @@ class ChatNotificationService {
                         const message = messageId && isNotificationTypeMessage ? await objects_1.database.message.findUnique({ where: { id: messageId } }) : null;
                         const chatRoom = chatRoomId && action === "updateChatRoom" ? await objects_1.database.chatRoom.findUnique({ where: { id: chatRoomId } }) : null;
                         const community = communityId && action === "comunityInfoUpdate"
-                            ? await objects_1.database.community.findUnique({ where: { id: communityId }, include: { members: { select: { role: true, userDetails: { select: { profile: true, phone: true } } } } } })
+                            ? await objects_1.database.community.findUnique({
+                                where: { id: communityId },
+                                include: {
+                                    members: { select: { role: true, userDetails: { select: { profile: true, phone: true } } } },
+                                    callRoom: { include: { participants: { include: { participant: { select: { profile: true, phone: true, username: true } } } } } },
+                                },
+                            })
                             : null;
                         if (communityId && community) {
-                            if (community.ownerId !== member.id) {
-                                community.members = [];
-                            }
+                            community.callRoom = community.callRoom.length !== 0 ? community.callRoom[0] : null;
                         }
                         const response = isNotificationTypeMessage
                             ? { action: "recieveMessage", data: message }
@@ -167,7 +171,13 @@ class ChatNotificationService {
             },
             include: {
                 message: true,
-                community: { include: { members: { select: { role: true, userDetails: { select: { id: true, phone: true, bio: true, fullName: true, username: true, profile: true } } } } }, omit: { ownerId: true } },
+                community: {
+                    include: {
+                        members: { select: { role: true, userDetails: { select: { id: true, phone: true, bio: true, fullName: true, username: true, profile: true } } } },
+                        callRoom: { include: { participants: { include: { participant: { select: { profile: true, phone: true, username: true } } } } } },
+                    },
+                    omit: { ownerId: true },
+                },
                 chatRoom: { select: { id: true, type: true, createdAt: true, user1: { select: { id: true, phone: true } }, user2: { select: { id: true, phone: true } }, pinnedMessages: true } },
             },
         });
@@ -196,9 +206,7 @@ class ChatNotificationService {
                     };
                     break;
                 case "comunityInfoUpdate":
-                    // if (userId !== notification.community!.ownerId) {
-                    //   notification.community!.members = [];
-                    // }
+                    notification.community.callRoom = notification.community.callRoom.length !== 0 ? notification.community.callRoom[0] : null;
                     dataToSend = {
                         action: notification.action,
                         community: notification.community,
@@ -254,23 +262,22 @@ class ChatNotificationService {
     async notifyOnlineMembersOfCall(args) {
         // this method will send an alert to online members of a particular community that a group call for that community has started
         const { allMembersIds, chatRoomId, callerId, callRoomId } = args;
-        await new concurrentTaskExec_1.ConcurrentTaskExec(allMembersIds.map(async (userId) => {
-            const user = await objects_1.database.user.findUnique({ where: { id: userId } });
+        const users = await objects_1.database.user.findMany({ where: { id: { in: allMembersIds } } });
+        await new concurrentTaskExec_1.ConcurrentTaskExec(users.map(async (user) => {
             const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId } = user;
-            if (callerId === userId)
-                return;
-            const connectionIds = [connectionId, webConnectionId];
-            let statusTracker = 0;
-            for (let id of connectionIds) {
-                if (!id || (statusTracker === 0 && onlineStatus === "call") || (statusTracker === 1 && onlineStatusWeb === "call")) {
+            if (callerId !== user.id) {
+                const connectionIds = [connectionId, webConnectionId];
+                let statusTracker = 0;
+                for (let id of connectionIds) {
                     statusTracker++;
-                    continue;
+                    if (!id || (statusTracker === 1 && onlineStatus === "call") || (statusTracker === 2 && onlineStatusWeb === "call")) {
+                        continue;
+                    }
+                    const userConnection = chatHandler_1.chatRouterWs.sockets.get(id);
+                    if (userConnection) {
+                        userConnection.emit("groupCallResponse", { type: "groupCallAlert", chatRoomId, callRoomId });
+                    }
                 }
-                const userConnection = chatHandler_1.chatRouterWs.sockets.get(id);
-                if (userConnection) {
-                    userConnection.emit("groupCallResponse", { type: "groupCallAlert", chatRoomId, callRoomId });
-                }
-                statusTracker++;
             }
         })).executeTasks();
     }

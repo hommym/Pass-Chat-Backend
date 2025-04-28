@@ -143,9 +143,13 @@ export class CommunityService {
       allMemberShipData.map(async (memberShipData) => {
         const communityDetails = await database.community.findUnique({
           where: { id: memberShipData.communityId },
-          include: { members: { select: { role: true, userDetails: { select: { id: true, phone: true, bio: true, fullName: true, username: true, profile: true } } } } },
+          include: {
+            members: { select: { role: true, userDetails: { select: { id: true, phone: true, bio: true, fullName: true, username: true, profile: true } } } },
+            callRoom: { include: { participants: { include: { participant: { select: { profile: true, phone: true, username: true } } } } } },
+          },
           omit: { ownerId: true },
         });
+        communityDetails!.callRoom = communityDetails!.callRoom.length !== 0 ? (communityDetails!.callRoom[0] as any) : null;
 
         return { senderId: memberShipData.userId, memberShipType: memberShipData.role, communityDetails };
       })
@@ -165,6 +169,8 @@ export class CommunityService {
       },
       omit: { ownerId: true },
     });
+
+    communityDetails!.callRoom = communityDetails!.callRoom.length !== 0 ? (communityDetails!.callRoom[0] as any) : null;
 
     return { communityDetails, memberShipType: memberShipInfo.role };
   }

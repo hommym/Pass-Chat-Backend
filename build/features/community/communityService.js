@@ -138,9 +138,13 @@ class CommunityService {
         return await new concurrentTaskExec_1.ConcurrentTaskExec(allMemberShipData.map(async (memberShipData) => {
             const communityDetails = await objects_1.database.community.findUnique({
                 where: { id: memberShipData.communityId },
-                include: { members: { select: { role: true, userDetails: { select: { id: true, phone: true, bio: true, fullName: true, username: true, profile: true } } } } },
+                include: {
+                    members: { select: { role: true, userDetails: { select: { id: true, phone: true, bio: true, fullName: true, username: true, profile: true } } } },
+                    callRoom: { include: { participants: { include: { participant: { select: { profile: true, phone: true, username: true } } } } } },
+                },
                 omit: { ownerId: true },
             });
+            communityDetails.callRoom = communityDetails.callRoom.length !== 0 ? communityDetails.callRoom[0] : null;
             return { senderId: memberShipData.userId, memberShipType: memberShipData.role, communityDetails };
         })).executeTasks();
     }
@@ -157,6 +161,7 @@ class CommunityService {
             },
             omit: { ownerId: true },
         });
+        communityDetails.callRoom = communityDetails.callRoom.length !== 0 ? communityDetails.callRoom[0] : null;
         return { communityDetails, memberShipType: memberShipInfo.role };
     }
     async deleteCommunity(communityId, ownerId) {

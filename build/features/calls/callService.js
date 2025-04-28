@@ -185,6 +185,7 @@ class CallService {
             data: { senderId: callerId, content: JSON.stringify({ content: `on-going-${callType}-call`, content_id: (0, uuid_1.v4)() }), type: "call", roomId, callType },
         });
         const membersIds = members.map((member) => member.userId);
+        objects_1.appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId, membersIds, platform: "mobile", messageId: null, chatRoomId: null });
         objects_1.appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId: message.id, chatRoomId: null });
         // alerting online mmebers of the community that a group call has been started
         objects_1.appEvents.emit("community-call-notifier", { allMembersIds: membersIds, callerId, chatRoomId: roomId, callRoomId: callRoomDetails.id });
@@ -265,6 +266,11 @@ class CallService {
         //if there are no participants left in the CallRoom clear the room
         if ((updatedCallRoomDetails === null || updatedCallRoomDetails === void 0 ? void 0 : updatedCallRoomDetails.participants.length) === 0) {
             await objects_1.database.callRoom.delete({ where: { id: callRoomId } });
+            if (updatedCallRoomDetails.type === "public") {
+                const community = (await objects_1.database.community.findUnique({ where: { id: updatedCallRoomDetails.communityId }, include: { members: true } }));
+                const membersIds = community.members.map((member) => member.userId);
+                objects_1.appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId: community.id, membersIds, platform: "mobile", messageId: null, chatRoomId: null });
+            }
             return;
         }
         //alert all participants of this room that a new user is has joined or an old one left

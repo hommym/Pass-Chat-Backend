@@ -194,6 +194,8 @@ export class CallService {
     });
 
     const membersIds = members.map((member) => member.userId);
+    appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId, membersIds, platform: "mobile", messageId: null, chatRoomId: null });
+
     appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId: message.id, chatRoomId: null });
 
     // alerting online mmebers of the community that a group call has been started
@@ -291,6 +293,11 @@ export class CallService {
     //if there are no participants left in the CallRoom clear the room
     if (updatedCallRoomDetails?.participants.length === 0) {
       await database.callRoom.delete({ where: { id: callRoomId } });
+      if (updatedCallRoomDetails.type === "public") {
+        const community = (await database.community.findUnique({ where: { id: updatedCallRoomDetails.communityId! }, include: { members: true } }))!;
+        const membersIds = community.members.map((member) => member.userId);
+        appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId: community.id, membersIds, platform: "mobile", messageId: null, chatRoomId: null });
+      }
       return;
     }
 
