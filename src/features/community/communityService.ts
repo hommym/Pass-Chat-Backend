@@ -11,8 +11,8 @@ import { ConcurrentTaskExec } from "../../common/helpers/classes/concurrentTaskE
 
 export class CommunityService {
   async checkCommunity(type: "channel" | "group", name: string, ownerId: number, communityId: number | null = null) {
-    if (communityId) return await database.community.findUnique({ where: { id: communityId, ownerId }, include: { members: { select: { userDetails: { select: { id: true } } } } } });
-    return await database.community.findUnique({ where: { type_ownerId_name: { name, type, ownerId } }, include: { members: { select: { userDetails: { select: { id: true } } } } } });
+    if (communityId) return await database.community.findUnique({ where: { id: communityId, ownerId }, include: { members: { select: { userId: true } } } });
+    return await database.community.findUnique({ where: { type_ownerId_name: { name, type, ownerId } }, include: { members: { select: { userId: true } } } });
   }
 
   async createCommunity(type: "channel" | "group", communityDto: CreateCommunityDto, ownerId: number) {
@@ -65,7 +65,7 @@ export class CommunityService {
 
     await database.community.update({ where: { id: doesUserOwnCommunity.id }, data: { permissions } });
 
-    const membersIds = doesUserOwnCommunity.members.map((member) => member.userDetails.id);
+    const membersIds = doesUserOwnCommunity.members.map((member) => member.userId);
 
     appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId: doesUserOwnCommunity.id, membersIds, messageId: null, platform: "mobile", chatRoomId: null });
   }
@@ -119,7 +119,7 @@ export class CommunityService {
 
   async updateMemberRole(type: "channel" | "group", ownerId: number, updatedData: UpdateRoleDto) {
     const { memberPhone, newRole, communityId } = updatedData;
-    const communityDetails = await database.community.findUnique({ where: { id: communityId, ownerId }, include: { members: { select: { userDetails: { select: { id: true } } } } } });
+    const communityDetails = await database.community.findUnique({ where: { id: communityId, ownerId }, include: { members: { select: { userId: true } } } });
 
     if (!communityDetails) throw new AppError(`No ${type} with this id exist for your account`, 404);
 
@@ -132,7 +132,7 @@ export class CommunityService {
 
     await database.communityMember.update({ where: { communityId_userId: { communityId: id, userId: memberAccount.id } }, data: { role: newRole } });
 
-    const membersIds = communityDetails.members.map((member) => member.userDetails.id);
+    const membersIds = communityDetails.members.map((member) => member.userId);
     appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId: id, membersIds, messageId: null, platform: "mobile", chatRoomId: null });
   }
 
