@@ -1,12 +1,11 @@
 import { CommunityPermissionsLevels } from "@prisma/client";
 import { Expose } from "class-transformer";
-import { IsBoolean, IsEnum, IsIn, IsNotEmpty, IsString } from "class-validator";
+import { IsBoolean, IsEnum, IsIn, IsInt, IsNotEmpty, IsString } from "class-validator";
 
 export class GroupPermissionsDto {
   @Expose()
-  @IsString()
-  @IsNotEmpty()
-  name: string;
+  @IsInt()
+  communityId: number;
 
   @Expose()
   @IsEnum(CommunityPermissionsLevels)
@@ -35,9 +34,8 @@ export class GroupPermissionsDto {
 
 export class ChannelPermissionDto {
   @Expose()
-  @IsString()
-  @IsNotEmpty()
-  name: string;
+  @IsInt()
+  communityId: number;
 
   @Expose()
   @IsEnum(CommunityPermissionsLevels)

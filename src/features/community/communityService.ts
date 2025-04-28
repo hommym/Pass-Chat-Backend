@@ -10,8 +10,9 @@ import { VerifyCommunityDto } from "./dto/verifyCommunityDto";
 import { ConcurrentTaskExec } from "../../common/helpers/classes/concurrentTaskExec";
 
 export class CommunityService {
-  async checkCommunity(type: "channel" | "group", name: string, ownerId: number) {
-    return await database.community.findUnique({ where: { type_ownerId_name: { name, type, ownerId } } });
+  async checkCommunity(type: "channel" | "group", name: string, ownerId: number, communityId: number | null = null) {
+    if (communityId) return await database.community.findUnique({ where: { id: communityId, ownerId }, include: { members: { select: { userDetails: { select: { id: true } } } } } });
+    return await database.community.findUnique({ where: { type_ownerId_name: { name, type, ownerId } }, include: { members: { select: { userDetails: { select: { id: true } } } } } });
   }
 
   async createCommunity(type: "channel" | "group", communityDto: CreateCommunityDto, ownerId: number) {
@@ -57,15 +58,14 @@ export class CommunityService {
   }
 
   async updatePermissions(ownerId: number, permissionsDto: GroupPermissionsDto, type: "group" | "channel") {
-    const { name, ...permissions } = permissionsDto;
-    const doesUserOwnCommunity = await this.checkCommunity(type, name, ownerId);
+    const { communityId, ...permissions } = permissionsDto;
+    const doesUserOwnCommunity = await this.checkCommunity(type, "", ownerId, communityId);
 
     if (!doesUserOwnCommunity) throw new AppError(`This account does not own a ${type} with such name`, 404);
 
-    await database.community.update({ where: { type_ownerId_name: { type, name, ownerId } }, data: { permissions } });
+    await database.community.update({ where: { id: doesUserOwnCommunity.id }, data: { permissions } });
 
-    const communityMembers = await database.communityMember.findMany({ where: { communityId: doesUserOwnCommunity.id } });
-    const membersIds = communityMembers.map((member) => member.userId);
+    const membersIds = doesUserOwnCommunity.members.map((member) => member.userDetails.id);
 
     appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId: doesUserOwnCommunity.id, membersIds, messageId: null, platform: "mobile", chatRoomId: null });
   }

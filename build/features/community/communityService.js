@@ -21,8 +21,10 @@ const objects_1 = require("../../common/constants/objects");
 const errorHandler_1 = require("../../common/middlewares/errorHandler");
 const concurrentTaskExec_1 = require("../../common/helpers/classes/concurrentTaskExec");
 class CommunityService {
-    async checkCommunity(type, name, ownerId) {
-        return await objects_1.database.community.findUnique({ where: { type_ownerId_name: { name, type, ownerId } } });
+    async checkCommunity(type, name, ownerId, communityId = null) {
+        if (communityId)
+            return await objects_1.database.community.findUnique({ where: { id: communityId, ownerId }, include: { members: { select: { userDetails: { select: { id: true } } } } } });
+        return await objects_1.database.community.findUnique({ where: { type_ownerId_name: { name, type, ownerId } }, include: { members: { select: { userDetails: { select: { id: true } } } } } });
     }
     async createCommunity(type, communityDto, ownerId) {
         const { name, description, visibility, profile } = communityDto;
@@ -64,13 +66,12 @@ class CommunityService {
         return { senderId: ownerId, memberShipType: "owner", communityDetails };
     }
     async updatePermissions(ownerId, permissionsDto, type) {
-        const { name } = permissionsDto, permissions = __rest(permissionsDto, ["name"]);
-        const doesUserOwnCommunity = await this.checkCommunity(type, name, ownerId);
+        const { communityId } = permissionsDto, permissions = __rest(permissionsDto, ["communityId"]);
+        const doesUserOwnCommunity = await this.checkCommunity(type, "", ownerId, communityId);
         if (!doesUserOwnCommunity)
             throw new errorHandler_1.AppError(`This account does not own a ${type} with such name`, 404);
-        await objects_1.database.community.update({ where: { type_ownerId_name: { type, name, ownerId } }, data: { permissions } });
-        const communityMembers = await objects_1.database.communityMember.findMany({ where: { communityId: doesUserOwnCommunity.id } });
-        const membersIds = communityMembers.map((member) => member.userId);
+        await objects_1.database.community.update({ where: { id: doesUserOwnCommunity.id }, data: { permissions } });
+        const membersIds = doesUserOwnCommunity.members.map((member) => member.userDetails.id);
         objects_1.appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId: doesUserOwnCommunity.id, membersIds, messageId: null, platform: "mobile", chatRoomId: null });
     }
     async search(keyword) {
