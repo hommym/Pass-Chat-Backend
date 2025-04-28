@@ -1,16 +1,17 @@
 import { CommunityRole } from "@prisma/client";
 import { Expose } from "class-transformer";
-import { IsEnum, IsPhoneNumber } from "class-validator";
+import { IsEnum, IsNumber, IsPhoneNumber } from "class-validator";
 
+export class UpdateRoleDto {
+  @Expose()
+  @IsNumber()
+  communityId: number;
 
+  @Expose()
+  @IsPhoneNumber()
+  memberPhone: string;
 
-export class UpdateRoleDto{
-
-    @Expose()
-    @IsPhoneNumber()
-    memberPhone:string;
-
-    @Expose()
-    @IsEnum(CommunityRole)
-    newRole:CommunityRole
+  @Expose()
+  @IsEnum(CommunityRole)
+  newRole: CommunityRole;
 }

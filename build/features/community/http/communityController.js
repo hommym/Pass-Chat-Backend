@@ -61,14 +61,12 @@ exports.communityRouter.delete("/", verifyJwt_1.verifyJwt, (0, express_async_han
     await objects_1.communityService.deleteCommunity(communityId, verifiedUserId);
     res.status(204).end();
 }));
-exports.communityRouter.patch("/:type/:name/role", (0, bodyValidator_1.bodyValidator)(updateRoleDto_1.UpdateRoleDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
-    const { type, name } = req.params;
+exports.communityRouter.patch("/:type/role", (0, bodyValidator_1.bodyValidator)(updateRoleDto_1.UpdateRoleDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
+    const { type } = req.params;
     if (!(type === "channel" || type === "group"))
         throw new errorHandler_1.AppError("Valid values for type url parameter should be channel or group", 400);
-    else if (!name)
-        throw new errorHandler_1.AppError("No value passed for the url parameter name", 400);
     const _a = req.body, { verifiedUserId } = _a, updateRoleDto = __rest(_a, ["verifiedUserId"]);
-    await objects_1.communityService.updateMemberRole(type, name, verifiedUserId, updateRoleDto);
+    await objects_1.communityService.updateMemberRole(type, verifiedUserId, updateRoleDto);
     res.status(204).end();
 }));
 exports.communityRouter.patch("/group/permissions", (0, bodyValidator_1.bodyValidator)(permissionsDto_1.GroupPermissionsDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {

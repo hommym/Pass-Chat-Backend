@@ -18,6 +18,11 @@ class UpdateRoleDto {
 exports.UpdateRoleDto = UpdateRoleDto;
 __decorate([
     (0, class_transformer_1.Expose)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], UpdateRoleDto.prototype, "communityId", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
     (0, class_validator_1.IsPhoneNumber)(),
     __metadata("design:type", String)
 ], UpdateRoleDto.prototype, "memberPhone", void 0);

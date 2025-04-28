@@ -12,8 +12,7 @@ const communities = [
 export const CommunitySeeder = async () => {
   const allMobileUsers = await database.user.findMany({ where: { type: "user" }, select: { id: true, phone: true } });
 
- 
-//  console.log("Community Seeder");
+  //  console.log("Community Seeder");
   const parallelTask = new ConcurrentTaskExec(
     communities.map(async (community) => {
       const ownersId = allMobileUsers[randomData.num(0, allMobileUsers.length - 1)].id;
@@ -24,7 +23,7 @@ export const CommunitySeeder = async () => {
             try {
               await communityService.joinCommunity(savedCommunity.id, user.id);
               if (randomData.num(0, 1) === 1) {
-                await communityService.updateMemberRole(savedCommunity.type, savedCommunity.name, ownersId, { memberPhone: user.phone!, newRole: "admin" });
+                await communityService.updateMemberRole(savedCommunity.type, ownersId, { memberPhone: user.phone!, newRole: "admin", communityId: savedCommunity.id });
               }
             } catch (error) {
               //logs

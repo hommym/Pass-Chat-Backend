@@ -72,7 +72,8 @@ export class CommunityService {
 
   async search(keyword: string) {
     return await database.community.findMany({
-      where: { name: { startsWith: keyword }, visibility: "public", status: "active" },omit:{ownerId:true}
+      where: { name: { startsWith: keyword }, visibility: "public", status: "active" },
+      omit: { ownerId: true },
     });
   }
 
@@ -116,12 +117,12 @@ export class CommunityService {
     appEvents.emit("update-community-sub-count", { communityId, operation: "sub" });
   }
 
-  async updateMemberRole(type: "channel" | "group", communityName: string, ownerId: number, updatedData: UpdateRoleDto) {
-    const { memberPhone, newRole } = updatedData;
-    const communityDetails = await database.community.findUnique({ where: { type_ownerId_name: { type, name: communityName, ownerId } } });
+  async updateMemberRole(type: "channel" | "group", ownerId: number, updatedData: UpdateRoleDto) {
+    const { memberPhone, newRole, communityId } = updatedData;
+    const communityDetails = await database.community.findUnique({ where: { id: communityId, ownerId }, include: { members: { select: { userDetails: { select: { id: true } } } } } });
 
-    if (!communityDetails) throw new AppError(`No ${type} with this name exist`, 404);
-    else if (ownerId !== communityDetails.ownerId) throw new AppError(`Only the owner of the ${type} can change members roles`, 402);
+    if (!communityDetails) throw new AppError(`No ${type} with this id exist for your account`, 404);
+
     const { id } = communityDetails;
 
     const memberAccount = await database.user.findUnique({ where: { phone: memberPhone } });
@@ -131,7 +132,7 @@ export class CommunityService {
 
     await database.communityMember.update({ where: { communityId_userId: { communityId: id, userId: memberAccount.id } }, data: { role: newRole } });
 
-    const membersIds = [ownerId, memberAccount.id];
+    const membersIds = communityDetails.members.map((member) => member.userDetails.id);
     appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId: id, membersIds, messageId: null, platform: "mobile", chatRoomId: null });
   }
 

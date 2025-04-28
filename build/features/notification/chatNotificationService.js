@@ -167,7 +167,7 @@ class ChatNotificationService {
             },
             include: {
                 message: true,
-                community: { include: { members: { select: { role: true, userDetails: { select: { phone: true, profile: true } } } } } },
+                community: { include: { members: { select: { role: true, userDetails: { select: { id: true, phone: true, bio: true, fullName: true, username: true, profile: true } } } } }, omit: { ownerId: true } },
                 chatRoom: { select: { id: true, type: true, createdAt: true, user1: { select: { id: true, phone: true } }, user2: { select: { id: true, phone: true } }, pinnedMessages: true } },
             },
         });
@@ -196,9 +196,9 @@ class ChatNotificationService {
                     };
                     break;
                 case "comunityInfoUpdate":
-                    if (userId !== notification.community.ownerId) {
-                        notification.community.members = [];
-                    }
+                    // if (userId !== notification.community!.ownerId) {
+                    //   notification.community!.members = [];
+                    // }
                     dataToSend = {
                         action: notification.action,
                         community: notification.community,

@@ -66,15 +66,14 @@ communityRouter.delete(
 );
 
 communityRouter.patch(
-  "/:type/:name/role",
+  "/:type/role",
   bodyValidator(UpdateRoleDto),
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
-    const { type, name } = req.params;
+    const { type } = req.params;
     if (!(type === "channel" || type === "group")) throw new AppError("Valid values for type url parameter should be channel or group", 400);
-    else if (!name) throw new AppError("No value passed for the url parameter name", 400);
     const { verifiedUserId, ...updateRoleDto } = req.body;
-    await communityService.updateMemberRole(type, name, verifiedUserId, updateRoleDto);
+    await communityService.updateMemberRole(type, verifiedUserId, updateRoleDto);
     res.status(204).end();
   })
 );

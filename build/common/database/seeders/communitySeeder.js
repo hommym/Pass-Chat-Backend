@@ -20,7 +20,7 @@ const CommunitySeeder = async () => {
                 try {
                     await objects_1.communityService.joinCommunity(savedCommunity.id, user.id);
                     if (objects_1.randomData.num(0, 1) === 1) {
-                        await objects_1.communityService.updateMemberRole(savedCommunity.type, savedCommunity.name, ownersId, { memberPhone: user.phone, newRole: "admin" });
+                        await objects_1.communityService.updateMemberRole(savedCommunity.type, ownersId, { memberPhone: user.phone, newRole: "admin", communityId: savedCommunity.id });
                     }
                 }
                 catch (error) {

@@ -75,7 +75,8 @@ class CommunityService {
     }
     async search(keyword) {
         return await objects_1.database.community.findMany({
-            where: { name: { startsWith: keyword }, visibility: "public", status: "active" }, omit: { ownerId: true }
+            where: { name: { startsWith: keyword }, visibility: "public", status: "active" },
+            omit: { ownerId: true },
         });
     }
     async updateCommunitySubCount(arg) {
@@ -115,13 +116,11 @@ class CommunityService {
         await objects_1.database.communityMember.delete({ where: { communityId_userId: { communityId, userId } } });
         objects_1.appEvents.emit("update-community-sub-count", { communityId, operation: "sub" });
     }
-    async updateMemberRole(type, communityName, ownerId, updatedData) {
-        const { memberPhone, newRole } = updatedData;
-        const communityDetails = await objects_1.database.community.findUnique({ where: { type_ownerId_name: { type, name: communityName, ownerId } } });
+    async updateMemberRole(type, ownerId, updatedData) {
+        const { memberPhone, newRole, communityId } = updatedData;
+        const communityDetails = await objects_1.database.community.findUnique({ where: { id: communityId, ownerId }, include: { members: { select: { userDetails: { select: { id: true } } } } } });
         if (!communityDetails)
-            throw new errorHandler_1.AppError(`No ${type} with this name exist`, 404);
-        else if (ownerId !== communityDetails.ownerId)
-            throw new errorHandler_1.AppError(`Only the owner of the ${type} can change members roles`, 402);
+            throw new errorHandler_1.AppError(`No ${type} with this id exist for your account`, 404);
         const { id } = communityDetails;
         const memberAccount = await objects_1.database.user.findUnique({ where: { phone: memberPhone } });
         if (!memberAccount)
@@ -129,7 +128,7 @@ class CommunityService {
         else if (!(await this.isMember(communityDetails.id, memberAccount.id)))
             throw new errorHandler_1.AppError(`User is not a member of the ${type}`, 404);
         await objects_1.database.communityMember.update({ where: { communityId_userId: { communityId: id, userId: memberAccount.id } }, data: { role: newRole } });
-        const membersIds = [ownerId, memberAccount.id];
+        const membersIds = communityDetails.members.map((member) => member.userDetails.id);
         objects_1.appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId: id, membersIds, messageId: null, platform: "mobile", chatRoomId: null });
     }
     async getAllUsersCommunities(userId) {
