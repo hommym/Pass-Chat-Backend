@@ -159,7 +159,11 @@ export class CommunityService {
     if (!memberShipInfo) throw new AppError("User is not a member", 404);
     const communityDetails = await database.community.findUnique({
       where: { id: memberShipInfo.communityId },
-      include: { members: memberShipInfo.role === "owner", callRoom: { include: { participants: { include: { participant: { select: { profile: true, phone: true, username: true } } } } } } },
+      include: {
+        members: { select: { role: true, userDetails: { select: { id: true, phone: true, bio: true, fullName: true, username: true, profile: true } } } },
+        callRoom: { include: { participants: { include: { participant: { select: { profile: true, phone: true, username: true } } } } } },
+      },
+      omit: { ownerId: true },
     });
 
     return { communityDetails, memberShipType: memberShipInfo.role };
