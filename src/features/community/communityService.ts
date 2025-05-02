@@ -95,7 +95,14 @@ export class CommunityService {
   }
 
   async joinCommunity(communityId: number, userId: number) {
-    const communityDetails = await database.community.findUnique({ where: { id: communityId } });
+    const communityDetails = await database.community.findUnique({
+      where: { id: communityId },
+      include: {
+        members: { select: { role: true, userDetails: { select: { id: true, phone: true, bio: true, fullName: true, username: true, profile: true } } } },
+        callRoom: { include: { participants: { include: { participant: { select: { profile: true, phone: true, username: true } } } } } },
+      },
+      omit: { ownerId: true },
+    });
 
     if (!communityDetails) throw new AppError(`No group or channel with this id exist`, 404);
     const { id } = communityDetails;
@@ -106,7 +113,8 @@ export class CommunityService {
     const clientMembershipInfo = await database.communityMember.create({ data: { userId, communityId: communityDetails.id } });
 
     appEvents.emit("update-community-sub-count", { communityId, operation: "add" });
-    return { communityDetails, memberShipType: clientMembershipInfo.role };
+    communityDetails.callRoom = communityDetails.callRoom.length !== 0 ? (communityDetails.callRoom[0] as any) : null;
+    return { memberShipType: clientMembershipInfo.role, senderId: userId, communityDetails };
   }
 
   async exitCommunity(communityId: number, userId: number) {

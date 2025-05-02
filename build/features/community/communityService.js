@@ -96,7 +96,14 @@ class CommunityService {
         return await objects_1.database.communityMember.findUnique({ where: { communityId_userId: { communityId, userId }, deleteFlag: false } });
     }
     async joinCommunity(communityId, userId) {
-        const communityDetails = await objects_1.database.community.findUnique({ where: { id: communityId } });
+        const communityDetails = await objects_1.database.community.findUnique({
+            where: { id: communityId },
+            include: {
+                members: { select: { role: true, userDetails: { select: { id: true, phone: true, bio: true, fullName: true, username: true, profile: true } } } },
+                callRoom: { include: { participants: { include: { participant: { select: { profile: true, phone: true, username: true } } } } } },
+            },
+            omit: { ownerId: true },
+        });
         if (!communityDetails)
             throw new errorHandler_1.AppError(`No group or channel with this id exist`, 404);
         const { id } = communityDetails;
@@ -106,7 +113,8 @@ class CommunityService {
             throw new errorHandler_1.AppError(`Cannot Join Banned or Suspended ${communityDetails.type}`, 401);
         const clientMembershipInfo = await objects_1.database.communityMember.create({ data: { userId, communityId: communityDetails.id } });
         objects_1.appEvents.emit("update-community-sub-count", { communityId, operation: "add" });
-        return { communityDetails, memberShipType: clientMembershipInfo.role };
+        communityDetails.callRoom = communityDetails.callRoom.length !== 0 ? communityDetails.callRoom[0] : null;
+        return { memberShipType: clientMembershipInfo.role, senderId: userId, communityDetails };
     }
     async exitCommunity(communityId, userId) {
         const communityDetails = await objects_1.database.community.findUnique({ where: { id: communityId } });

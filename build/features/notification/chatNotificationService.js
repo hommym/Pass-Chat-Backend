@@ -39,9 +39,10 @@ class ChatNotificationService {
                             ? await objects_1.database.community.findUnique({
                                 where: { id: communityId },
                                 include: {
-                                    members: { select: { role: true, userDetails: { select: { profile: true, phone: true } } } },
+                                    members: { select: { role: true, userDetails: { select: { id: true, phone: true, bio: true, fullName: true, username: true, profile: true } } } },
                                     callRoom: { include: { participants: { include: { participant: { select: { profile: true, phone: true, username: true } } } } } },
                                 },
+                                omit: { ownerId: true },
                             })
                             : null;
                         if (communityId && community) {
@@ -52,7 +53,7 @@ class ChatNotificationService {
                             : action === "updateChatRoom"
                                 ? { action: "updateChatRoom", chatRoom }
                                 : action === "comunityInfoUpdate"
-                                    ? { action: "comunityInfoUpdate", community }
+                                    ? { action: "comunityInfoUpdate", senderId: member.id, communityDetails: community }
                                     : action === "clearChat"
                                         ? { action: "clearChat", chatRoomId }
                                         : { action: "deleteCommunity", communityId };
