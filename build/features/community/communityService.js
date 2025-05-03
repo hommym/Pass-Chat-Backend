@@ -63,7 +63,15 @@ class CommunityService {
             create: { communityId: communityDetails.id, userId: ownerId, role: "owner" },
             update: { deleteFlag: false },
         });
-        return { senderId: ownerId, memberShipType: "owner", communityDetails };
+        return {
+            senderId: ownerId,
+            memberShipType: "owner",
+            communityDetails: await objects_1.database.community.findUnique({
+                where: { id: communityDetails.id },
+                omit: { ownerId: true },
+                include: { members: { select: { role: true, userDetails: { select: { id: true, phone: true, bio: true, fullName: true, username: true, profile: true } } } } },
+            }),
+        };
     }
     async updatePermissions(ownerId, permissionsDto, type) {
         const { communityId } = permissionsDto, permissions = __rest(permissionsDto, ["communityId"]);
