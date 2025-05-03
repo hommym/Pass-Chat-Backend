@@ -57,11 +57,11 @@ export class CommunityService {
     return {
       senderId: ownerId,
       memberShipType: "owner",
-      communityDetails: await database.community.findUnique({
+      communityDetails: (await database.community.findUnique({
         where: { id: communityDetails.id },
         omit: { ownerId: true },
         include: { members: { select: { role: true, userDetails: { select: { id: true, phone: true, bio: true, fullName: true, username: true, profile: true } } } } },
-      }),
+      }))!,
     };
   }
 
