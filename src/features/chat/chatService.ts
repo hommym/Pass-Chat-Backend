@@ -344,10 +344,7 @@ export class ChatService {
         if (recipientAccount.webLoggedIn && (i === 1 || i === 3)) {
           // application sync mechanism
           await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "browser");
-          continue;
-        }
-
-        await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId);
+        } else if (i === 0 || i === 2) await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId);
       }
     } else {
       // for groups or channels message update
@@ -390,10 +387,7 @@ export class ChatService {
         if (recipientAccount.webLoggedIn && (i === 1 || i === 3)) {
           // application sync mechanism
           await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "browser");
-          continue;
-        }
-
-        await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId);
+        } else if (i === 0 || i === 2) await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId);
       }
     } else {
       // for groups or channels message update
@@ -435,10 +429,7 @@ export class ChatService {
         if (recipientAccount.webLoggedIn && (i === 1 || i === 3)) {
           // application sync mechanism
           await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "browser", "updateChatRoom", roomDetails.id);
-          continue;
-        }
-
-        await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "mobile", "updateChatRoom", roomDetails.id);
+        } else if (i === 0 || i === 2) await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "mobile", "updateChatRoom", roomDetails.id);
       }
     } else {
       // for groups or channels message update

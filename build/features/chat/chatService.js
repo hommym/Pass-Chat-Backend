@@ -323,9 +323,9 @@ class ChatService {
                 if (recipientAccount.webLoggedIn && (i === 1 || i === 3)) {
                     // application sync mechanism
                     await objects_1.chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "browser");
-                    continue;
                 }
-                await objects_1.chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId);
+                else if (i === 0 || i === 2)
+                    await objects_1.chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId);
             }
         }
         else {
@@ -363,9 +363,9 @@ class ChatService {
                 if (recipientAccount.webLoggedIn && (i === 1 || i === 3)) {
                     // application sync mechanism
                     await objects_1.chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "browser");
-                    continue;
                 }
-                await objects_1.chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId);
+                else if (i === 0 || i === 2)
+                    await objects_1.chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId);
             }
         }
         else {
@@ -403,9 +403,9 @@ class ChatService {
                 if (recipientAccount.webLoggedIn && (i === 1 || i === 3)) {
                     // application sync mechanism
                     await objects_1.chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "browser", "updateChatRoom", roomDetails.id);
-                    continue;
                 }
-                await objects_1.chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "mobile", "updateChatRoom", roomDetails.id);
+                else if (i === 0 || i === 2)
+                    await objects_1.chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "mobile", "updateChatRoom", roomDetails.id);
             }
         }
         else {
