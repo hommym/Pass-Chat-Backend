@@ -80,6 +80,7 @@ enum NotificationAction{
   clearChat
   addStory
   removeStory
+  communityInvitation
   phoneChange
 }
 
