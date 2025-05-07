@@ -8,6 +8,7 @@ import { GroupPermissionsDto } from "./dto/permissionsDto";
 import { UpdateRoleDto } from "./dto/updateRoleDto";
 import { VerifyCommunityDto } from "./dto/verifyCommunityDto";
 import { ConcurrentTaskExec } from "../../common/helpers/classes/concurrentTaskExec";
+import { AddMembersDto } from "./dto/addMembersDto";
 
 export class CommunityService {
   async checkCommunity(type: "channel" | "group", name: string, ownerId: number, communityId: number | null = null) {
@@ -98,8 +99,8 @@ export class CommunityService {
     appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId, membersIds, messageId: null, platform: "mobile", chatRoomId: null });
   }
 
-  async isMember(communityId: number, userId: number) {
-    return await database.communityMember.findUnique({ where: { communityId_userId: { communityId, userId }, deleteFlag: false } });
+  async isMember(communityId: number, userId: number, includeAccountInfo: boolean = false) {
+    return await database.communityMember.findUnique({ where: { communityId_userId: { communityId, userId }, deleteFlag: false }, include: { userDetails: includeAccountInfo } });
   }
 
   async joinCommunity(communityId: number, userId: number) {
@@ -216,5 +217,17 @@ export class CommunityService {
       throw new AppError(`This ${communityDetails.type} is already under review for verification,cannot submit another until review process is done.`, 409);
     await database.communityVerification.create({ data: verificationData });
     return { message: "Data Submited Successfully,Review Process takes 3 to 5 days to complete.An email will be sent to you after the decision is made." };
+  }
+
+  async addMembersToCommunity(addMembersDto: AddMembersDto, userId: number) {
+    const { communityId, membersPhone } = addMembersDto;
+    const memberShipInfo = await this.isMember(communityId, userId, true);
+
+    if (!memberShipInfo) throw new AppError("User is not authorized to add members to this community", 403);
+
+    //emit an event that will send alert to users who are to be Added(N/A)
+    appEvents.emit("community-invitation-alert", { addMembersDto, senderPhone: memberShipInfo.userDetails.phone! });
+
+    return { message: "Users have been invited to join the community." };
   }
 }

@@ -9,8 +9,19 @@ import { CreateCommunityDto } from "../dto/createCommunityDto";
 import { ChannelPermissionDto, GroupPermissionsDto } from "../dto/permissionsDto";
 import { UpdateRoleDto } from "../dto/updateRoleDto";
 import { VerifyCommunityDto } from "../dto/verifyCommunityDto";
+import { AddMembersDto } from "../dto/addMembersDto";
 
 export const communityRouter = Router();
+
+communityRouter.post(
+  "/add-members",
+  bodyValidator(AddMembersDto),
+  verifyJwt,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { verifiedUserId, ...addMembersDto } = req.body;
+    res.status(200).json(await communityService.addMembersToCommunity(addMembersDto, verifiedUserId));
+  })
+);
 
 communityRouter.post(
   "/:type",

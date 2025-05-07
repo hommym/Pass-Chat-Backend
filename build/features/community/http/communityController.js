@@ -25,7 +25,12 @@ const createCommunityDto_1 = require("../dto/createCommunityDto");
 const permissionsDto_1 = require("../dto/permissionsDto");
 const updateRoleDto_1 = require("../dto/updateRoleDto");
 const verifyCommunityDto_1 = require("../dto/verifyCommunityDto");
+const addMembersDto_1 = require("../dto/addMembersDto");
 exports.communityRouter = (0, express_1.Router)();
+exports.communityRouter.post("/add-members", (0, bodyValidator_1.bodyValidator)(addMembersDto_1.AddMembersDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
+    const _a = req.body, { verifiedUserId } = _a, addMembersDto = __rest(_a, ["verifiedUserId"]);
+    res.status(200).json(await objects_1.communityService.addMembersToCommunity(addMembersDto, verifiedUserId));
+}));
 exports.communityRouter.post("/:type", (0, bodyValidator_1.bodyValidator)(createCommunityDto_1.CreateCommunityDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
     const { type } = req.params;
     const _a = req.body, { verifiedUserId } = _a, creatCommunityDto = __rest(_a, ["verifiedUserId"]);

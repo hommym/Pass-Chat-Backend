@@ -100,8 +100,8 @@ class CommunityService {
         const membersIds = communityMembers.map((member) => member.userId);
         objects_1.appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId, membersIds, messageId: null, platform: "mobile", chatRoomId: null });
     }
-    async isMember(communityId, userId) {
-        return await objects_1.database.communityMember.findUnique({ where: { communityId_userId: { communityId, userId }, deleteFlag: false } });
+    async isMember(communityId, userId, includeAccountInfo = false) {
+        return await objects_1.database.communityMember.findUnique({ where: { communityId_userId: { communityId, userId }, deleteFlag: false }, include: { userDetails: includeAccountInfo } });
     }
     async joinCommunity(communityId, userId) {
         const communityDetails = await objects_1.database.community.findUnique({
@@ -203,6 +203,15 @@ class CommunityService {
             throw new errorHandler_1.AppError(`This ${communityDetails.type} is already under review for verification,cannot submit another until review process is done.`, 409);
         await objects_1.database.communityVerification.create({ data: verificationData });
         return { message: "Data Submited Successfully,Review Process takes 3 to 5 days to complete.An email will be sent to you after the decision is made." };
+    }
+    async addMembersToCommunity(addMembersDto, userId) {
+        const { communityId, membersPhone } = addMembersDto;
+        const memberShipInfo = await this.isMember(communityId, userId, true);
+        if (!memberShipInfo)
+            throw new errorHandler_1.AppError("User is not authorized to add members to this community", 403);
+        //emit an event that will send alert to users who are to be Added(N/A)
+        objects_1.appEvents.emit("community-invitation-alert", { addMembersDto, senderPhone: memberShipInfo.userDetails.phone });
+        return { message: "Users have been invited to join the community." };
     }
 }
 exports.CommunityService = CommunityService;
