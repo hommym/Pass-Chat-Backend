@@ -10,6 +10,7 @@ import { SaveCommunityNotificationsArgs } from "../community/dto/saveCommunityNo
 import { CommunityCallNotifier } from "../community/type/communityCallNotifier";
 import { chatRouterWs } from "../chat/ws/chatHandler";
 import { ConcurrentTaskExec } from "../../common/helpers/classes/concurrentTaskExec";
+import { AddMembersDto } from "../community/dto/addMembersDto";
 
 export class ChatNotificationService {
   async saveNotification(
@@ -143,10 +144,7 @@ export class ChatNotificationService {
         if (recipientInfo.webLoggedIn && (i === 1 || i === 3)) {
           // application sync mechanism
           await this.saveNotification(messageId, i < 2 ? recipientId : socket.authUserId, "browser");
-          continue;
-        }
-
-        await this.saveNotification(messageId, i < 2 ? recipientId : socket.authUserId);
+        } else if (i === 0 || i === 2) await this.saveNotification(messageId, i < 2 ? recipientId : socket.authUserId);
       }
     } else {
       // group or channel
@@ -182,10 +180,12 @@ export class ChatNotificationService {
     const userId = socket.authUserId;
     const messages: any[] = [];
     const notificationIds: number[] = [];
+    const isWebUser = socket.isWebUser;
     // get those notfications and then delete them
     const notifications = await database.notification.findMany({
       where: {
         userId,
+        platform: isWebUser ? "browser" : "mobile",
       },
       include: {
         message: true,
@@ -235,6 +235,16 @@ export class ChatNotificationService {
           dataToSend = {
             action: notification.action,
             phones: notification.data as any,
+          };
+          break;
+
+        case "communityInvitation":
+          const { name, description, type, profile, subscriberCount, invitationLink } = notification.community!;
+          const communtityDetails = { name, description, type, profile, subscriberCount, invitationLink };
+          dataToSend = {
+            action: notification.action,
+            communtityDetails,
+            senderPhone: notification.data,
           };
           break;
         case "updateChatRoom":
@@ -363,10 +373,7 @@ export class ChatNotificationService {
           if (webLoggedIn && i === 1) {
             // application sync mechanism
             await this.saveNotification(null, user.id, "browser", "clearChat", chatRoomId);
-            continue;
-          }
-
-          await this.saveNotification(null, user.id, "mobile", "clearChat", chatRoomId);
+          } else if (i === 0) await this.saveNotification(null, user.id, "mobile", "clearChat", chatRoomId);
         }
       })
     ).executeTasks();
@@ -418,10 +425,48 @@ export class ChatNotificationService {
           if (webLoggedIn && i === 1) {
             // application sync mechanism
             await this.saveNotification(null, user.id, "browser", action === "add" ? "addStory" : "removeStory", null, story.id);
-            continue;
+          } else if (i === 0) await this.saveNotification(null, user.id, "mobile", action === "add" ? "addStory" : "removeStory", null, story.id);
+        }
+      })
+    ).executeTasks();
+  }
+
+  async notifyUsersOfCommunityInvitation(args: { addMembersDto: AddMembersDto; senderPhone: string }) {
+    const { addMembersDto, senderPhone } = args;
+    const { communityId, membersPhone } = addMembersDto;
+
+    const users = await database.user.findMany({
+      where: { phone: { in: membersPhone } },
+      select: { id: true, connectionId: true, webConnectionId: true, webLoggedIn: true, onlineStatus: true, onlineStatusWeb: true },
+    });
+
+    const communityDetails = (await database.community.findUnique({
+      where: { id: communityId },
+      select: { name: true, description: true, type: true, profile: true, subscriberCount: true, invitationLink: true },
+    }))!;
+
+    await new ConcurrentTaskExec(
+      users.map(async (user) => {
+        const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId, webLoggedIn } = user;
+
+        const connectionIds = [connectionId, webConnectionId];
+
+        const platformStatuses = [onlineStatus, onlineStatusWeb];
+
+        for (let i = 0; i < connectionIds.length; i++) {
+          if (platformStatuses[i] !== "offline") {
+            const userConnection = chatRouterWs.sockets.get(connectionIds[i]!);
+            if (userConnection) {
+              // send notification
+              userConnection.emit("response", { action: "communityInvitation", communityDetails, senderPhone });
+              continue;
+            }
           }
 
-          await this.saveNotification(null, user.id, "mobile", action === "add" ? "addStory" : "removeStory", null, story.id);
+          if (webLoggedIn && i === 1) {
+            // application sync mechanism
+            await database.notification.create({ data: { userId: user.id, platform: "browser", action: "communityInvitation", communityId, data: senderPhone } });
+          } else if (i === 0) await database.notification.create({ data: { userId: user.id, platform: "mobile", action: "communityInvitation", communityId, data: senderPhone } });
         }
       })
     ).executeTasks();
