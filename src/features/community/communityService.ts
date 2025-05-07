@@ -81,7 +81,13 @@ export class CommunityService {
 
   async search(keyword: string) {
     return await database.community.findMany({
-      where: { name: { startsWith: keyword }, visibility: "public", status: "active" },
+      where: {
+        OR: [
+          { name: { startsWith: keyword }, visibility: "public", status: "active" },
+          { name: { endsWith: keyword }, visibility: "public", status: "active" },
+          { name: { contains: keyword }, visibility: "public", status: "active" },
+        ],
+      },
       omit: { ownerId: true },
     });
   }

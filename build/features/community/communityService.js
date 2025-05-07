@@ -84,7 +84,13 @@ class CommunityService {
     }
     async search(keyword) {
         return await objects_1.database.community.findMany({
-            where: { name: { startsWith: keyword }, visibility: "public", status: "active" },
+            where: {
+                OR: [
+                    { name: { startsWith: keyword }, visibility: "public", status: "active" },
+                    { name: { endsWith: keyword }, visibility: "public", status: "active" },
+                    { name: { contains: keyword }, visibility: "public", status: "active" },
+                ],
+            },
             omit: { ownerId: true },
         });
     }
