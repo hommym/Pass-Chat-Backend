@@ -22,5 +22,10 @@ exports.fileHandler = (0, express_async_handler_1.default)(async (req, res, next
         throw new errorHandler_1.AppError("File already exist", 409);
     }
     await objects_1.fileService.saveFile(dirPath, buffer, fileName.split(".")[1]);
+    if (mediaType === "video") {
+        // create and save a video thumbnail
+        const thumbNailPath = (0, path_1.join)(__dirname, "..", "..", "..", `/storage/images/${date}/${fileName.split(".")[0]}`);
+        await objects_1.fileService.getVideoThumbNail((0, path_1.join)(dirPath, `original.${fileName.split(".")[1]}`), thumbNailPath, "original.png");
+    }
     next();
 });

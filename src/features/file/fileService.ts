@@ -2,7 +2,7 @@ import { join } from "path";
 import { checkPathExists } from "../../common/helpers/path";
 import { mkdir, writeFile } from "fs/promises";
 import { UploadFileDto } from "./dtos/uploadFileDto";
-import { database } from "../../common/constants/objects";
+import { database, randomData } from "../../common/constants/objects";
 import { CreateFolderDto } from "./dtos/createFolderDto";
 import { SaveFileInFolderDto } from "./dtos/saveFileInFolderDto";
 import { RenameFileOrFolderDto } from "./dtos/renameFileOrFolderDto";
@@ -10,6 +10,7 @@ import { MoveFileOrFolderDto } from "./dtos/moveFileOrFolderDto";
 import { File } from "@prisma/client";
 import { AppError } from "../../common/middlewares/errorHandler";
 import { DeleteFileOrFolderDto } from "./dtos/deleteFilesOrFoldersDto";
+import ffmpeg from "fluent-ffmpeg";
 
 export class FileService {
   async saveFile(dirPath: string, file: Buffer, extention: string) {
@@ -58,7 +59,7 @@ export class FileService {
 
     if (parentFolderId) {
       try {
-        parentFolder = await database.file.findUnique({ where: { id: +parentFolderId ,type:"dir"} });
+        parentFolder = await database.file.findUnique({ where: { id: +parentFolderId, type: "dir" } });
       } catch (error) {
         throw new AppError("parentId should be string with an integer value", 400);
       }
@@ -115,8 +116,22 @@ export class FileService {
     return { mesage: "Move Successful" };
   }
 
-  async deleteFileOrFolder(deleteItemsDto: DeleteFileOrFolderDto, ownerId: number,) {
+  async deleteFileOrFolder(deleteItemsDto: DeleteFileOrFolderDto, ownerId: number) {
     const { itemIds } = deleteItemsDto;
-    await database.file.deleteMany({ where: { isRoot: false, id: { in: itemIds }, ownerId} });
+    await database.file.deleteMany({ where: { isRoot: false, id: { in: itemIds }, ownerId } });
+  }
+
+  async getVideoThumbNail(srcFilePath: string, finalFolderPath: string, filename: string) {
+    return new Promise((resolve, reject) => {
+      const timeToGetFrame = randomData.num(1, 5);
+      ffmpeg(srcFilePath)
+        .screenshot({ timestamps: [`00:00:0${timeToGetFrame}`], folder: finalFolderPath, filename })
+        .on("end", () => {
+          resolve(undefined);
+        })
+        .on("error", (error) => {
+          reject(error);
+        });
+    });
   }
 }

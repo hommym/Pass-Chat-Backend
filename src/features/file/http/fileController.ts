@@ -25,7 +25,13 @@ fileRouter.post(
   fileHandler,
   asyncHandler(async (req: Request, res: Response) => {
     const { date, mediaType, fileName } = req.body as UploadFileDto;
-    res.status(201).json({ link: `${process.env.BackendUrl}/file/${mediaType}/${date}/${fileName}` });
+    res
+      .status(201)
+      .json(
+        mediaType === "video"
+          ? { link: `${process.env.BackendUrl}/file/${mediaType}/${date}/${fileName}`, thumbNail: `${process.env.BackendUrl}/file/image/${date}/${fileName.split(".")[0]}.png` }
+          : { link: `${process.env.BackendUrl}/file/${mediaType}/${date}/${fileName}` }
+      );
   })
 );
 

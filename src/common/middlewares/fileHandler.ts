@@ -8,8 +8,6 @@ import { allowedDocumentMimeTypes, allowedMediaMimeTypes } from "../constants/li
 import { UploadFileDto } from "../../features/file/dtos/uploadFileDto";
 import { fileService } from "../constants/objects";
 
-
-
 export const fileHandler = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   const { buffer, mimetype } = req.file!;
   const { mediaType, fileName, date } = req.body as UploadFileDto;
@@ -17,11 +15,16 @@ export const fileHandler = asyncHandler(async (req: Request, res: Response, next
 
   dirPath = join(dirPath, `/${mediaType}s/${date}/${fileName.split(".")[0]}`);
 
-  if (!(allowedMediaMimeTypes.includes(mimetype)|| allowedDocumentMimeTypes.includes(mimetype))) {
+  if (!(allowedMediaMimeTypes.includes(mimetype) || allowedDocumentMimeTypes.includes(mimetype))) {
     throw new AppError(`The file type ${mimetype} is supported`, 400);
   } else if (await checkPathExists(dirPath)) {
     throw new AppError("File already exist", 409);
   }
   await fileService.saveFile(dirPath, buffer, fileName.split(".")[1]);
+  if (mediaType === "video") {
+    // create and save a video thumbnail
+    const thumbNailPath = join(__dirname, "..", "..", "..", `/storage/images/${date}/${fileName.split(".")[0]}`);
+    await fileService.getVideoThumbNail(join(dirPath, `original.${fileName.split(".")[1]}`), thumbNailPath, "original.png");
+  }
   next();
 });

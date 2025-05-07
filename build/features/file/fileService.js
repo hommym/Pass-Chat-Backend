@@ -1,4 +1,7 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FileService = void 0;
 const path_1 = require("path");
@@ -6,6 +9,7 @@ const path_2 = require("../../common/helpers/path");
 const promises_1 = require("fs/promises");
 const objects_1 = require("../../common/constants/objects");
 const errorHandler_1 = require("../../common/middlewares/errorHandler");
+const fluent_ffmpeg_1 = __importDefault(require("fluent-ffmpeg"));
 class FileService {
     async saveFile(dirPath, file, extention) {
         // check if path dir exist
@@ -100,6 +104,19 @@ class FileService {
     async deleteFileOrFolder(deleteItemsDto, ownerId) {
         const { itemIds } = deleteItemsDto;
         await objects_1.database.file.deleteMany({ where: { isRoot: false, id: { in: itemIds }, ownerId } });
+    }
+    async getVideoThumbNail(srcFilePath, finalFolderPath, filename) {
+        return new Promise((resolve, reject) => {
+            const timeToGetFrame = objects_1.randomData.num(1, 5);
+            (0, fluent_ffmpeg_1.default)(srcFilePath)
+                .screenshot({ timestamps: [`00:00:0${timeToGetFrame}`], folder: finalFolderPath, filename })
+                .on("end", () => {
+                resolve(undefined);
+            })
+                .on("error", (error) => {
+                reject(error);
+            });
+        });
     }
 }
 exports.FileService = FileService;
