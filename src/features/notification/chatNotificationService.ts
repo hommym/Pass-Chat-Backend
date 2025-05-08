@@ -158,17 +158,13 @@ export class ChatNotificationService {
         await database.message.update({ where: { id: messageId }, data: { views: { increment: 1 }, recieved: true } });
       } else if (messageAction === "comment") {
         if (!comment) throw new WsError("No Value passed for comment");
-        let comments = message.reactions ? (message.reactions as string[]) : [comment];
-        if (comments.length >= 1) {
-          comments.push(comment);
-        }
+        let comments = message.comments ? (message.comments as string[]) : [];
+        comments.push(comment);
         await database.message.update({ where: { id: messageId }, data: { comments } });
       } else {
         if (!reaction) throw new WsError("No Value passed for reaction");
-        let reactions = message.reactions ? (message.reactions as string[]) : [reaction];
-        if (reactions.length >= 1) {
-          reactions.push(reaction);
-        }
+        let reactions = message.reactions ? (message.reactions as string[]) : [];
+         reactions.push(reaction);
         await database.message.update({ where: { id: messageId }, data: { reactions } });
       }
       const membersIds = communityMembers.map((member) => member.userId);
