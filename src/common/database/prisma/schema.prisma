@@ -168,6 +168,12 @@ enum PostType{
   video
 }
 
+
+enum SubInterval{
+  month
+  year
+}
+
 model User {
   id                Int             @id @default(autoincrement())
   email             String?         @unique
@@ -474,4 +480,18 @@ model Story{
    
 
   @@map("stories")
+}
+
+model SubscriptionPlan{
+   id                    Int                         @id @default(autoincrement())
+   name                  String
+   description           String
+   interval              SubInterval                 @default(month)
+   price                 Int
+   benefit               Json
+   stripProductId        String?
+   stripePriceId         String?
+
+   @@unique([name,interval])
+   @@map("subscription_plans")
 }
