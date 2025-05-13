@@ -10,6 +10,7 @@ const communityController_1 = require("../../features/community/http/communityCo
 const dashboardController_1 = require("../../features/dashboard/http/dashboardController");
 const reportController_1 = require("../../features/report/http/reportController");
 const postsController_1 = require("../../features/posts/http/postsController");
+const subscriptionController_1 = require("../../features/subscription/http/subscriptionController");
 exports.httpRouter = (0, express_1.Router)();
 // main routes
 exports.httpRouter.use("/auth", authController_1.authRouter);
@@ -20,3 +21,4 @@ exports.httpRouter.use("/community", communityController_1.communityRouter);
 exports.httpRouter.use("/dashboard", dashboardController_1.dashboardRouter);
 exports.httpRouter.use("/report", reportController_1.reportRouter);
 exports.httpRouter.use("/post", postsController_1.postsRouter);
+exports.httpRouter.use("/subscription", subscriptionController_1.subscriptionRouter);

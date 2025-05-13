@@ -1,3 +1,5 @@
+import dotenv from "dotenv";
+dotenv.config();
 import { PrismaClient } from "@prisma/client";
 import express from "express";
 import { Server } from "socket.io";
@@ -15,6 +17,7 @@ import { DashboardService } from "../../features/dashboard/dashboardService";
 import { ReportService } from "../../features/report/reportService";
 import { PostsService } from "../../features/posts/postsService";
 import { JobManager } from "../helpers/classes/jobManager";
+import { SubscriptionService } from "../../features/subscription/subscriptionService";
 
 // singletons
 
@@ -48,6 +51,8 @@ export const dashboardService = new DashboardService();
 
 export const reportService = new ReportService();
 
-export const postsService= new PostsService();
+export const postsService = new PostsService();
 
-export const jobManager= new JobManager()
+export const jobManager = new JobManager();
+
+export const subscriptionService = new SubscriptionService(process.env.PAYMENT_KEYS);
