@@ -17,7 +17,11 @@ const chatHandler_1 = require("../chat/ws/chatHandler");
 const date_1 = require("../../common/helpers/date");
 class AuthService {
     async checkAccount(email) {
-        return await objects_1.database.user.upsert({ where: { email }, create: {}, update: { recentLoginDate: (0, date_1.getCurrentDate)() } });
+        const account = await objects_1.database.user.findUnique({ where: { email } });
+        if (!account)
+            return null;
+        await objects_1.database.user.update({ where: { email }, data: { recentLoginDate: (0, date_1.getCurrentDate)() } });
+        return account;
     }
     async createUserAccount(phone) {
         return await objects_1.database.user.upsert({ where: { phone }, create: { phone, recentLoginDate: (0, date_1.getCurrentDate)() }, update: { recentLoginDate: (0, date_1.getCurrentDate)() } });

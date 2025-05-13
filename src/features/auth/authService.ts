@@ -23,7 +23,10 @@ import { getCurrentDate } from "../../common/helpers/date";
 
 export class AuthService {
   async checkAccount(email: string) {
-    return await database.user.upsert({ where: { email }, create: {}, update: { recentLoginDate: getCurrentDate() } });
+    const account = await database.user.findUnique({ where: { email } });
+    if (!account) return null;
+    await database.user.update({ where: { email }, data: { recentLoginDate: getCurrentDate() } });
+    return account;
   }
 
   async createUserAccount(phone: string) {
