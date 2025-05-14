@@ -30,6 +30,7 @@ class SubscriptionService {
         await this.paymentGateway.products.update(planToDelete.stripProductId, { active: false });
     }
     async getAllPlans() {
+        // this method will be update to select the current plan for user
         return await objects_1.database.subscriptionPlan.findMany({});
     }
 }

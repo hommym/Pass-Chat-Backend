@@ -1,4 +1,4 @@
-import { RoomType } from "@prisma/client";
+import { MessageType, RoomType } from "@prisma/client";
 import { Expose } from "class-transformer";
 import { IsDateString, IsEnum, IsIn, IsInt, IsNotEmpty, IsOptional, IsPositive } from "class-validator";
 
@@ -8,8 +8,8 @@ export class MessageDto {
   content: string;
 
   @Expose()
-  @IsIn(["text", "video", "audio", "image","docs"])
-  dataType: "text" | "video" | "audio" | "image"|"docs";
+  @IsEnum(MessageType)
+  dataType: MessageType;
 
   @Expose()
   @IsInt()
@@ -18,7 +18,7 @@ export class MessageDto {
   @Expose()
   @IsOptional()
   @IsEnum(RoomType)
-  roomType?:RoomType;
+  roomType?: RoomType;
 
   @Expose()
   @IsPositive()
@@ -37,5 +37,5 @@ export class MessageDto {
   @Expose()
   @IsInt()
   @IsOptional()
-  communityId?:number
+  communityId?: number;
 }
