@@ -17,7 +17,7 @@ class ChatWsRequestDto {
 exports.ChatWsRequestDto = ChatWsRequestDto;
 __decorate([
     (0, class_transformer_1.Expose)(),
-    (0, class_validator_1.IsIn)(["sendMessage", "setStatus", "checkStatus", "getMessages", "call", "getAllMessages"]),
+    (0, class_validator_1.IsIn)(["sendMessage", "setStatus", "checkStatus", "getMessages", "call", "getAllMessages", "getStory"]),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], ChatWsRequestDto.prototype, "action", void 0);

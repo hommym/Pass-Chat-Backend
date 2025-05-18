@@ -36,6 +36,9 @@ const chatController = async (socket, request) => {
             await (0, bodyValidator_1.bodyValidatorWs)(getAllMesaagesDto_1.GetAllMessagesDto, data);
             await objects_1.chatService.getMessages(socket, data, true);
             break;
+        case "getStory":
+            await objects_1.postsService.getStories(socket);
+            break;
         default:
             await (0, bodyValidator_1.bodyValidatorWs)(getMessagesDto_1.GetMessagesDto, data);
             await objects_1.chatService.getMessages(socket, data);

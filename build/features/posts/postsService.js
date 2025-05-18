@@ -50,5 +50,21 @@ class PostsService {
             throw new errorHandler_1.AppError("Story not found or you are not the owner", 404);
         }
     }
+    async getStories(socket) {
+        // this method gets all stories of a user and his contact
+        let { phone } = (await objects_1.database.user.findUnique({ where: { id: socket.authUserId } }));
+        const accountsToRetrieveStoriesFrom = [socket.authUserId];
+        const listOfPhones = (await objects_1.database.userContact.findMany({ where: { ownerId: socket.authUserId }, select: { phone: true, user: true } })).map((contact) => contact.phone);
+        (await objects_1.database.user.findMany({ where: { phone: { in: listOfPhones } }, select: { id: true } })).forEach((user) => accountsToRetrieveStoriesFrom.push(user.id));
+        const storiesAvialable = await objects_1.database.story.findMany({ where: { ownerId: { in: accountsToRetrieveStoriesFrom } }, omit: { ownerId: true }, include: { owner: { select: { phone: true } } } });
+        const storiesToSend = [];
+        for (let story of storiesAvialable) {
+            if (story.exclude.includes(phone))
+                continue;
+            const { exclude, owner } = story, storyOnly = __rest(story, ["exclude", "owner"]);
+            storiesToSend.push({ ownerPhone: owner.phone, story: storyOnly });
+        }
+        socket.emit("response", { action: "getStory", stories: storiesToSend });
+    }
 }
 exports.PostsService = PostsService;

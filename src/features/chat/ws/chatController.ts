@@ -2,7 +2,7 @@ import { Socket } from "socket.io";
 import { ChatWsRequestDto } from "../dto/chatWsRequetDto";
 import { bodyValidatorWs } from "../../../common/middlewares/bodyValidator";
 import { MessageDto } from "../dto/messageDto";
-import { chatService } from "../../../common/constants/objects";
+import { chatService, postsService } from "../../../common/constants/objects";
 import { CheckStatusDto } from "../dto/checkStatusDto";
 import { SetStatusDto } from "../dto/setStatusDto";
 import { GetMessagesDto } from "../dto/getMessagesDto";
@@ -36,6 +36,10 @@ export const chatController = async (socket: Socket, request: ChatWsRequestDto) 
     case "getAllMessages":
       await bodyValidatorWs(GetAllMessagesDto, data);
       await chatService.getMessages(socket, data as GetAllMessagesDto, true);
+      break;
+
+    case "getStory":
+      await postsService.getStories(socket as SocketV1);
       break;
     default:
       await bodyValidatorWs(GetMessagesDto, data);
