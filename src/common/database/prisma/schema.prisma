@@ -475,7 +475,7 @@ model Story{
     id                    Int                         @id @default(autoincrement())
     ownerId               Int
     type                  PostType                    @default(image)
-    content               String                      // stringified Json
+    content               String                      @db.MediumText                 // stringified Json
     exclude               Json?                       // user contact accounts which were excluded from seeing this post
     createdAt             DateTime                    @default(now())
     owner                 User                        @relation(fields: [ownerId], references: [id])
