@@ -204,7 +204,7 @@ model User {
   calRoomParts      CallRoomParticipants[] 
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt   // use this get last time user was online
-
+  stories           Story[]
   @@map("users")
 }
 
@@ -478,6 +478,7 @@ model Story{
     content               String                      // stringified Json
     exclude               Json?                       // user contact accounts which were excluded from seeing this post
     createdAt             DateTime                    @default(now())
+    owner                 User                        @relation(fields: [ownerId], references: [id])
    
 
   @@map("stories")
