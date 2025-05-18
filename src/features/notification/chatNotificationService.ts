@@ -164,7 +164,7 @@ export class ChatNotificationService {
       } else {
         if (!reaction) throw new WsError("No Value passed for reaction");
         let reactions = message.reactions ? (message.reactions as string[]) : [];
-         reactions.push(reaction);
+        reactions.push(reaction);
         await database.message.update({ where: { id: messageId }, data: { reactions } });
       }
       const membersIds = communityMembers.map((member) => member.userId);
@@ -207,12 +207,17 @@ export class ChatNotificationService {
           };
           break;
         case "addStory":
-          const story = await database.story.findUnique({ where: { id: notification.storyId! }, omit: { exclude: true, ownerId: true } });
+          let story = await database.story.findUnique({ where: { id: notification.storyId! }, omit: { exclude: true, ownerId: true }, include: { owner: { select: { phone: true } } } });
           if (!story) continue;
-          dataToSend = {
-            action: notification.action,
-            story,
-          };
+          else {
+            const { owner, ...storyWithoutOwnerProp } = story;
+            dataToSend = {
+              action: notification.action,
+              ownerPhone: owner.phone,
+              story: storyWithoutOwnerProp,
+            };
+          }
+
           break;
         case "removeStory":
           dataToSend = {
