@@ -35,7 +35,8 @@ export class PostsService {
     try {
       const story = await database.story.delete({ where: { id: storyId, ownerId }, omit: { ownerId: true } });
       const ownerDetails = await database.user.findUnique({ where: { id: ownerId }, select: { phone: true } });
-      const contacts = (await database.userContact.findMany({ where: { ownerId, phone: { notIn: story.exclude as string[] } }, select: { phone: true } })).map((item) => item.phone);
+      const exludedContact=story.exclude?story.exclude:[];
+      const contacts = (await database.userContact.findMany({ where: { ownerId, phone: { notIn:exludedContact as string[] } }, select: { phone: true } })).map((item) => item.phone);
       const wasJobCancelled = jobManager.removeJob(storyId);
 
       if (wasJobCancelled) {
@@ -43,6 +44,7 @@ export class PostsService {
         appEvents.emit("story-update", { action: "remove", contacts, story: storyWithoutExclude, ownerPhone: ownerDetails!.phone! });
       }
     } catch (error) {
+      console.log(error)
       throw new AppError("Story not found or you are not the owner", 404);
     }
   }

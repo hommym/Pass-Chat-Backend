@@ -39,7 +39,8 @@ class PostsService {
         try {
             const story = await objects_1.database.story.delete({ where: { id: storyId, ownerId }, omit: { ownerId: true } });
             const ownerDetails = await objects_1.database.user.findUnique({ where: { id: ownerId }, select: { phone: true } });
-            const contacts = (await objects_1.database.userContact.findMany({ where: { ownerId, phone: { notIn: story.exclude } }, select: { phone: true } })).map((item) => item.phone);
+            const exludedContact = story.exclude ? story.exclude : [];
+            const contacts = (await objects_1.database.userContact.findMany({ where: { ownerId, phone: { notIn: exludedContact } }, select: { phone: true } })).map((item) => item.phone);
             const wasJobCancelled = objects_1.jobManager.removeJob(storyId);
             if (wasJobCancelled) {
                 const { exclude } = story, storyWithoutExclude = __rest(story, ["exclude"]);
@@ -47,6 +48,7 @@ class PostsService {
             }
         }
         catch (error) {
+            console.log(error);
             throw new errorHandler_1.AppError("Story not found or you are not the owner", 404);
         }
     }
