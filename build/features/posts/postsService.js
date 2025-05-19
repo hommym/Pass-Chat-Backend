@@ -59,8 +59,10 @@ class PostsService {
         const storiesAvialable = await objects_1.database.story.findMany({ where: { ownerId: { in: accountsToRetrieveStoriesFrom } }, omit: { ownerId: true }, include: { owner: { select: { phone: true } } } });
         const storiesToSend = [];
         for (let story of storiesAvialable) {
-            if (story.exclude.includes(phone))
-                continue;
+            if (story.exclude) {
+                if (story.exclude.includes(phone))
+                    continue;
+            }
             const { exclude, owner } = story, storyOnly = __rest(story, ["exclude", "owner"]);
             storiesToSend.push({ ownerPhone: owner.phone, story: storyOnly });
         }

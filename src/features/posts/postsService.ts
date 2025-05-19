@@ -60,13 +60,13 @@ export class PostsService {
     const storiesToSend = [];
 
     for (let story of storiesAvialable) {
-      if ((story.exclude as string[]).includes(phone!)) continue;
+      if (story.exclude) {
+        if ((story.exclude as string[]).includes(phone!)) continue;
+      }
       const { exclude, owner, ...storyOnly } = story;
       storiesToSend.push({ ownerPhone: owner.phone!, story: storyOnly });
     }
 
     socket.emit("response", { action: "getStory", stories: storiesToSend });
   }
-
-  
 }
