@@ -14,7 +14,12 @@ const wsRouter_1 = require("./common/routers/wsRouter");
 const cors_1 = __importDefault(require("cors"));
 dotenv_1.default.config();
 // middlewares
-objects_1.app.use(express_1.default.json({ limit: "100mb" }));
+objects_1.app.use((req, res, next) => {
+    // Skip JSON parsing for a specific endpoint, e.g., /api/v1/raw
+    if (req.path === "/api/v1/subscription/webhooks/checkout")
+        return next();
+    express_1.default.json({ limit: "100mb" })(req, res, next);
+});
 objects_1.app.use((0, cors_1.default)({ origin: "*", methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"], credentials: true }));
 // routes
 objects_1.app.use("/api/v1", httpRouter_1.httpRouter);
