@@ -6,6 +6,7 @@ import { ContactSeeder } from "./seeders/contactSeeder";
 import { DailyUserSeeder } from "./seeders/dailyUserSeeder";
 import { FlaggedDataSeeder } from "./seeders/flaggedDataSeeder";
 import { MessageSeeder } from "./seeders/messageSeeder";
+import { SubPlansSeeders } from "./seeders/subPlansSeeder";
 import { UserSeeder } from "./seeders/userSeeder";
 
 const initialiseSeeders = async () => {
@@ -19,6 +20,7 @@ const initialiseSeeders = async () => {
   await FlaggedDataSeeder();
   await ActiveCommunitySeeder();
   await DailyUserSeeder();
+  await SubPlansSeeders();
   console.log("Setup Finished");
 };
 

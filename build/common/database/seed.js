@@ -8,6 +8,7 @@ const contactSeeder_1 = require("./seeders/contactSeeder");
 const dailyUserSeeder_1 = require("./seeders/dailyUserSeeder");
 const flaggedDataSeeder_1 = require("./seeders/flaggedDataSeeder");
 const messageSeeder_1 = require("./seeders/messageSeeder");
+const subPlansSeeder_1 = require("./seeders/subPlansSeeder");
 const userSeeder_1 = require("./seeders/userSeeder");
 const initialiseSeeders = async () => {
     objects_1.appEvents.setUpAllListners();
@@ -20,6 +21,7 @@ const initialiseSeeders = async () => {
     await (0, flaggedDataSeeder_1.FlaggedDataSeeder)();
     await (0, activeCommunitySeeder_1.ActiveCommunitySeeder)();
     await (0, dailyUserSeeder_1.DailyUserSeeder)();
+    await (0, subPlansSeeder_1.SubPlansSeeders)();
     console.log("Setup Finished");
 };
 initialiseSeeders();
