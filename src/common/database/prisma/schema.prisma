@@ -175,6 +175,12 @@ enum SubInterval{
   year
 }
 
+enum  UserSubStatus{
+paid
+unPaid
+cancelled
+} 
+
 model User {
   id                Int             @id @default(autoincrement())
   email             String?         @unique
@@ -205,6 +211,8 @@ model User {
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt   // use this get last time user was online
   stories           Story[]
+  userSubscriptions UserSubscription[]
+
   @@map("users")
 }
 
@@ -493,7 +501,33 @@ model SubscriptionPlan{
    benefit               Json
    stripProductId        String?
    stripePriceId         String?
+   userSubscriptions     UserSubscription[]
 
    @@unique([name,interval])
    @@map("subscription_plans")
+}
+
+model CheckoutSession{
+  sessionId                  String              @id
+  planId                     Int
+  userId                     Int
+  createdAt                  DateTime            @default(now())
+
+  @@map("checkout_sessions")
+}
+
+
+model UserSubscription {
+  subId                      String              @id
+  stripeCustomerId           String
+  planId                     Int
+  userId                     Int                 
+  status                     UserSubStatus       @default(paid)
+  subPlan                    SubscriptionPlan    @relation(fields: [planId], references: [id])
+  user                       User                @relation(fields:[userId],references:[id])
+  createdAt                  DateTime            @default(now())
+  
+
+  @@unique([planId,userId])
+  @@map("user_subscriptions")
 }
