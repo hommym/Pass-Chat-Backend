@@ -73,7 +73,7 @@ class CallService {
                 if (!isGroupCall)
                     recipientWebConnection.emit("callResponse", { type: "spdOffer", sdpOffer, message });
                 else
-                    recipientWebConnection.emit("groupCallResponse", { type: "spdOffer", sdpOffer, message });
+                    recipientWebConnection.emit("groupCallResponse", { type: "spdOffer", sdpOffer });
             }
         }
         else if (recipientDetails.webLoggedIn && !isGroupCall)

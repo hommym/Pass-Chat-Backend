@@ -67,7 +67,7 @@ export class CallService {
       const recipientWebConnection = chatRouterWs.sockets.get(recipientDetails.webConnectionId!);
       if (recipientWebConnection) {
         if (!isGroupCall) recipientWebConnection.emit("callResponse", { type: "spdOffer", sdpOffer, message });
-        else recipientWebConnection.emit("groupCallResponse", { type: "spdOffer", sdpOffer, message });
+        else recipientWebConnection.emit("groupCallResponse", { type: "spdOffer", sdpOffer});
       }
     } else if (recipientDetails.webLoggedIn && !isGroupCall) await chatNotificationService.saveNotification(message!.id, recipientDetails.id, "browser", "saveMessage");
 
