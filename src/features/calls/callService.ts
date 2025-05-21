@@ -234,7 +234,7 @@ export class CallService {
     // get updated call room details
     const updatedCallRoomDetails = await database.callRoom.findUnique({
       where: { id: callRoomDetails.id },
-      include: { participants: { include: { participant: { select: { profile: true, phone: true, username: true } } } } },
+      include: { participants: { include: { participant: { select: { profile: true, phone: true, fullName: true } } } } },
     });
 
     const participantsAccount = [groupCaller!, existingUser, newUser];
@@ -281,7 +281,7 @@ export class CallService {
     // get updated call room details
     const updatedCallRoomDetails = await database.callRoom.findUnique({
       where: { id: callRoomId },
-      include: { participants: { include: { participant: { select: { profile: true, phone: true, username: true } } } } },
+      include: { participants: { include: { participant: { select: { profile: true, phone: true, fullName: true } } } } },
     });
 
     // return response to user who made the request
