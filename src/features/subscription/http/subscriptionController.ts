@@ -20,6 +20,17 @@ subscriptionRouter.post(
   })
 );
 
+
+
+subscriptionRouter.post(
+  "/cancel",
+  verifyJwt,
+  checkAccountType("user"),
+  asyncHandler(async (req: Request, res: Response) => {
+    res.status(200).json(await subscriptionService.cancelSubscriptionPlan(req.body.verifiedUserId));
+  })
+);
+
 subscriptionRouter.post(
   "/subscribe/:planId",
   verifyJwt,

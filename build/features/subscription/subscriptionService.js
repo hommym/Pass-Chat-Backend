@@ -76,6 +76,14 @@ class SubscriptionService {
         await objects_1.database.checkoutSession.create({ data: { sessionId: checkoutSession.id, planId, userId } });
         return { checkoutPage: checkoutSession.url };
     }
+    async cancelSubscriptionPlan(userId) {
+        const activeSubs = await objects_1.database.userSubscription.findMany({ where: { userId, status: { in: ["paid", "unPaid"] } } });
+        if (activeSubs.length === 0)
+            throw new errorHandler_1.AppError("User not on any plan", 404);
+        const { subId } = activeSubs[0];
+        await this.paymentGateway.subscriptions.update(subId, { cancel_at_period_end: true });
+        return { message: "Subscription Cancelled Successfully" };
+    }
     async checkOutSessionHandler(reqBody, sig) {
         const webhookSecret = process.env.CHECKOUT_WEBHOOKSECRET ? process.env.CHECKOUT_WEBHOOKSECRET : "";
         const event = this.paymentGateway.webhooks.constructEvent(reqBody, sig, webhookSecret);

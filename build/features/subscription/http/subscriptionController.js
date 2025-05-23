@@ -17,6 +17,9 @@ exports.subscriptionRouter = (0, express_1.Router)();
 exports.subscriptionRouter.post("/", verifyJwt_1.verifyJwt, (0, checkAccountType_1.checkAccountType)("admin"), (0, bodyValidator_1.bodyValidator)(createSubscriptionDto_1.CreateSubscriptionDto), (0, express_async_handler_1.default)(async (req, res) => {
     res.status(200).json(await objects_1.subscriptionService.createSubscription(req.body));
 }));
+exports.subscriptionRouter.post("/cancel", verifyJwt_1.verifyJwt, (0, checkAccountType_1.checkAccountType)("user"), (0, express_async_handler_1.default)(async (req, res) => {
+    res.status(200).json(await objects_1.subscriptionService.cancelSubscriptionPlan(req.body.verifiedUserId));
+}));
 exports.subscriptionRouter.post("/subscribe/:planId", verifyJwt_1.verifyJwt, (0, checkAccountType_1.checkAccountType)("user"), (0, express_async_handler_1.default)(async (req, res) => {
     let planId;
     try {

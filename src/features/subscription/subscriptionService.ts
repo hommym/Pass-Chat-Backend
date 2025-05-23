@@ -90,6 +90,18 @@ export class SubscriptionService {
     return { checkoutPage: checkoutSession.url };
   }
 
+  async cancelSubscriptionPlan(userId: number) {
+    const activeSubs = await database.userSubscription.findMany({ where: { userId, status: { in: ["paid", "unPaid"] } } });
+
+    if (activeSubs.length === 0) throw new AppError("User not on any plan", 404);
+
+    const { subId } = activeSubs[0];
+
+    await this.paymentGateway.subscriptions.update(subId, { cancel_at_period_end: true });
+
+    return { message: "Subscription Cancelled Successfully" };
+  }
+
   async checkOutSessionHandler(reqBody: any, sig: string | string[]) {
     const webhookSecret = process.env.CHECKOUT_WEBHOOKSECRET ? process.env.CHECKOUT_WEBHOOKSECRET : "";
     const event: Stripe.Event = this.paymentGateway.webhooks.constructEvent(reqBody, sig, webhookSecret);
