@@ -87,7 +87,11 @@ class SubscriptionService {
                 const checkoutSession = await objects_1.database.checkoutSession.findUnique({ where: { sessionId: id } });
                 console.log(`SubscriptionId=${subscription}`);
                 if (checkoutSession && subscription) {
-                    await objects_1.database.userSubscription.create({ data: { subId: subscription, stripeCustomerId: customer, planId: checkoutSession.planId, userId: checkoutSession.userId } });
+                    await objects_1.database.userSubscription.upsert({
+                        where: { planId_userId: { planId: checkoutSession.planId, userId: checkoutSession.userId } },
+                        create: { subId: subscription, stripeCustomerId: customer, planId: checkoutSession.planId, userId: checkoutSession.userId },
+                        update: { subId: subscription, status: "paid" },
+                    });
                     console.log("User Subscribed Successfully");
                 }
                 break;

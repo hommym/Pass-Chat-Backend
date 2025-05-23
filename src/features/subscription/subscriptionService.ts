@@ -5,7 +5,6 @@ import { AppError } from "../../common/middlewares/errorHandler";
 import { CreateSubscriptionDto } from "./dto/createSubscriptionDto";
 import { Stripe } from "stripe";
 
-
 export class SubscriptionService {
   private paymentGateway: Stripe;
 
@@ -103,7 +102,12 @@ export class SubscriptionService {
         const checkoutSession = await database.checkoutSession.findUnique({ where: { sessionId: id } });
         console.log(`SubscriptionId=${subscription}`);
         if (checkoutSession && subscription) {
-          await database.userSubscription.create({ data: { subId: subscription! as string, stripeCustomerId: customer! as string, planId: checkoutSession.planId, userId: checkoutSession.userId } });
+          await database.userSubscription.upsert({
+            where: { planId_userId: { planId: checkoutSession.planId, userId: checkoutSession.userId } },
+            create: { subId: subscription! as string, stripeCustomerId: customer! as string, planId: checkoutSession.planId, userId: checkoutSession.userId },
+            update: { subId: subscription! as string, status: "paid" },
+          });
+
           console.log("User Subscribed Successfully");
         }
         break;
