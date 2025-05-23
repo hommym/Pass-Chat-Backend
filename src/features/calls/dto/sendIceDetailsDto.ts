@@ -1,12 +1,17 @@
 import { Expose } from "class-transformer";
-import { IsInt, IsString } from "class-validator";
+import { IsBoolean, IsInt, IsOptional, IsString } from "class-validator";
 
 export class SendIceDetailsDto {
   @Expose()
   @IsInt()
-  recipientId: number;  
+  recipientId: number;
 
   @Expose()
   @IsString()
   iceDetails: string;
+
+  @Expose()
+  @IsOptional()
+  @IsBoolean()
+  isGroupCall?: boolean;
 }

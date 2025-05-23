@@ -124,7 +124,7 @@ export class CallService {
   async sendIceDetails(socket: SocketV1, details: SendIceDetailsDto) {
     await bodyValidatorWs(SendIceDetailsDto, details);
 
-    const { iceDetails, recipientId } = details;
+    const { iceDetails, recipientId, isGroupCall } = details;
     const senderInfo = await database.user.findUnique({ where: { id: socket.authUserId } });
     const recipientDetails = await database.user.findUnique({ where: { id: recipientId } });
 
@@ -133,7 +133,7 @@ export class CallService {
     if (recipientDetails.onlineStatus === "call" || recipientDetails.onlineStatusWeb === "call") {
       const callerConnection = chatRouterWs.sockets.get(recipientDetails.onlineStatus === "call" ? recipientDetails.connectionId! : recipientDetails.webConnectionId!);
       if (callerConnection) {
-        callerConnection.emit("callResponse", { type: "iceDetails", senderPhone: senderInfo!.phone, iceDetails });
+        callerConnection.emit(isGroupCall ? "groupCallResponse" : "callResponse", { type: "iceDetails", senderPhone: senderInfo!.phone, iceDetails });
       }
     }
   }
