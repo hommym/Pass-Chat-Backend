@@ -44,7 +44,7 @@ class CallService {
         else if (!roomDeatials)
             throw new errorHandler_1.WsError("No ChatRoom with this id exist");
         // update caller online status to call
-        await objects_1.database.user.update({ where: { id: callerId }, data: isWebUser ? { onlineStatusWeb: "call" } : { onlineStatus: "call" } });
+        const callerDetails = await objects_1.database.user.update({ where: { id: callerId }, data: isWebUser ? { onlineStatusWeb: "call" } : { onlineStatus: "call" } });
         if (!isGroupCall) {
             message = await objects_1.database.message.create({
                 data: { senderId: callerId, recipientId: recipientDetails.id, content: JSON.stringify({ content: callType, content_id: (0, uuid_1.v4)() }), type: "call", roomId, callType },
@@ -61,7 +61,7 @@ class CallService {
                 if (!isGroupCall)
                     recipientConnection.emit("callResponse", { type: "spdOffer", sdpOffer, message });
                 else
-                    recipientConnection.emit("groupCallResponse", { type: "spdOffer", sdpOffer });
+                    recipientConnection.emit("groupCallResponse", { type: "spdOffer", senderPhone: callerDetails.phone, sdpOffer });
             }
         }
         else if (!isGroupCall)
@@ -73,13 +73,13 @@ class CallService {
                 if (!isGroupCall)
                     recipientWebConnection.emit("callResponse", { type: "spdOffer", sdpOffer, message });
                 else
-                    recipientWebConnection.emit("groupCallResponse", { type: "spdOffer", sdpOffer });
+                    recipientWebConnection.emit("groupCallResponse", { type: "spdOffer", senderPhone: callerDetails.phone, sdpOffer });
             }
         }
         else if (recipientDetails.webLoggedIn && !isGroupCall)
             await objects_1.chatNotificationService.saveNotification(message.id, recipientDetails.id, "browser", "saveMessage");
-        //sending notification to other  loggedin device  of caller (should not send for group calls)
-        const callerDetails = (await objects_1.database.user.findUnique({ where: { id: callerId } }));
+        // //sending notification to other  loggedin device  of caller (should not send for group calls)
+        // const callerDetails = (await database.user.findUnique({ where: { id: callerId } }))!;
         if (isWebUser && !isGroupCall) {
             // send call message to mobile devices
             await objects_1.chatNotificationService.saveNotification(message.id, callerDetails.id, "mobile", "saveMessage");
@@ -121,20 +121,21 @@ class CallService {
         if (callerDetails.onlineStatus === "call" || callerDetails.onlineStatusWeb === "call") {
             const callerConnection = chatHandler_1.chatRouterWs.sockets.get(callerDetails.onlineStatus === "call" ? callerDetails.connectionId : callerDetails.webConnectionId);
             if (callerConnection) {
-                callerConnection.emit(isGroupCall ? "groupCallResponse" : "callResponse", { type: "spdAnswer", sdpAnswer });
+                callerConnection.emit(isGroupCall ? "groupCallResponse" : "callResponse", isGroupCall ? { type: "spdAnswer", senderPhone: calleeDetails.phone, sdpAnswer } : { type: "spdAnswer", sdpAnswer });
             }
         }
     }
     async sendIceDetails(socket, details) {
         await (0, bodyValidator_1.bodyValidatorWs)(sendIceDetailsDto_1.SendIceDetailsDto, details);
         const { iceDetails, recipientId } = details;
+        const senderInfo = await objects_1.database.user.findUnique({ where: { id: socket.authUserId } });
         const recipientDetails = await objects_1.database.user.findUnique({ where: { id: recipientId } });
         if (!recipientDetails)
             throw new errorHandler_1.WsError("No Account with this id exist");
         if (recipientDetails.onlineStatus === "call" || recipientDetails.onlineStatusWeb === "call") {
             const callerConnection = chatHandler_1.chatRouterWs.sockets.get(recipientDetails.onlineStatus === "call" ? recipientDetails.connectionId : recipientDetails.webConnectionId);
             if (callerConnection) {
-                callerConnection.emit("callResponse", { type: "iceDetails", iceDetails });
+                callerConnection.emit("callResponse", { type: "iceDetails", senderPhone: senderInfo.phone, iceDetails });
             }
         }
     }

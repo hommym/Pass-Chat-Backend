@@ -42,7 +42,7 @@ export class CallService {
     else if (!recipientDetails) throw new WsError("No account with this phone numeber exist");
     else if (!roomDeatials) throw new WsError("No ChatRoom with this id exist");
     // update caller online status to call
-    await database.user.update({ where: { id: callerId }, data: isWebUser ? { onlineStatusWeb: "call" } : { onlineStatus: "call" } });
+    const callerDetails = await database.user.update({ where: { id: callerId }, data: isWebUser ? { onlineStatusWeb: "call" } : { onlineStatus: "call" } });
 
     if (!isGroupCall) {
       message = await database.message.create({
@@ -58,7 +58,7 @@ export class CallService {
       const recipientConnection = chatRouterWs.sockets.get(recipientDetails.connectionId!);
       if (recipientConnection) {
         if (!isGroupCall) recipientConnection.emit("callResponse", { type: "spdOffer", sdpOffer, message });
-        else recipientConnection.emit("groupCallResponse", { type: "spdOffer", sdpOffer });
+        else recipientConnection.emit("groupCallResponse", { type: "spdOffer", senderPhone: callerDetails.phone, sdpOffer });
       }
     } else if (!isGroupCall) await chatNotificationService.saveNotification(message!.id, recipientDetails.id, "mobile", "saveMessage");
 
@@ -67,12 +67,12 @@ export class CallService {
       const recipientWebConnection = chatRouterWs.sockets.get(recipientDetails.webConnectionId!);
       if (recipientWebConnection) {
         if (!isGroupCall) recipientWebConnection.emit("callResponse", { type: "spdOffer", sdpOffer, message });
-        else recipientWebConnection.emit("groupCallResponse", { type: "spdOffer", sdpOffer});
+        else recipientWebConnection.emit("groupCallResponse", { type: "spdOffer", senderPhone: callerDetails.phone, sdpOffer });
       }
     } else if (recipientDetails.webLoggedIn && !isGroupCall) await chatNotificationService.saveNotification(message!.id, recipientDetails.id, "browser", "saveMessage");
 
-    //sending notification to other  loggedin device  of caller (should not send for group calls)
-    const callerDetails = (await database.user.findUnique({ where: { id: callerId } }))!;
+    // //sending notification to other  loggedin device  of caller (should not send for group calls)
+    // const callerDetails = (await database.user.findUnique({ where: { id: callerId } }))!;
 
     if (isWebUser && !isGroupCall) {
       // send call message to mobile devices
@@ -116,7 +116,7 @@ export class CallService {
     if (callerDetails.onlineStatus === "call" || callerDetails.onlineStatusWeb === "call") {
       const callerConnection = chatRouterWs.sockets.get(callerDetails.onlineStatus === "call" ? callerDetails.connectionId! : callerDetails.webConnectionId!);
       if (callerConnection) {
-        callerConnection.emit(isGroupCall ? "groupCallResponse" : "callResponse", { type: "spdAnswer", sdpAnswer });
+        callerConnection.emit(isGroupCall ? "groupCallResponse" : "callResponse", isGroupCall ? { type: "spdAnswer", senderPhone: calleeDetails!.phone, sdpAnswer } : { type: "spdAnswer", sdpAnswer });
       }
     }
   }
@@ -125,7 +125,7 @@ export class CallService {
     await bodyValidatorWs(SendIceDetailsDto, details);
 
     const { iceDetails, recipientId } = details;
-
+    const senderInfo = await database.user.findUnique({ where: { id: socket.authUserId } });
     const recipientDetails = await database.user.findUnique({ where: { id: recipientId } });
 
     if (!recipientDetails) throw new WsError("No Account with this id exist");
@@ -133,7 +133,7 @@ export class CallService {
     if (recipientDetails.onlineStatus === "call" || recipientDetails.onlineStatusWeb === "call") {
       const callerConnection = chatRouterWs.sockets.get(recipientDetails.onlineStatus === "call" ? recipientDetails.connectionId! : recipientDetails.webConnectionId!);
       if (callerConnection) {
-        callerConnection.emit("callResponse", { type: "iceDetails", iceDetails });
+        callerConnection.emit("callResponse", { type: "iceDetails", senderPhone: senderInfo!.phone, iceDetails });
       }
     }
   }
