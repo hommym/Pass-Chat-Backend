@@ -183,7 +183,7 @@ class CallService {
         //updating caller account details
         await objects_1.database.user.update({ where: { id: callerId }, data: isWebUser ? { onlineStatusWeb: "call" } : { onlineStatus: "call" } });
         const message = await objects_1.database.message.create({
-            data: { senderId: callerId, content: JSON.stringify({ content: `on-going-${callType}-call`, content_id: (0, uuid_1.v4)() }), type: "call", roomId, callType },
+            data: { senderId: callerId, content: JSON.stringify({ content: `on-going-${callType}-call`, content_id: (0, uuid_1.v4)() }), type: "call", roomId, callType, communityId },
         });
         const membersIds = members.map((member) => member.userId);
         objects_1.appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId, membersIds, platform: "mobile", messageId: null, chatRoomId: null });

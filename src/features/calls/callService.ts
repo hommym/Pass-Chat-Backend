@@ -190,7 +190,7 @@ export class CallService {
     await database.user.update({ where: { id: callerId }, data: isWebUser ? { onlineStatusWeb: "call" } : { onlineStatus: "call" } });
 
     const message = await database.message.create({
-      data: { senderId: callerId, content: JSON.stringify({ content: `on-going-${callType}-call`, content_id: v4() }), type: "call", roomId, callType },
+      data: { senderId: callerId, content: JSON.stringify({ content: `on-going-${callType}-call`, content_id: v4() }), type: "call", roomId, callType, communityId },
     });
 
     const membersIds = members.map((member) => member.userId);
