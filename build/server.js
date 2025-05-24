@@ -16,7 +16,7 @@ dotenv_1.default.config();
 // middlewares
 objects_1.app.use((req, res, next) => {
     // Skip JSON parsing for a specific endpoint, e.g., /api/v1/raw
-    if (req.path === "/api/v1/subscription/webhooks/checkout")
+    if (req.path.startsWith("/api/v1/subscription/webhooks"))
         return next();
     express_1.default.json({ limit: "100mb" })(req, res, next);
 });
