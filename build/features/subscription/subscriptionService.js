@@ -11,6 +11,7 @@ const errorHandler_1 = require("../../common/middlewares/errorHandler");
 const stripe_1 = require("stripe");
 class SubscriptionService {
     constructor(paymentSecret) {
+        this.webhookSecret = process.env.CHECKOUT_WEBHOOKSECRET ? process.env.CHECKOUT_WEBHOOKSECRET : "";
         this.paymentGateway = new stripe_1.Stripe(paymentSecret);
     }
     async createSubscription(subDto) {
@@ -27,9 +28,7 @@ class SubscriptionService {
         return { message: "Subscription Created Successfully" };
     }
     async deleteSubscription(planId) {
-        const planToDelete = await objects_1.database.subscriptionPlan.findUnique({ where: { id: planId } });
-        if (!planToDelete)
-            throw new errorHandler_1.AppError("Deletion Failed,no such id exist", 404);
+        const planToDelete = await this.checkPlan(planId);
         await objects_1.database.subscriptionPlan.delete({ where: { id: planId } });
         await this.paymentGateway.prices.update(planToDelete.stripePriceId, { active: false });
         await this.paymentGateway.products.update(planToDelete.stripProductId, { active: false });
@@ -48,11 +47,15 @@ class SubscriptionService {
         const prevSubs = await objects_1.database.userSubscription.findMany({ where: { userId }, include: { user: true, subPlan: true } });
         return prevSubs.length > 0 ? prevSubs[0] : null;
     }
-    async subscribeToPlan(planId, userId) {
-        let checkoutSession;
+    async checkPlan(planId) {
         const planDetails = await objects_1.database.subscriptionPlan.findUnique({ where: { id: planId } });
         if (!planDetails)
             throw new errorHandler_1.AppError("No Subscription Plan with such id exist ", 404);
+        return planDetails;
+    }
+    async subscribeToPlan(planId, userId) {
+        let checkoutSession;
+        const planDetails = await this.checkPlan(planId);
         const hasUserSubBefore = await this.checkPrevOrActiveSubs(userId, planId);
         const returnUrl = process.env.SUCCESSFULL_PAYMENT_URL ? process.env.SUCCESSFULL_PAYMENT_URL : "https://call3.paschat.net";
         if (hasUserSubBefore) {
@@ -76,17 +79,34 @@ class SubscriptionService {
         await objects_1.database.checkoutSession.create({ data: { sessionId: checkoutSession.id, planId, userId } });
         return { checkoutPage: checkoutSession.url };
     }
-    async cancelSubscriptionPlan(userId) {
+    async cancelSubscriptionPlan(userId, type) {
         const activeSubs = await objects_1.database.userSubscription.findMany({ where: { userId, status: { in: ["paid", "unPaid"] } } });
         if (activeSubs.length === 0)
             throw new errorHandler_1.AppError("User not on any plan", 404);
         const { subId } = activeSubs[0];
-        await this.paymentGateway.subscriptions.update(subId, { cancel_at_period_end: true });
+        if (type === "later")
+            await this.paymentGateway.subscriptions.update(subId, { cancel_at_period_end: true });
+        else
+            this, this.paymentGateway.subscriptions.cancel(subId);
+        // update users account using the webhook event under subscriptions
         return { message: "Subscription Cancelled Successfully" };
     }
+    async changeSubscriptionPlan(planId, userId) {
+        const planDetails = await this.checkPlan(planId);
+        const activeSub = await objects_1.database.userSubscription.findUnique({ where: { planId_userId: { planId, userId }, status: { in: ["paid", "unPaid"] } } });
+        if (!activeSub)
+            throw new errorHandler_1.AppError("User not on any plan with this id", 404);
+        const subscriptionDetails = await this.paymentGateway.subscriptions.retrieve(activeSub.subId);
+        const subItem = subscriptionDetails.items.data[0];
+        await this.paymentGateway.subscriptions.update(activeSub.subId, { items: [{ id: subItem.id, price: planDetails.stripePriceId }] });
+        await objects_1.database.userSubscription.update({ where: { subId: activeSub.subId }, data: { status: "pending" } });
+        return { message: "Subscription plan update was successfull, awaiting payment" };
+    }
+    getEventObject(reqBody, sig) {
+        return this.paymentGateway.webhooks.constructEvent(reqBody, sig, this.webhookSecret);
+    }
     async checkOutSessionHandler(reqBody, sig) {
-        const webhookSecret = process.env.CHECKOUT_WEBHOOKSECRET ? process.env.CHECKOUT_WEBHOOKSECRET : "";
-        const event = this.paymentGateway.webhooks.constructEvent(reqBody, sig, webhookSecret);
+        const event = this.getEventObject(reqBody, sig);
         switch (event.type) {
             case "checkout.session.completed": {
                 // code to create the server version of the subscription using the stripe subscription data
@@ -98,7 +118,7 @@ class SubscriptionService {
                     await objects_1.database.userSubscription.upsert({
                         where: { planId_userId: { planId: checkoutSession.planId, userId: checkoutSession.userId } },
                         create: { subId: subscription, stripeCustomerId: customer, planId: checkoutSession.planId, userId: checkoutSession.userId },
-                        update: { subId: subscription, status: "paid" },
+                        update: { subId: subscription, status: "pending" },
                     });
                     console.log("User Subscribed Successfully");
                 }
@@ -106,12 +126,55 @@ class SubscriptionService {
             }
             case "checkout.session.expired": {
                 console.log("Checkout Failed:Expierd");
-                // code to handle checkout session failure
+                // send an message through web sockets
                 break;
             }
             default: {
                 console.log(`Unknown Event:${event.type}`);
             }
+        }
+        return { message: "Success" };
+    }
+    async invoiceEventsHandler(reqBody, sig) {
+        const event = this.getEventObject(reqBody, sig);
+        switch (event.type) {
+            case "invoice.paid": {
+                const { customer } = event.data.object;
+                console.log(`Id of customer who was just billed=${customer}`);
+                await objects_1.database.userSubscription.update({ where: { stripeCustomerId: customer }, data: { status: "paid" } });
+                // send user notification through websockets
+                break;
+            }
+            case "invoice.payment_action_required": {
+                const { customer } = event.data.object;
+                console.log(`Id of customer=${customer}`);
+                await objects_1.database.userSubscription.update({ where: { stripeCustomerId: customer }, data: { status: "paid" } });
+                // notify user to confirm to confirm the payment with issuer before subscription will be active
+                break;
+            }
+            case "invoice.payment_failed": {
+                const { customer } = event.data.object;
+                console.log(`Id of customer =${customer}`);
+                // add code to handle this if the event is as a result of first payment requiring user action (eg 3d secure)
+                // notify user that payment failed so they should either top up or change payment method .
+                break;
+            }
+            default:
+                break;
+        }
+        return { message: "Success" };
+    }
+    async subscrptionEventsHandler(reqBody, sig) {
+        const event = this.getEventObject(reqBody, sig);
+        switch (event.type) {
+            case "customer.subscription.deleted": {
+                const { id } = event.data.object;
+                await objects_1.database.userSubscription.update({ where: { subId: id }, data: { status: "cancelled" } });
+                // send notification to user through websockets
+                break;
+            }
+            default:
+                break;
         }
         return { message: "Success" };
     }

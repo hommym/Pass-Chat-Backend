@@ -20,14 +20,14 @@ subscriptionRouter.post(
   })
 );
 
-
-
 subscriptionRouter.post(
-  "/cancel",
+  "/cancel/:type",
   verifyJwt,
   checkAccountType("user"),
   asyncHandler(async (req: Request, res: Response) => {
-    res.status(200).json(await subscriptionService.cancelSubscriptionPlan(req.body.verifiedUserId));
+    const type = req.params.type;
+    if (["now", "later"].includes(type)) res.status(200).json(await subscriptionService.cancelSubscriptionPlan(req.body.verifiedUserId, type as any));
+    else throw new AppError("Url Parameter type, must be of the value now or later", 400);
   })
 );
 
