@@ -178,6 +178,7 @@ enum SubInterval{
 enum  UserSubStatus{
 paid
 unPaid
+pending
 cancelled
 } 
 
@@ -519,7 +520,7 @@ model CheckoutSession{
 
 model UserSubscription {
   subId                      String              @id
-  stripeCustomerId           String
+  stripeCustomerId           String              @unique
   planId                     Int
   userId                     Int                 
   status                     UserSubStatus       @default(paid)
