@@ -148,7 +148,7 @@ class SubscriptionService {
             case "invoice.payment_action_required": {
                 const { customer } = event.data.object;
                 console.log(`Id of customer=${customer}`);
-                await objects_1.database.userSubscription.update({ where: { stripeCustomerId: customer }, data: { status: "paid" } });
+                await objects_1.database.userSubscription.update({ where: { stripeCustomerId: customer }, data: { status: "pending" } });
                 // notify user to confirm to confirm the payment with issuer before subscription will be active
                 break;
             }
