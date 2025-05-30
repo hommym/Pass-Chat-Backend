@@ -7,7 +7,9 @@ import { Stripe } from "stripe";
 
 export class SubscriptionService {
   private paymentGateway: Stripe;
-  private webhookSecret = process.env.CHECKOUT_WEBHOOKSECRET ? process.env.CHECKOUT_WEBHOOKSECRET : "";
+  private webhookSecretCheckout = process.env.CHECKOUT_WEBHOOKSECRET ? process.env.CHECKOUT_WEBHOOKSECRET : "";
+  private webhookSecretInvoice = process.env.INVOICES_WEBHOOKSECRET ? process.env.INVOICES_WEBHOOKSECRET : "";
+  private webhookSecretSubscription = process.env.SUBSCRIPTION_WEBHOOKSECRET ? process.env.SUBSCRIPTION_WEBHOOKSECRET : "";
   constructor(paymentSecret: string | undefined) {
     this.paymentGateway = new Stripe(paymentSecret!);
   }
@@ -126,13 +128,12 @@ export class SubscriptionService {
     return { message: "Subscription plan update was successfull, awaiting payment" };
   }
 
-  private getEventObject(reqBody: any, sig: string | string[], ws: string | null = null) {
-    if (ws) return this.paymentGateway.webhooks.constructEvent(reqBody, sig, ws);
-    return this.paymentGateway.webhooks.constructEvent(reqBody, sig, this.webhookSecret);
+  private getEventObject(reqBody: any, sig: string | string[], webhookSecret: string) {
+    return this.paymentGateway.webhooks.constructEvent(reqBody, sig, webhookSecret);
   }
 
   async checkOutSessionHandler(reqBody: any, sig: string | string[]) {
-    const event: Stripe.Event = this.getEventObject(reqBody, sig, "whsec_45c66c4aa3d832710e36c5709bc10a2edf0b3da68b39a94447380921b6a0de7d");
+    const event: Stripe.Event = this.getEventObject(reqBody, sig, this.webhookSecretCheckout);
 
     switch (event.type) {
       case "checkout.session.completed": {
@@ -166,7 +167,7 @@ export class SubscriptionService {
   }
 
   async invoiceEventsHandler(reqBody: any, sig: string | string[]) {
-    const event = this.getEventObject(reqBody, sig, "whsec_45c66c4aa3d832710e36c5709bc10a2edf0b3da68b39a94447380921b6a0de7d");
+    const event = this.getEventObject(reqBody, sig, this.webhookSecretInvoice);
 
     switch (event.type) {
       case "invoice.paid": {
@@ -220,7 +221,7 @@ export class SubscriptionService {
   }
 
   async subscriptionEventsHandler(reqBody: any, sig: string | string[]) {
-    const event = this.getEventObject(reqBody, sig, "whsec_45c66c4aa3d832710e36c5709bc10a2edf0b3da68b39a94447380921b6a0de7d");
+    const event = this.getEventObject(reqBody, sig, this.webhookSecretSubscription);
 
     switch (event.type) {
       case "customer.subscription.deleted": {
@@ -237,13 +238,7 @@ export class SubscriptionService {
     return { message: "Success" };
   }
 
-
-  async alertUsersOfSubStatus(agrs:{userId:number,}){
-
-
-
-
-  }
+  async alertUsersOfSubStatus(agrs: { userId: number }) {}
 
   // async deleteSubscription(planId: number) {
   //   const planToDelete = await this.checkPlan(planId);

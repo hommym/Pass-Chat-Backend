@@ -11,7 +11,9 @@ const errorHandler_1 = require("../../common/middlewares/errorHandler");
 const stripe_1 = require("stripe");
 class SubscriptionService {
     constructor(paymentSecret) {
-        this.webhookSecret = process.env.CHECKOUT_WEBHOOKSECRET ? process.env.CHECKOUT_WEBHOOKSECRET : "";
+        this.webhookSecretCheckout = process.env.CHECKOUT_WEBHOOKSECRET ? process.env.CHECKOUT_WEBHOOKSECRET : "";
+        this.webhookSecretInvoice = process.env.INVOICES_WEBHOOKSECRET ? process.env.INVOICES_WEBHOOKSECRET : "";
+        this.webhookSecretSubscription = process.env.SUBSCRIPTION_WEBHOOKSECRET ? process.env.SUBSCRIPTION_WEBHOOKSECRET : "";
         this.paymentGateway = new stripe_1.Stripe(paymentSecret);
     }
     async createSubscription(subDto) {
@@ -104,13 +106,11 @@ class SubscriptionService {
         await objects_1.database.userSubscription.update({ where: { subId: activeSub.subId }, data: { status: "pending" } });
         return { message: "Subscription plan update was successfull, awaiting payment" };
     }
-    getEventObject(reqBody, sig, ws = null) {
-        if (ws)
-            return this.paymentGateway.webhooks.constructEvent(reqBody, sig, ws);
-        return this.paymentGateway.webhooks.constructEvent(reqBody, sig, this.webhookSecret);
+    getEventObject(reqBody, sig, webhookSecret) {
+        return this.paymentGateway.webhooks.constructEvent(reqBody, sig, webhookSecret);
     }
     async checkOutSessionHandler(reqBody, sig) {
-        const event = this.getEventObject(reqBody, sig, "whsec_45c66c4aa3d832710e36c5709bc10a2edf0b3da68b39a94447380921b6a0de7d");
+        const event = this.getEventObject(reqBody, sig, this.webhookSecretCheckout);
         switch (event.type) {
             case "checkout.session.completed": {
                 // code to create the server version of the subscription using the stripe subscription data
@@ -140,7 +140,7 @@ class SubscriptionService {
         return { message: "Success" };
     }
     async invoiceEventsHandler(reqBody, sig) {
-        const event = this.getEventObject(reqBody, sig, "whsec_45c66c4aa3d832710e36c5709bc10a2edf0b3da68b39a94447380921b6a0de7d");
+        const event = this.getEventObject(reqBody, sig, this.webhookSecretInvoice);
         switch (event.type) {
             case "invoice.paid": {
                 const { customer } = event.data.object;
@@ -190,7 +190,7 @@ class SubscriptionService {
         return { message: "Success" };
     }
     async subscriptionEventsHandler(reqBody, sig) {
-        const event = this.getEventObject(reqBody, sig, "whsec_45c66c4aa3d832710e36c5709bc10a2edf0b3da68b39a94447380921b6a0de7d");
+        const event = this.getEventObject(reqBody, sig, this.webhookSecretSubscription);
         switch (event.type) {
             case "customer.subscription.deleted": {
                 const { id } = event.data.object;
@@ -203,7 +203,6 @@ class SubscriptionService {
         }
         return { message: "Success" };
     }
-    async alertUsersOfSubStatus(agrs) {
-    }
+    async alertUsersOfSubStatus(agrs) { }
 }
 exports.SubscriptionService = SubscriptionService;
