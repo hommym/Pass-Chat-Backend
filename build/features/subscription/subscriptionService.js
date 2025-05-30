@@ -27,16 +27,14 @@ class SubscriptionService {
         await objects_1.database.subscriptionPlan.update({ where: { id: subPlan.id }, data: { stripProductId: stripeProduct.id, stripePriceId: stripePrice.id } });
         return { message: "Subscription Created Successfully" };
     }
-    async deleteSubscription(planId) {
-        const planToDelete = await this.checkPlan(planId);
-        await objects_1.database.subscriptionPlan.delete({ where: { id: planId } });
-        await this.paymentGateway.prices.update(planToDelete.stripePriceId, { active: false });
-        await this.paymentGateway.products.update(planToDelete.stripProductId, { active: false });
-    }
-    async getAllPlans(isAdmin = false) {
+    async getAllPlans(isAdmin = false, userId) {
         // this method will be update to select the current plan for user
+        const allPlans = await objects_1.database.subscriptionPlan.findMany({ omit: { stripePriceId: true, stripProductId: true } });
         if (isAdmin)
-            return await objects_1.database.subscriptionPlan.findMany({});
+            return { allPlans };
+        const userSubscription = await objects_1.database.userSubscription.findMany({ where: { userId, status: { in: ["paid", "unPaid"] } } });
+        const userSubPlanId = userSubscription.length === 0 ? null : userSubscription[0].planId;
+        return { userSubPlanId, allPlans };
     }
     async checkPrevOrActiveSubs(userId, planId) {
         // this methods checks user's sub history and returns any prev subs on the plan been subscribed to
@@ -93,27 +91,33 @@ class SubscriptionService {
     }
     async changeSubscriptionPlan(planId, userId) {
         const planDetails = await this.checkPlan(planId);
-        const activeSub = await objects_1.database.userSubscription.findUnique({ where: { planId_userId: { planId, userId }, status: { in: ["paid", "unPaid"] } } });
-        if (!activeSub)
-            throw new errorHandler_1.AppError("User not on any plan with this id", 404);
+        const isUserOnThisPlan = await objects_1.database.userSubscription.findUnique({ where: { planId_userId: { planId, userId }, status: { in: ["paid", "unPaid"] } } });
+        if (isUserOnThisPlan)
+            throw new errorHandler_1.AppError("User is already on this plan", 402);
+        const activeSubs = await objects_1.database.userSubscription.findMany({ where: { userId, status: { in: ["paid", "unPaid"] } } });
+        if (activeSubs.length === 0)
+            throw new errorHandler_1.AppError("User must be on A Subscription in order to change", 402);
+        const activeSub = activeSubs[0];
         const subscriptionDetails = await this.paymentGateway.subscriptions.retrieve(activeSub.subId);
         const subItem = subscriptionDetails.items.data[0];
         await this.paymentGateway.subscriptions.update(activeSub.subId, { items: [{ id: subItem.id, price: planDetails.stripePriceId }] });
         await objects_1.database.userSubscription.update({ where: { subId: activeSub.subId }, data: { status: "pending" } });
         return { message: "Subscription plan update was successfull, awaiting payment" };
     }
-    getEventObject(reqBody, sig) {
+    getEventObject(reqBody, sig, ws = null) {
+        if (ws)
+            return this.paymentGateway.webhooks.constructEvent(reqBody, sig, ws);
         return this.paymentGateway.webhooks.constructEvent(reqBody, sig, this.webhookSecret);
     }
     async checkOutSessionHandler(reqBody, sig) {
-        const event = this.getEventObject(reqBody, sig);
+        const event = this.getEventObject(reqBody, sig, "whsec_45c66c4aa3d832710e36c5709bc10a2edf0b3da68b39a94447380921b6a0de7d");
         switch (event.type) {
             case "checkout.session.completed": {
                 // code to create the server version of the subscription using the stripe subscription data
                 console.log("Checkout Sucessfull");
                 const { id, customer, subscription } = event.data.object;
                 const checkoutSession = await objects_1.database.checkoutSession.findUnique({ where: { sessionId: id } });
-                console.log(`SubscriptionId=${subscription}`);
+                console.log(`SubscriptionId=${subscription}=CheckOutEvents`);
                 if (checkoutSession && subscription) {
                     await objects_1.database.userSubscription.upsert({
                         where: { planId_userId: { planId: checkoutSession.planId, userId: checkoutSession.userId } },
@@ -136,27 +140,48 @@ class SubscriptionService {
         return { message: "Success" };
     }
     async invoiceEventsHandler(reqBody, sig) {
-        const event = this.getEventObject(reqBody, sig);
+        const event = this.getEventObject(reqBody, sig, "whsec_45c66c4aa3d832710e36c5709bc10a2edf0b3da68b39a94447380921b6a0de7d");
         switch (event.type) {
             case "invoice.paid": {
                 const { customer } = event.data.object;
-                console.log(`Id of customer who was just billed=${customer}`);
+                console.log(`Id of customer who was just billed=${customer}=Invoice Events`);
                 await objects_1.database.userSubscription.update({ where: { stripeCustomerId: customer }, data: { status: "paid" } });
-                // send user notification through websockets
+                // alert customer about the sucessfull subscription
+                console.log(`Cusomer Has Subscribed`);
                 break;
             }
             case "invoice.payment_action_required": {
                 const { customer } = event.data.object;
                 console.log(`Id of customer=${customer}`);
-                await objects_1.database.userSubscription.update({ where: { stripeCustomerId: customer }, data: { status: "pending" } });
-                // notify user to confirm to confirm the payment with issuer before subscription will be active
+                const { userId } = await objects_1.database.userSubscription.update({ where: { stripeCustomerId: customer }, data: { status: "pending" } });
+                // alert customer to confirm payment
+                console.log(`Cusomer Payment Requires Confirmation 1`);
                 break;
             }
             case "invoice.payment_failed": {
-                const { customer } = event.data.object;
+                const { customer, confirmation_secret } = event.data.object;
                 console.log(`Id of customer =${customer}`);
-                // add code to handle this if the event is as a result of first payment requiring user action (eg 3d secure)
-                // notify user that payment failed so they should either top up or change payment method .
+                const { status, last_payment_error } = await this.paymentGateway.paymentIntents.retrieve(confirmation_secret.client_secret);
+                const { userId } = (await objects_1.database.userSubscription.findUnique({ where: { stripeCustomerId: customer } }));
+                if (status === "requires_action") {
+                    // payment has 3d secure feature
+                    if (last_payment_error) {
+                        const { code } = last_payment_error;
+                        if (code === "authentication_required") {
+                            // alert customer to confirm payment
+                            console.log(`Cusomer Payment Requires Confirmation 2`);
+                        }
+                    }
+                }
+                else if (status === "requires_payment_method") {
+                    if (last_payment_error) {
+                        const { code } = last_payment_error;
+                        if (code === "card_declined") {
+                            // alert customer to change payment method
+                            console.log(`Cusomer Payment Needs To Be changed`);
+                        }
+                    }
+                }
                 break;
             }
             default:
@@ -164,19 +189,21 @@ class SubscriptionService {
         }
         return { message: "Success" };
     }
-    async subscrptionEventsHandler(reqBody, sig) {
-        const event = this.getEventObject(reqBody, sig);
+    async subscriptionEventsHandler(reqBody, sig) {
+        const event = this.getEventObject(reqBody, sig, "whsec_45c66c4aa3d832710e36c5709bc10a2edf0b3da68b39a94447380921b6a0de7d");
         switch (event.type) {
             case "customer.subscription.deleted": {
                 const { id } = event.data.object;
                 await objects_1.database.userSubscription.update({ where: { subId: id }, data: { status: "cancelled" } });
-                // send notification to user through websockets
+                // alert customer that subscription has been successfully cancelled
                 break;
             }
             default:
                 break;
         }
         return { message: "Success" };
+    }
+    async alertUsersOfSubStatus(agrs) {
     }
 }
 exports.SubscriptionService = SubscriptionService;

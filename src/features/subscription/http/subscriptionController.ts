@@ -46,6 +46,21 @@ subscriptionRouter.post(
   })
 );
 
+subscriptionRouter.patch(
+  "/subscribe/:planId",
+  verifyJwt,
+  checkAccountType("user"),
+  asyncHandler(async (req: Request, res: Response) => {
+    let planId: number;
+    try {
+      planId = +req.params.planId;
+    } catch (error) {
+      throw new AppError("Url parameter planId must be an integer", 400);
+    }
+    res.status(200).json(await subscriptionService.changeSubscriptionPlan(planId, req.body.verifiedUserId));
+  })
+);
+
 subscriptionRouter.post(
   "/webhooks/checkout",
   express.raw({ type: "application/json" }),
@@ -54,26 +69,45 @@ subscriptionRouter.post(
   })
 );
 
-subscriptionRouter.get(
-  "/admin",
-  verifyJwt,
-  checkAccountType("admin"),
+subscriptionRouter.post(
+  "/webhooks/invoices",
+  express.raw({ type: "application/json" }),
   asyncHandler(async (req: Request, res: Response) => {
-    res.status(200).json(await subscriptionService.getAllPlans(true));
+    res.status(200).json(await subscriptionService.invoiceEventsHandler(req.body, req.headers["stripe-signature"]!));
   })
 );
 
-subscriptionRouter.delete(
-  "/:planId",
-  verifyJwt,
-  checkAccountType("admin"),
+subscriptionRouter.post(
+  "/webhooks/subscriptions",
+  express.raw({ type: "application/json" }),
   asyncHandler(async (req: Request, res: Response) => {
-    try {
-      res.status(204).json(await subscriptionService.deleteSubscription(+req.params.planId));
-    } catch (error) {
-      // console.log(error);
-      if (error instanceof AppError) throw new AppError(error.message, error.statusCode);
-      throw new AppError("Url parameter planId must be an integer", 401);
-    }
+    res.status(200).json(await subscriptionService.subscriptionEventsHandler(req.body, req.headers["stripe-signature"]!));
   })
 );
+
+subscriptionRouter.get(
+  "/:userType",
+  verifyJwt,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { userType } = req.params;
+    const { verifiedUserId } = req.body;
+    const isUserTypeValid = ["admin", "norm"].includes(userType);
+    if (!isUserTypeValid) throw new AppError("Url parameter userType should be of values admin or norm", 400);
+    res.status(200).json(await subscriptionService.getAllPlans(userType === "admin", verifiedUserId));
+  })
+);
+
+// subscriptionRouter.delete(
+//   "/:planId",
+//   verifyJwt,
+//   checkAccountType("admin"),
+//   asyncHandler(async (req: Request, res: Response) => {
+//     try {
+//       res.status(204).json(await subscriptionService.deleteSubscription(+req.params.planId));
+//     } catch (error) {
+//       // console.log(error);
+//       if (error instanceof AppError) throw new AppError(error.message, error.statusCode);
+//       throw new AppError("Url parameter planId must be an integer", 401);
+//     }
+//   })
+// );
