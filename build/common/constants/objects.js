@@ -28,7 +28,11 @@ const subscriptionService_1 = require("../../features/subscription/subscriptionS
 exports.database = new client_1.PrismaClient();
 exports.app = (0, express_1.default)();
 exports.server = (0, http_1.createServer)(exports.app);
-exports.ws = new socket_io_1.Server(exports.server);
+exports.ws = new socket_io_1.Server(exports.server, {
+    pingInterval: 4000,
+    pingTimeout: 2000,
+    maxHttpBufferSize: 100 * 1024 * 1024,
+});
 exports.authService = new authService_1.AuthService();
 exports.randomData = new random_1.RandomData();
 exports.appEvents = new applicationEvents_1.AppEvents();

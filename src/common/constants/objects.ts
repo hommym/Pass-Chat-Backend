@@ -27,7 +27,11 @@ export const app = express();
 
 export const server = createServer(app);
 
-export const ws = new Server(server);
+export const ws = new Server(server, {
+  pingInterval: 4000,
+  pingTimeout: 2000,
+  maxHttpBufferSize: 100 * 1024 * 1024,
+});
 
 export const authService = new AuthService();
 
