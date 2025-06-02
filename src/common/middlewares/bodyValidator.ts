@@ -7,6 +7,7 @@ import { ChatWsRequestDto } from "../../features/chat/dto/chatWsRequetDto";
 
 export function bodyValidator(type: any): any {
   return asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+    // console.log(`ReqBody=${req.body}`)
     const dtoInstance = plainToInstance(type, req.body, { excludeExtraneousValues: true });
     const errors = await validate(dtoInstance);
     if (errors.length > 0) {

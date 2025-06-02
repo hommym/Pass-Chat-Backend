@@ -36,8 +36,8 @@ exports.fileRouter.post("/upload", (0, multer_1.getFile)("file"), verifyJwt_1.ve
     res
         .status(201)
         .json(mediaType === "video"
-        ? { link: `${process.env.BackendUrl}/file/${mediaType}/${date}/${fileName}`, thumbNail: `${process.env.BackendUrl}/file/image/${date}/${fileName.split(".")[0]}.png` }
-        : { link: `${process.env.BackendUrl}/file/${mediaType}/${date}/${fileName}` });
+        ? { link: `${process.env.FileServerBaseUrl}/${mediaType}/${date}/${fileName}`, thumbNail: `${process.env.FileServerBaseUrl}/image/${date}/${fileName.split(".")[0]}.png` }
+        : { link: `${process.env.FileServerBaseUrl}/${mediaType}/${date}/${fileName}` });
 }));
 exports.fileRouter.get("/:mediaType/:date/:fileName", (0, express_async_handler_1.default)(async (req, res) => {
     const { date, mediaType, fileName } = req.params;
@@ -46,7 +46,7 @@ exports.fileRouter.get("/:mediaType/:date/:fileName", (0, express_async_handler_
 exports.fileRouter.post("/save", (0, multer_1.getFile)("file"), (0, bodyValidator_1.bodyValidator)(saveFileInFolderDto_1.SaveFileInFolderDto), verifyJwt_1.verifyJwt, fileHandler_1.fileHandler, (0, express_async_handler_1.default)(async (req, res) => {
     const _a = req.body, { verifiedUserId } = _a, saveFileDto = __rest(_a, ["verifiedUserId"]);
     const { date, mediaType, fileName } = saveFileDto;
-    const url = `${process.env.BackendUrl}/file/${mediaType}/${date}/${fileName}`;
+    const url = `${process.env.FileServerBaseUrl}/${mediaType}/${date}/${fileName}`;
     res.status(201).json(await objects_1.fileService.saveFolderOrFile(saveFileDto, verifiedUserId, "file", url));
 }));
 exports.fileRouter.post("/directory/save", (0, bodyValidator_1.bodyValidator)(createFolderDto_1.CreateFolderDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {

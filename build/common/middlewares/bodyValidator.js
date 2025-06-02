@@ -11,6 +11,7 @@ const express_async_handler_1 = __importDefault(require("express-async-handler")
 const errorHandler_1 = require("./errorHandler");
 function bodyValidator(type) {
     return (0, express_async_handler_1.default)(async (req, res, next) => {
+        // console.log(`ReqBody=${req.body}`)
         const dtoInstance = (0, class_transformer_1.plainToInstance)(type, req.body, { excludeExtraneousValues: true });
         const errors = await (0, class_validator_1.validate)(dtoInstance);
         if (errors.length > 0) {

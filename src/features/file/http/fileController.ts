@@ -29,8 +29,8 @@ fileRouter.post(
       .status(201)
       .json(
         mediaType === "video"
-          ? { link: `${process.env.BackendUrl}/file/${mediaType}/${date}/${fileName}`, thumbNail: `${process.env.BackendUrl}/file/image/${date}/${fileName.split(".")[0]}.png` }
-          : { link: `${process.env.BackendUrl}/file/${mediaType}/${date}/${fileName}` }
+          ? { link: `${process.env.FileServerBaseUrl}/${mediaType}/${date}/${fileName}`, thumbNail: `${process.env.FileServerBaseUrl}/image/${date}/${fileName.split(".")[0]}.png` }
+          : { link: `${process.env.FileServerBaseUrl}/${mediaType}/${date}/${fileName}` }
       );
   })
 );
@@ -52,7 +52,7 @@ fileRouter.post(
   asyncHandler(async (req: Request, res: Response) => {
     const { verifiedUserId, ...saveFileDto } = req.body;
     const { date, mediaType, fileName } = saveFileDto;
-    const url = `${process.env.BackendUrl}/file/${mediaType}/${date}/${fileName}`;
+    const url = `${process.env.FileServerBaseUrl}/${mediaType}/${date}/${fileName}`;
     res.status(201).json(await fileService.saveFolderOrFile(saveFileDto as SaveFileInFolderDto, verifiedUserId, "file", url));
   })
 );
