@@ -9,6 +9,7 @@ dotenv_1.default.config();
 const objects_1 = require("../../common/constants/objects");
 const errorHandler_1 = require("../../common/middlewares/errorHandler");
 const stripe_1 = require("stripe");
+const chatHandler_1 = require("../chat/ws/chatHandler");
 class SubscriptionService {
     constructor(paymentSecret) {
         this.webhookSecretCheckout = process.env.CHECKOUT_WEBHOOKSECRET ? process.env.CHECKOUT_WEBHOOKSECRET : "";
@@ -145,16 +146,18 @@ class SubscriptionService {
             case "invoice.paid": {
                 const { customer } = event.data.object;
                 console.log(`Id of customer who was just billed=${customer}=Invoice Events`);
-                await objects_1.database.userSubscription.update({ where: { stripeCustomerId: customer }, data: { status: "paid" } });
+                const { userId, planId } = await objects_1.database.userSubscription.update({ where: { stripeCustomerId: customer }, data: { status: "paid" } });
                 // alert customer about the sucessfull subscription
+                objects_1.appEvents.emit("sub-update", { userId, status: "success", subPlanId: planId, failType: null });
                 console.log(`Cusomer Has Subscribed`);
                 break;
             }
             case "invoice.payment_action_required": {
                 const { customer } = event.data.object;
                 console.log(`Id of customer=${customer}`);
-                const { userId } = await objects_1.database.userSubscription.update({ where: { stripeCustomerId: customer }, data: { status: "pending" } });
+                const { userId, planId } = await objects_1.database.userSubscription.update({ where: { stripeCustomerId: customer }, data: { status: "pending" } });
                 // alert customer to confirm payment
+                objects_1.appEvents.emit("sub-update", { userId, status: "fail", subPlanId: planId, failType: "3Ds" });
                 console.log(`Cusomer Payment Requires Confirmation 1`);
                 break;
             }
@@ -162,13 +165,14 @@ class SubscriptionService {
                 const { customer, confirmation_secret } = event.data.object;
                 console.log(`Id of customer =${customer}`);
                 const { status, last_payment_error } = await this.paymentGateway.paymentIntents.retrieve(confirmation_secret.client_secret);
-                const { userId } = (await objects_1.database.userSubscription.findUnique({ where: { stripeCustomerId: customer } }));
+                const { userId, planId } = (await objects_1.database.userSubscription.findUnique({ where: { stripeCustomerId: customer } }));
                 if (status === "requires_action") {
                     // payment has 3d secure feature
                     if (last_payment_error) {
                         const { code } = last_payment_error;
                         if (code === "authentication_required") {
                             // alert customer to confirm payment
+                            objects_1.appEvents.emit("sub-update", { userId, status: "fail", subPlanId: planId, failType: "3Ds" });
                             console.log(`Cusomer Payment Requires Confirmation 2`);
                         }
                     }
@@ -178,7 +182,12 @@ class SubscriptionService {
                         const { code } = last_payment_error;
                         if (code === "card_declined") {
                             // alert customer to change payment method
+                            objects_1.appEvents.emit("sub-update", { userId, status: "fail", subPlanId: planId, failType: "cardIssues" });
                             console.log(`Cusomer Payment Needs To Be changed`);
+                        }
+                        else {
+                            // alerting user of an unknown problem with payment
+                            objects_1.appEvents.emit("sub-update", { userId, status: "fail", subPlanId: planId, failType: "unknown" });
                         }
                     }
                 }
@@ -195,7 +204,6 @@ class SubscriptionService {
             case "customer.subscription.deleted": {
                 const { id } = event.data.object;
                 await objects_1.database.userSubscription.update({ where: { subId: id }, data: { status: "cancelled" } });
-                // alert customer that subscription has been successfully cancelled
                 break;
             }
             default:
@@ -203,6 +211,30 @@ class SubscriptionService {
         }
         return { message: "Success" };
     }
-    async alertUsersOfSubStatus(agrs) { }
+    async alertUsersOfSubStatus(agrs) {
+        const { userId, failType, status, subPlanId } = agrs;
+        const user = (await objects_1.database.user.findUnique({ where: { id: userId } }));
+        const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId, webLoggedIn } = user;
+        const connectionIds = [connectionId, webConnectionId];
+        const platformStatuses = [onlineStatus, onlineStatusWeb];
+        for (let i = 0; i < connectionIds.length; i++) {
+            if (platformStatuses[i] !== "offline") {
+                const userConnection = chatHandler_1.chatRouterWs.sockets.get(connectionIds[i]);
+                if (userConnection) {
+                    if (status === "success")
+                        userConnection.emit("response", { action: "subSuccess", subPlanId });
+                    else
+                        userConnection.emit("response", { action: "subFail", subPlanId, failType });
+                    continue;
+                }
+            }
+            if (webLoggedIn && i === 1) {
+                // application sync mechanism
+                await objects_1.database.notification.create({ data: { userId, platform: "browser", action: status === "success" ? "subSuccess" : "subFail", data: status === "fail" ? { failType } : undefined } });
+            }
+            else if (i === 0)
+                await objects_1.database.notification.create({ data: { userId, platform: "mobile", action: status === "success" ? "subSuccess" : "subFail", data: status === "fail" ? { failType } : undefined } });
+        }
+    }
 }
 exports.SubscriptionService = SubscriptionService;

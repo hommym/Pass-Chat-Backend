@@ -1,9 +1,10 @@
 import dotenv from "dotenv";
 dotenv.config();
-import { database } from "../../common/constants/objects";
+import { appEvents, chatNotificationService, database } from "../../common/constants/objects";
 import { AppError } from "../../common/middlewares/errorHandler";
 import { CreateSubscriptionDto } from "./dto/createSubscriptionDto";
 import { Stripe } from "stripe";
+import { chatRouterWs } from "../chat/ws/chatHandler";
 
 export class SubscriptionService {
   private paymentGateway: Stripe;
@@ -173,16 +174,18 @@ export class SubscriptionService {
       case "invoice.paid": {
         const { customer } = event.data.object;
         console.log(`Id of customer who was just billed=${customer}=Invoice Events`);
-        await database.userSubscription.update({ where: { stripeCustomerId: customer as string }, data: { status: "paid" } });
+        const {userId,planId}=await database.userSubscription.update({ where: { stripeCustomerId: customer as string }, data: { status: "paid" } });
         // alert customer about the sucessfull subscription
+        appEvents.emit("sub-update",{userId,status:"success",subPlanId:planId,failType:null})
         console.log(`Cusomer Has Subscribed`);
         break;
       }
       case "invoice.payment_action_required": {
         const { customer } = event.data.object;
         console.log(`Id of customer=${customer}`);
-        const { userId } = await database.userSubscription.update({ where: { stripeCustomerId: customer as string }, data: { status: "pending" } });
+        const { userId ,planId} = await database.userSubscription.update({ where: { stripeCustomerId: customer as string }, data: { status: "pending" } });
         // alert customer to confirm payment
+        appEvents.emit("sub-update", { userId, status: "fail", subPlanId: planId, failType: "3Ds" });
         console.log(`Cusomer Payment Requires Confirmation 1`);
         break;
       }
@@ -191,13 +194,14 @@ export class SubscriptionService {
         const { customer, confirmation_secret } = event.data.object;
         console.log(`Id of customer =${customer}`);
         const { status, last_payment_error } = await this.paymentGateway.paymentIntents.retrieve(confirmation_secret!.client_secret);
-        const { userId } = (await database.userSubscription.findUnique({ where: { stripeCustomerId: customer! as string } }))!;
+        const { userId,planId } = (await database.userSubscription.findUnique({ where: { stripeCustomerId: customer! as string } }))!;
         if (status === "requires_action") {
           // payment has 3d secure feature
           if (last_payment_error) {
             const { code } = last_payment_error;
             if (code === "authentication_required") {
               // alert customer to confirm payment
+              appEvents.emit("sub-update", { userId, status: "fail", subPlanId: planId, failType: "3Ds" });
               console.log(`Cusomer Payment Requires Confirmation 2`);
             }
           }
@@ -207,7 +211,11 @@ export class SubscriptionService {
 
             if (code === "card_declined") {
               // alert customer to change payment method
+              appEvents.emit("sub-update", { userId, status: "fail", subPlanId: planId, failType: "cardIssues" });
               console.log(`Cusomer Payment Needs To Be changed`);
+            }else{
+              // alerting user of an unknown problem with payment
+              appEvents.emit("sub-update", { userId, status: "fail", subPlanId: planId, failType: "unknown" });
             }
           }
         }
@@ -227,7 +235,6 @@ export class SubscriptionService {
       case "customer.subscription.deleted": {
         const { id } = event.data.object;
         await database.userSubscription.update({ where: { subId: id }, data: { status: "cancelled" } });
-        // alert customer that subscription has been successfully cancelled
         break;
       }
 
@@ -238,7 +245,32 @@ export class SubscriptionService {
     return { message: "Success" };
   }
 
-  async alertUsersOfSubStatus(agrs: { userId: number }) {}
+  async alertUsersOfSubStatus(agrs: { userId: number; subPlanId: number; status: "success" | "fail"; failType: "cardIssues" | "3Ds"|"unknown" |null }) {
+    const { userId, failType, status, subPlanId } = agrs;
+    const user = (await database.user.findUnique({ where: { id: userId } }))!;
+    const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId, webLoggedIn } = user;
+
+    const connectionIds = [connectionId, webConnectionId];
+
+    const platformStatuses = [onlineStatus, onlineStatusWeb];
+
+    for (let i = 0; i < connectionIds.length; i++) {
+      if (platformStatuses[i] !== "offline") {
+        const userConnection = chatRouterWs.sockets.get(connectionIds[i]!);
+        if (userConnection) {
+          if (status === "success") userConnection.emit("response", { action: "subSuccess", subPlanId });
+          else userConnection.emit("response", { action: "subFail", subPlanId, failType });
+          continue;
+        }
+      }
+
+      if (webLoggedIn && i === 1) {
+        // application sync mechanism
+        await database.notification.create({ data: { userId, platform: "browser", action: status === "success" ? "subSuccess" : "subFail", data: status === "fail" ? { failType } : undefined } });
+      } else if (i === 0)
+        await database.notification.create({ data: { userId, platform: "mobile", action: status === "success" ? "subSuccess" : "subFail", data: status === "fail" ? { failType } : undefined } });
+    }
+  }
 
   // async deleteSubscription(planId: number) {
   //   const planToDelete = await this.checkPlan(planId);
