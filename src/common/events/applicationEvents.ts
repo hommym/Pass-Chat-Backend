@@ -1,13 +1,12 @@
 import Event from "events";
 import { RegistrationOtpEmailI, sendRegistrationEmail } from "../../features/email/sendRegisterationEmail";
 import { LoginOtpEmailI, sendLogInEmail } from "../../features/email/sendLoginEmail";
-import { chatNotificationService, communityService, contactsService, dashboardService } from "../constants/objects";
+import { chatNotificationService, communityService, contactsService, dashboardService, subscriptionService } from "../constants/objects";
 import { CommunityMember, CommunityType, NotificationAction, OS, Platform, PostType, Story } from "@prisma/client";
 import { SaveCommunityNotificationsArgs } from "../../features/community/dto/saveCommunityNotificationsArgs";
 import { CommunityVerificationEmail, sendCommunityVerificationEmail } from "../../features/email/sendCommunityVerificationEmail";
 import { CommunityCallNotifier } from "../../features/community/type/communityCallNotifier";
 import { AddMembersDto } from "../../features/community/dto/addMembersDto";
-
 
 type EventName = {
   "login-otp-email": LoginOtpEmailI;
@@ -33,7 +32,8 @@ type EventName = {
     contacts: string[];
     ownerPhone: string;
   };
-  "community-invitation-alert":{addMembersDto: AddMembersDto; senderPhone: string }
+  "community-invitation-alert": { addMembersDto: AddMembersDto; senderPhone: string };
+  "sub-update": { userId: number; subPlanId: number; status: "success" | "fail"; failType: "cardIssues" | "3Ds" | "unknown" | null };
 };
 
 export class AppEvents {
@@ -59,7 +59,8 @@ export class AppEvents {
     this.createListener("cleared-private-chat-alert", chatNotificationService.notifyUsersOfClearedPrivateChats.bind(chatNotificationService));
     this.createListener("clear-community-chat-alert", chatNotificationService.notifyUsersOfClearedCommunityChats.bind(chatNotificationService));
     this.createListener("story-update", chatNotificationService.notifyUsersOfStory.bind(chatNotificationService));
-    this.createListener("community-invitation-alert",chatNotificationService.notifyUsersOfCommunityInvitation);
+    this.createListener("community-invitation-alert", chatNotificationService.notifyUsersOfCommunityInvitation);
+    this.createListener("sub-update", subscriptionService.alertUsersOfSubStatus);
     console.log("Listeners Setup");
   }
 

@@ -19,12 +19,15 @@ export class ChatNotificationService {
     platform: Platform = "mobile",
     action: NotificationAction = "updateMessage",
     chatRoomId: number | null = null,
-    storyId: number | null = null
+    storyId: number | null = null,
+    subPlanId: number | null = null
   ) {
     // this is for setting messages notifications and chatroom updates notifications
 
     // check if any notification with the above details exist
-    const notifications = await database.notification.findMany({ where: chatRoomId ? { userId: recipientId, chatRoomId, platform } : { userId: recipientId, messageId, platform, storyId } });
+    const notifications = await database.notification.findMany({
+      where: chatRoomId ? { userId: recipientId, chatRoomId, platform } : { userId: recipientId, messageId, platform, storyId, subPlanId },
+    });
 
     //create if it does not exist
     if (notifications.length === 0)
@@ -274,6 +277,20 @@ export class ChatNotificationService {
                     participants: null,
                   },
                 };
+          break;
+        case "subSuccess":
+          dataToSend = {
+            action: notification.action,
+            subPlanId: notification.subPlanId,
+          };
+          break;
+
+        case "subFail":
+          dataToSend = {
+            action: notification.action,
+            subPlanId: notification.subPlanId,
+            failType: (notification.data as { failType: "cardIssues" | "3Ds" | "unknown" }).failType,
+          };
           break;
         default:
           dataToSend = {

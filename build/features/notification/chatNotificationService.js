@@ -20,10 +20,12 @@ const communityChatNotificationsDto_1 = require("./dto/communityChatNotification
 const chatHandler_1 = require("../chat/ws/chatHandler");
 const concurrentTaskExec_1 = require("../../common/helpers/classes/concurrentTaskExec");
 class ChatNotificationService {
-    async saveNotification(messageId, recipientId, platform = "mobile", action = "updateMessage", chatRoomId = null, storyId = null) {
+    async saveNotification(messageId, recipientId, platform = "mobile", action = "updateMessage", chatRoomId = null, storyId = null, subPlanId = null) {
         // this is for setting messages notifications and chatroom updates notifications
         // check if any notification with the above details exist
-        const notifications = await objects_1.database.notification.findMany({ where: chatRoomId ? { userId: recipientId, chatRoomId, platform } : { userId: recipientId, messageId, platform, storyId } });
+        const notifications = await objects_1.database.notification.findMany({
+            where: chatRoomId ? { userId: recipientId, chatRoomId, platform } : { userId: recipientId, messageId, platform, storyId, subPlanId },
+        });
         //create if it does not exist
         if (notifications.length === 0)
             await objects_1.database.notification.create({ data: chatRoomId ? { userId: recipientId, messageId, platform, action } : { userId: recipientId, chatRoomId, platform, action, storyId } });
@@ -267,6 +269,19 @@ class ChatNotificationService {
                                     participants: null,
                                 },
                             };
+                    break;
+                case "subSuccess":
+                    dataToSend = {
+                        action: notification.action,
+                        subPlanId: notification.subPlanId,
+                    };
+                    break;
+                case "subFail":
+                    dataToSend = {
+                        action: notification.action,
+                        subPlanId: notification.subPlanId,
+                        failType: notification.data.failType,
+                    };
                     break;
                 default:
                     dataToSend = {
