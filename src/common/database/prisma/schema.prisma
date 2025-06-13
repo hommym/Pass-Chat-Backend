@@ -82,6 +82,8 @@ enum NotificationAction{
   addStory
   removeStory
   communityInvitation
+  subSuccess
+  subFail
   phoneChange
 }
 
@@ -297,6 +299,7 @@ model Notification {
   communityId       Int?
   chatRoomId        Int?
   storyId           Int?
+  subPlanId         Int?
   user              User                @relation(fields: [userId], references: [id])
   message           Message?            @relation(fields:[messageId],references:[id])   
   community         Community?          @relation(fields:[communityId],references:[id])     
