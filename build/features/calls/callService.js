@@ -58,7 +58,7 @@ class CallService {
             // console.log("Setting Call Notification");
             const recipientConnection = chatHandler_1.chatRouterWs.sockets.get(recipientDetails.connectionId);
             if (recipientConnection) {
-                if (!isGroupCall)
+                if (!isGroupCall && roomDeatials.status == "active")
                     recipientConnection.emit("callResponse", { type: "spdOffer", sdpOffer, message });
                 else
                     recipientConnection.emit("groupCallResponse", { type: "spdOffer", senderPhone: callerDetails.phone, sdpOffer });
