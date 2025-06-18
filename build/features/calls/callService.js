@@ -47,7 +47,7 @@ class CallService {
         const callerDetails = await objects_1.database.user.update({ where: { id: callerId }, data: isWebUser ? { onlineStatusWeb: "call" } : { onlineStatus: "call" } });
         if (!isGroupCall) {
             message = await objects_1.database.message.create({
-                data: { senderId: callerId, recipientId: recipientDetails.id, content: JSON.stringify({ content: callType, content_id: (0, uuid_1.v4)() }), type: "call", roomId, callType },
+                data: { senderId: callerId, recipientId: recipientDetails.id, content: JSON.stringify({ content: callType, content_id: (0, uuid_1.v4)() }), type: "call", roomId, callType, blockedFlag: roomDeatials.status == "active" }
             });
             socket.emit("response", { action: "call", callAction: "sendSDPOffer", message });
         }

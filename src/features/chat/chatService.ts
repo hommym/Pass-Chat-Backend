@@ -52,7 +52,7 @@ export class ChatService {
       else if (roomDetails.user1Id !== recipientId && roomDetails.user2Id !== recipientId) throw new WsError("The recipient is not a participant of this chatRoom");
       else if (roomDetails.user1Id !== senderId && roomDetails.user2Id !== senderId) throw new WsError("The sender is not a participant of this chatRoom");
       // save th data in database
-      savedMessage = await database.message.create({ data: { roomId, content, type: dataType, recipientId, senderId, replyTo } });
+      savedMessage = await database.message.create({ data: { roomId, content, type: dataType, recipientId, senderId, replyTo, blockedFlag: roomDetails.status == "blocked" } });
 
       // send the sender a response.
       socket.emit("response", { action: "sendMessage", data: savedMessage });
@@ -144,7 +144,6 @@ export class ChatService {
     const { phone, roomId } = data;
     const userInfo = await database.user.findUnique({ where: { phone } });
 
-    
     const { status } = (await database.chatRoom.findUnique({ where: { id: roomId } }))!;
 
     if (!userInfo) {
@@ -290,9 +289,15 @@ export class ChatService {
       });
       const messages = await database.message.findMany({
         where: {
-          roomId: chatRoomId,
-          reportFlag: false,
-          id: { notIn: clearChatsId },
+          OR: [
+            {
+              roomId: chatRoomId,
+              reportFlag: false,
+              id: { notIn: clearChatsId },
+              senderId: clientId,
+            },
+            { roomId: chatRoomId, reportFlag: false, id: { notIn: clearChatsId }, senderId: { not: clientId }, blockedFlag: false },
+          ],
         },
         orderBy: { createdAt: "desc" },
       });
@@ -304,9 +309,13 @@ export class ChatService {
 
       const messages = await database.message.findMany({
         where: {
-          createdAt: { gte: fromZonedTime(startOfDayInUserTimeZone, timeZone), lt: fromZonedTime(endOfDayInUserTimeZone, timeZone) },
-          roomId: chatRoomId,
-          reportFlag: false,
+          OR: [
+            {
+              createdAt: { gte: fromZonedTime(startOfDayInUserTimeZone, timeZone), lt: fromZonedTime(endOfDayInUserTimeZone, timeZone) },
+              roomId: chatRoomId,
+              reportFlag: false,
+            },
+          ],
         },
         orderBy: { createdAt: "desc" },
       });

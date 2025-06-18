@@ -46,7 +46,7 @@ export class CallService {
 
     if (!isGroupCall) {
       message = await database.message.create({
-        data: { senderId: callerId, recipientId: recipientDetails.id, content: JSON.stringify({ content: callType, content_id: v4() }), type: "call", roomId, callType },
+        data: { senderId: callerId, recipientId: recipientDetails.id, content: JSON.stringify({ content: callType, content_id: v4() }), type: "call", roomId, callType ,blockedFlag:roomDeatials.status=="blocked"}
       });
 
       socket.emit("response", { action: "call", callAction: "sendSDPOffer", message });
