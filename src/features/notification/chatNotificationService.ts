@@ -348,6 +348,7 @@ export class ChatNotificationService {
     await new ConcurrentTaskExec(
       contacts.map(async (contact) => {
         const userDetails = (await database.user.findUnique({ where: { phone: contact.phone } }))!;
+        const {status}= (await database.chatRoom.findUnique({where:{id:contact.roomId!}}))!
         let userConnection: Socket | undefined;
         const connectionIds = [userDetails.connectionId!, userDetails.webConnectionId!];
         const platformStatuses = [userDetails.onlineStatus, userDetails.onlineStatusWeb];
@@ -355,7 +356,7 @@ export class ChatNotificationService {
         for (let i = 0; i < connectionIds.length; i++) {
           if (platformStatuses[i] !== "offline") {
             userConnection = chatRouterWs.sockets.get(connectionIds[i]);
-            if (userConnection) {
+            if (userConnection && status=="active") {
               //send  data notifying the contacts who are online that this user is online or offline(nb: adding lastSeen for offline)
               userConnection.emit("response", { action: "checkStatus", roomId: contact.roomId, userStatus: isUserOnline ? "online" : "offline", lastSeen: !isUserOnline ? updatedAt : null });
             }

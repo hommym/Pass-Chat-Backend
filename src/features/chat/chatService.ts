@@ -144,6 +144,9 @@ export class ChatService {
     const { phone, roomId } = data;
     const userInfo = await database.user.findUnique({ where: { phone } });
 
+    
+    const { status } = (await database.chatRoom.findUnique({ where: { id: roomId } }))!;
+
     if (!userInfo) {
       throw new WsError("No Account with this id exist");
     }
@@ -152,9 +155,9 @@ export class ChatService {
     const isUserOnlineW = onlineStatusWeb !== "offline"; // fro web
     socket.emit("response", {
       action: "checkStatus",
-      userStatus: onlineStatus !== "offline" ? onlineStatus : onlineStatusWeb !== "offline" ? onlineStatusWeb : "offline",
+      userStatus: isUserOnlineM && status == "active" ? onlineStatus : isUserOnlineW && status == "active" ? onlineStatusWeb : "offline",
       roomId,
-      lastSeen: isUserOnlineM || isUserOnlineW ? null : updatedAt,
+      lastSeen: isUserOnlineM || isUserOnlineW || status == "blocked" ? null : updatedAt,
     });
   }
 
