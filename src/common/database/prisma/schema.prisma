@@ -261,6 +261,7 @@ model Message {
   recieved       Boolean                  @default(false) 
   deleteFlag     MessageDeleteFlag?      
   reportFlag     Boolean                  @default(false)
+  blockedFlag    Boolean                  @default(false)
   views          Int                      @default(0)   // this should only be used in community kinds of chats
   comments       Json?                    // array of strings
   reactions      Json?                    // array of strings
