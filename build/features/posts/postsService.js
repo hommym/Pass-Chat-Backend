@@ -23,7 +23,13 @@ class PostsService {
         //save the post
         const story = await objects_1.database.story.create({ data: { content, ownerId, exclude, type: postType }, omit: { exclude: true, ownerId: true } });
         // get users contact
-        const contacts = (await objects_1.database.userContact.findMany({ where: { ownerId, phone: { notIn: exclude } }, select: { phone: true } })).map((item) => item.phone);
+        const contacts = [];
+        (await objects_1.database.userContact.findMany({ where: { ownerId, phone: { notIn: exclude } }, select: { phone: true, room: true } })).forEach((item) => {
+            if (item.room) {
+                if (item.room.status === "active")
+                    contacts.push(item.phone);
+            }
+        });
         //alert all contacts of user about the story exluding contacts which was set in the body
         objects_1.appEvents.emit("story-update", { action: "add", contacts, story, ownerPhone: ownerDetails.phone });
         //schedule the removal task
@@ -40,7 +46,13 @@ class PostsService {
             const story = await objects_1.database.story.delete({ where: { id: storyId, ownerId }, omit: { ownerId: true } });
             const ownerDetails = await objects_1.database.user.findUnique({ where: { id: ownerId }, select: { phone: true } });
             const exludedContact = story.exclude ? story.exclude : [];
-            const contacts = (await objects_1.database.userContact.findMany({ where: { ownerId, phone: { notIn: exludedContact } }, select: { phone: true } })).map((item) => item.phone);
+            const contacts = [];
+            (await objects_1.database.userContact.findMany({ where: { ownerId, phone: { notIn: exludedContact } }, select: { phone: true, room: true } })).forEach((item) => {
+                if (item.room) {
+                    if (item.room.status === "active")
+                        contacts.push(item.phone);
+                }
+            });
             const wasJobCancelled = objects_1.jobManager.removeJob(storyId);
             if (wasJobCancelled) {
                 const { exclude } = story, storyWithoutExclude = __rest(story, ["exclude"]);
@@ -56,7 +68,14 @@ class PostsService {
         // this method gets all stories of a user and his contact
         let { phone } = (await objects_1.database.user.findUnique({ where: { id: socket.authUserId } }));
         const accountsToRetrieveStoriesFrom = [socket.authUserId];
-        const listOfPhones = (await objects_1.database.userContact.findMany({ where: { ownerId: socket.authUserId }, select: { phone: true, user: true } })).map((contact) => contact.phone);
+        // const listOfPhones = (await database.userContact.findMany({ where: { ownerId: socket.authUserId }, select: { phone: true, user: true } })).map((contact) => contact.phone);
+        const listOfPhones = [];
+        (await objects_1.database.userContact.findMany({ where: { ownerId: socket.authUserId }, select: { phone: true, room: true, user: true } })).forEach((item) => {
+            if (item.room) {
+                if (item.room.status === "active")
+                    listOfPhones.push(item.phone);
+            }
+        });
         (await objects_1.database.user.findMany({ where: { phone: { in: listOfPhones } }, select: { id: true } })).forEach((user) => accountsToRetrieveStoriesFrom.push(user.id));
         const storiesAvialable = await objects_1.database.story.findMany({ where: { ownerId: { in: accountsToRetrieveStoriesFrom } }, omit: { ownerId: true }, include: { owner: { select: { phone: true } } } });
         const storiesToSend = [];

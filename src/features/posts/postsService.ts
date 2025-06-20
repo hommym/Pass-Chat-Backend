@@ -14,7 +14,12 @@ export class PostsService {
     const story = await database.story.create({ data: { content, ownerId, exclude, type: postType }, omit: { exclude: true, ownerId: true } });
 
     // get users contact
-    const contacts = (await database.userContact.findMany({ where: { ownerId, phone: { notIn: exclude } }, select: { phone: true } })).map((item) => item.phone);
+    const contacts: string[] = [];
+    (await database.userContact.findMany({ where: { ownerId, phone: { notIn: exclude } }, select: { phone: true, room: true } })).forEach((item) => {
+      if (item.room) {
+        if (item.room.status === "active") contacts.push(item.phone);
+      }
+    });
 
     //alert all contacts of user about the story exluding contacts which was set in the body
     appEvents.emit("story-update", { action: "add", contacts, story, ownerPhone: ownerDetails!.phone! });
@@ -35,8 +40,13 @@ export class PostsService {
     try {
       const story = await database.story.delete({ where: { id: storyId, ownerId }, omit: { ownerId: true } });
       const ownerDetails = await database.user.findUnique({ where: { id: ownerId }, select: { phone: true } });
-      const exludedContact=story.exclude?story.exclude:[];
-      const contacts = (await database.userContact.findMany({ where: { ownerId, phone: { notIn:exludedContact as string[] } }, select: { phone: true } })).map((item) => item.phone);
+      const exludedContact = story.exclude ? story.exclude : [];
+      const contacts: string[] = [];
+      (await database.userContact.findMany({ where: { ownerId, phone: { notIn: exludedContact as string[] } }, select: { phone: true, room: true } })).forEach((item) => {
+        if (item.room) {
+          if (item.room.status === "active") contacts.push(item.phone);
+        }
+      });
       const wasJobCancelled = jobManager.removeJob(storyId);
 
       if (wasJobCancelled) {
@@ -44,7 +54,7 @@ export class PostsService {
         appEvents.emit("story-update", { action: "remove", contacts, story: storyWithoutExclude, ownerPhone: ownerDetails!.phone! });
       }
     } catch (error) {
-      console.log(error)
+      console.log(error);
       throw new AppError("Story not found or you are not the owner", 404);
     }
   }
@@ -53,7 +63,17 @@ export class PostsService {
     // this method gets all stories of a user and his contact
     let { phone } = (await database.user.findUnique({ where: { id: socket.authUserId } }))!;
     const accountsToRetrieveStoriesFrom = [socket.authUserId];
-    const listOfPhones = (await database.userContact.findMany({ where: { ownerId: socket.authUserId }, select: { phone: true, user: true } })).map((contact) => contact.phone);
+    
+    // const listOfPhones = (await database.userContact.findMany({ where: { ownerId: socket.authUserId }, select: { phone: true, user: true } })).map((contact) => contact.phone);
+
+
+    const listOfPhones: string[] = [];
+    (await database.userContact.findMany({ where: { ownerId: socket.authUserId}, select: { phone: true, room: true, user: true } })).forEach((item) => {
+      if (item.room) {
+        if (item.room.status === "active") listOfPhones.push(item.phone);
+      }
+    });
+
 
     (await database.user.findMany({ where: { phone: { in: listOfPhones } }, select: { id: true } })).forEach((user) => accountsToRetrieveStoriesFrom.push(user.id));
 
