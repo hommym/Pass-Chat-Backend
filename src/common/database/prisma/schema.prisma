@@ -321,7 +321,7 @@ model UserContact {
    status         ContactStatus       @default(active)
    roomId         Int?
    user           User                @relation(fields: [ownerId], references: [id])  
-   room           ChatRoom?               @relation(fields: [roomId], references: [id]) 
+   room           ChatRoom?           @relation(fields: [roomId], references: [id]) 
 
     @@unique([ownerId,phone])
     @@map("user_contacts")
