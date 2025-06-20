@@ -112,7 +112,7 @@ export class ChatNotificationService {
     if (chatType === "private") {
       await bodyValidatorWs(PrivateChatNotificationDto, data);
       const { messageAction, messageId, recipientId, reaction } = data as PrivateChatNotificationDto;
-      const message = await database.message.findUnique({ where: { id: messageId } });
+      const message = await database.message.findUnique({ where: { id: messageId }, include: { room: true } });
       if (!message) throw new WsError("No message with this id exist");
       else if (messageAction === "read") {
         await database.message.update({ where: { id: messageId }, data: { read: true } });
@@ -138,16 +138,32 @@ export class ChatNotificationService {
           recipientConnection = chatRouterWs.sockets.get(connectionIds[i]!);
           if (recipientConnection) {
             //sending updated message directly if user is online
-            const message = await database.message.findUnique({ where: { id: messageId } });
-            recipientConnection.emit("response", { action: "recieveMessage", data: message });
+
+            if (((i == 0 || i === 1) && message.room.status === "active") || i === 2 || i === 3) {
+              const uMessage = await database.message.findUnique({ where: { id: messageId } });
+              recipientConnection.emit("response", { action: "recieveMessage", data: uMessage });
+            }
             continue;
           }
         }
 
-        if (recipientInfo.webLoggedIn && (i === 1 || i === 3)) {
+        if ((recipientInfo.webLoggedIn || setterInfo.webLoggedIn) && (i === 1 || i === 3)) {
           // application sync mechanism
-          await this.saveNotification(messageId, i < 2 ? recipientId : socket.authUserId, "browser");
-        } else if (i === 0 || i === 2) await this.saveNotification(messageId, i < 2 ? recipientId : socket.authUserId);
+
+          if (i === 1 && message.room.status === "active") {
+            await this.saveNotification(messageId, recipientId, "browser");
+            continue;
+          }
+
+          await this.saveNotification(messageId, socket.authUserId, "browser");
+        } else if (i === 0 || i === 2) {
+          if (i === 0 && message.room.status === "active") {
+            await this.saveNotification(messageId, recipientId);
+            continue;
+          }
+
+          await this.saveNotification(messageId, socket.authUserId);
+        }
       }
     } else {
       // group or channel
@@ -348,7 +364,7 @@ export class ChatNotificationService {
     await new ConcurrentTaskExec(
       contacts.map(async (contact) => {
         const userDetails = (await database.user.findUnique({ where: { phone: contact.phone } }))!;
-        const {status}= (await database.chatRoom.findUnique({where:{id:contact.roomId!}}))!
+        const { status } = (await database.chatRoom.findUnique({ where: { id: contact.roomId! } }))!;
         let userConnection: Socket | undefined;
         const connectionIds = [userDetails.connectionId!, userDetails.webConnectionId!];
         const platformStatuses = [userDetails.onlineStatus, userDetails.onlineStatusWeb];
@@ -356,7 +372,7 @@ export class ChatNotificationService {
         for (let i = 0; i < connectionIds.length; i++) {
           if (platformStatuses[i] !== "offline") {
             userConnection = chatRouterWs.sockets.get(connectionIds[i]);
-            if (userConnection && status=="active") {
+            if (userConnection && status == "active") {
               //send  data notifying the contacts who are online that this user is online or offline(nb: adding lastSeen for offline)
               userConnection.emit("response", { action: "checkStatus", roomId: contact.roomId, userStatus: isUserOnline ? "online" : "offline", lastSeen: !isUserOnline ? updatedAt : null });
             }

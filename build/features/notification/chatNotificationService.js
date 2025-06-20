@@ -101,7 +101,7 @@ class ChatNotificationService {
         if (chatType === "private") {
             await (0, bodyValidator_1.bodyValidatorWs)(privateChatNotficationDto_1.PrivateChatNotificationDto, data);
             const { messageAction, messageId, recipientId, reaction } = data;
-            const message = await objects_1.database.message.findUnique({ where: { id: messageId } });
+            const message = await objects_1.database.message.findUnique({ where: { id: messageId }, include: { room: true } });
             if (!message)
                 throw new errorHandler_1.WsError("No message with this id exist");
             else if (messageAction === "read") {
@@ -128,17 +128,28 @@ class ChatNotificationService {
                     recipientConnection = chatHandler_1.chatRouterWs.sockets.get(connectionIds[i]);
                     if (recipientConnection) {
                         //sending updated message directly if user is online
-                        const message = await objects_1.database.message.findUnique({ where: { id: messageId } });
-                        recipientConnection.emit("response", { action: "recieveMessage", data: message });
+                        if (((i == 0 || i === 1) && message.room.status === "active") || i === 2 || i === 3) {
+                            const uMessage = await objects_1.database.message.findUnique({ where: { id: messageId } });
+                            recipientConnection.emit("response", { action: "recieveMessage", data: uMessage });
+                        }
                         continue;
                     }
                 }
-                if (recipientInfo.webLoggedIn && (i === 1 || i === 3)) {
+                if ((recipientInfo.webLoggedIn || setterInfo.webLoggedIn) && (i === 1 || i === 3)) {
                     // application sync mechanism
-                    await this.saveNotification(messageId, i < 2 ? recipientId : socket.authUserId, "browser");
+                    if (i === 1 && message.room.status === "active") {
+                        await this.saveNotification(messageId, recipientId, "browser");
+                        continue;
+                    }
+                    await this.saveNotification(messageId, socket.authUserId, "browser");
                 }
-                else if (i === 0 || i === 2)
-                    await this.saveNotification(messageId, i < 2 ? recipientId : socket.authUserId);
+                else if (i === 0 || i === 2) {
+                    if (i === 0 && message.room.status === "active") {
+                        await this.saveNotification(messageId, recipientId);
+                        continue;
+                    }
+                    await this.saveNotification(messageId, socket.authUserId);
+                }
             }
         }
         else {
