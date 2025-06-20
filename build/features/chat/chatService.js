@@ -315,7 +315,7 @@ class ChatService {
             throw new errorHandler_1.AppError("Only messages of type text or poll can be edited", 422);
         await objects_1.database.message.update({ where: { id: messageId }, data: { content: newMessage } });
         const roomDetails = message.room;
-        if (roomDetails.type === "private" && roomDetails.status === "active") {
+        if (roomDetails.type === "private") {
             const recipientId = message.recipientId;
             const recipientAccount = (await objects_1.database.user.findUnique({ where: { id: recipientId } }));
             const updaterAccount = (await objects_1.database.user.findUnique({ where: { id: userId } }));
@@ -331,7 +331,7 @@ class ChatService {
                         continue;
                     }
                 }
-                if (recipientAccount.webLoggedIn && (i === 1 || i === 3)) {
+                if (recipientAccount.webLoggedIn && (i === 1 || i === 3) && roomDetails.status === "active") {
                     // application sync mechanism
                     await objects_1.chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "browser");
                 }
@@ -355,7 +355,7 @@ class ChatService {
             throw new errorHandler_1.AppError("You cannot delete messages you did not send", 402);
         await objects_1.database.message.update({ where: { id: messageId }, data: { deleteFlag: deleteFor } });
         const roomDetails = message.room;
-        if (roomDetails.type === "private" && roomDetails.status === "active") {
+        if (roomDetails.type === "private") {
             const recipientId = message.recipientId;
             const recipientAccount = (await objects_1.database.user.findUnique({ where: { id: recipientId } }));
             const updaterAccount = (await objects_1.database.user.findUnique({ where: { id: userId } }));
@@ -371,7 +371,7 @@ class ChatService {
                         continue;
                     }
                 }
-                if (recipientAccount.webLoggedIn && (i === 1 || i === 3)) {
+                if (recipientAccount.webLoggedIn && (i === 1 || i === 3) && roomDetails.status === "active") {
                     // application sync mechanism
                     await objects_1.chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "browser");
                 }
@@ -395,7 +395,7 @@ class ChatService {
         const pinnedMessageIds = roomDetails.pinnedMessages ? roomDetails.pinnedMessages : [];
         pinnedMessageIds.push(messageId);
         await objects_1.database.chatRoom.update({ where: { id: roomDetails.id }, data: { pinnedMessages: pinnedMessageIds } });
-        if (roomDetails.type === "private" && roomDetails.status === "active") {
+        if (roomDetails.type === "private") {
             const recipientId = message.recipientId;
             const recipientAccount = (await objects_1.database.user.findUnique({ where: { id: recipientId } }));
             const updaterAccount = (await objects_1.database.user.findUnique({ where: { id: userId } }));
@@ -411,7 +411,7 @@ class ChatService {
                         continue;
                     }
                 }
-                if (recipientAccount.webLoggedIn && (i === 1 || i === 3)) {
+                if (recipientAccount.webLoggedIn && (i === 1 || i === 3) && roomDetails.status === "active") {
                     // application sync mechanism
                     await objects_1.chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "browser", "updateChatRoom", roomDetails.id);
                 }

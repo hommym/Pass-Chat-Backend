@@ -334,7 +334,7 @@ export class ChatService {
     await database.message.update({ where: { id: messageId }, data: { content: newMessage } });
     const roomDetails = message.room;
 
-    if (roomDetails.type === "private" && roomDetails.status === "active") {
+    if (roomDetails.type === "private") {
       const recipientId = message.recipientId!;
       const recipientAccount = (await database.user.findUnique({ where: { id: recipientId } }))!;
       const updaterAccount = (await database.user.findUnique({ where: { id: userId } }))!;
@@ -353,7 +353,7 @@ export class ChatService {
           }
         }
 
-        if (recipientAccount.webLoggedIn && (i === 1 || i === 3)) {
+        if (recipientAccount.webLoggedIn && (i === 1 || i === 3) && roomDetails.status==="active") {
           // application sync mechanism
           await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "browser");
         } else if (i === 0 || i === 2) await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId);
@@ -377,7 +377,7 @@ export class ChatService {
     await database.message.update({ where: { id: messageId }, data: { deleteFlag: deleteFor } });
     const roomDetails = message.room;
 
-    if (roomDetails.type === "private" && roomDetails.status === "active") {
+    if (roomDetails.type === "private") {
       const recipientId = message.recipientId!;
       const recipientAccount = (await database.user.findUnique({ where: { id: recipientId } }))!;
       const updaterAccount = (await database.user.findUnique({ where: { id: userId } }))!;
@@ -396,7 +396,7 @@ export class ChatService {
           }
         }
 
-        if (recipientAccount.webLoggedIn && (i === 1 || i === 3)) {
+        if (recipientAccount.webLoggedIn && (i === 1 || i === 3)&&roomDetails.status==="active") {
           // application sync mechanism
           await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "browser");
         } else if (i === 0 || i === 2) await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId);
@@ -419,7 +419,7 @@ export class ChatService {
     pinnedMessageIds.push(messageId);
     await database.chatRoom.update({ where: { id: roomDetails.id }, data: { pinnedMessages: pinnedMessageIds } });
 
-    if (roomDetails.type === "private" && roomDetails.status === "active") {
+    if (roomDetails.type === "private") {
       const recipientId = message.recipientId!;
       const recipientAccount = (await database.user.findUnique({ where: { id: recipientId } }))!;
       const updaterAccount = (await database.user.findUnique({ where: { id: userId } }))!;
@@ -438,7 +438,7 @@ export class ChatService {
           }
         }
 
-        if (recipientAccount.webLoggedIn && (i === 1 || i === 3)) {
+        if (recipientAccount.webLoggedIn && (i === 1 || i === 3) && roomDetails.status==="active") {
           // application sync mechanism
           await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "browser", "updateChatRoom", roomDetails.id);
         } else if (i === 0 || i === 2) await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "mobile", "updateChatRoom", roomDetails.id);
