@@ -241,6 +241,7 @@ model ChatRoom {
   messages       Message[]
   community      Community[]
   notifications  Notification[]
+  contacts       UserContact[]
 
   @@unique([user1Id,user2Id])
   @@map("chat_rooms")
@@ -320,6 +321,7 @@ model UserContact {
    status         ContactStatus       @default(active)
    roomId         Int?
    user           User                @relation(fields: [ownerId], references: [id])  
+   room           ChatRoom?               @relation(fields: [roomId], references: [id]) 
 
     @@unique([ownerId,phone])
     @@map("user_contacts")
