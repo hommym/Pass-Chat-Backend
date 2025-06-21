@@ -8,24 +8,46 @@ import { allowedDocumentMimeTypes, allowedMediaMimeTypes } from "../constants/li
 import { UploadFileDto } from "../../features/file/dtos/uploadFileDto";
 import { database, fileService } from "../constants/objects";
 import { SubScriptionBenefits } from "../../features/subscription/dto/subscriptionBenefits";
+import { getCurrentDate } from "../helpers/date";
 
 type FileUploadLimits = {
   maxFilesSizePerDay: number;
   maxFilesSizePerUpload: number;
 };
 
+const getQoutaData = async (userId: number) => {
+  const quotaData = await database.dailyUploadQuota.findUnique({ where: { userId } });
+  const cDate= getCurrentDate(); // current date in form yyyy-mm-dd
+  if (!quotaData) {
+    return await database.dailyUploadQuota.create({ data: { userId, day: cDate } });
+  }
+  else if(quotaData.day!==cDate){
+    quotaData.quotaUsed=0;
+    await database.dailyUploadQuota.update({where:{userId},data:{day:cDate,quotaUsed:0}})
+  }
+
+  return quotaData;
+};
+
+
+const checkDailyUploadLimit = async (uploadSize: number, userId: number, dailySizeLimit: number) => {
+  const uploadQuotaData = await getQoutaData(userId);
+  const quotaUsed=uploadSize+uploadQuotaData.quotaUsed
+  return quotaUsed>dailySizeLimit;
+};
+
 export const fileHandler = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
-  const { buffer, mimetype, size } = req.file!;
+  const { buffer, mimetype, size} = req.file!;
   const { mediaType, fileName, date } = req.body as UploadFileDto;
   const userSub = await database.userSubscription.findMany({ where: { userId: req.body.verifiedUserId, status: "paid" }, include: { subPlan: true } });
-
+  const sizeInGb = size / 1073741824;
   // check file size limit per upload and per day
   const fileLimitsData = userSub.length !== 0 ? (userSub[0].subPlan.benefit as FileUploadLimits) : { maxFilesSizePerDay: 20, maxFilesSizePerUpload: 2 }; // sizes in gb
 
   //checking if file size exceed the allowed limit per upload .
-  if (fileLimitsData.maxFilesSizePerUpload < size / 1073741824) throw new AppError(`File size exceeds the allowed limit of ${fileLimitsData.maxFilesSizePerUpload}GB`, 413);
-
-  
+  if (fileLimitsData.maxFilesSizePerUpload < sizeInGb) throw new AppError(`File size exceeds the allowed limit of ${fileLimitsData.maxFilesSizePerUpload}GB`, 413);
+  else if (await checkDailyUploadLimit(sizeInGb, req.body.verifiedUserId, fileLimitsData.maxFilesSizePerDay))
+    throw new AppError(`File size exceeds the allowed limit of ${fileLimitsData.maxFilesSizePerDay}GB per day`, 413);
   // check if the daily file size quota is reached(N/A)
 
   let dirPath = join(__dirname, "..", "..", "..", "/storage");
