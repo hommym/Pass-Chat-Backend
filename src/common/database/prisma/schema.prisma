@@ -499,6 +499,21 @@ model Story{
   @@map("stories")
 }
 
+
+
+
+model DailyUploadQuota{
+  userId      Int      @unique
+  day         String   // Use ISO format "yyyy-mm-dd" for date only
+  quotaUsed   Int      @default(0)
+
+
+  @@id([userId,day])
+  @@map("daily_upload_quota")  
+}
+
+
+
 model SubscriptionPlan{
    id                    Int                         @id @default(autoincrement())
    name                  String
