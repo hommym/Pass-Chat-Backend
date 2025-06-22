@@ -26,7 +26,10 @@ const getQoutaData = async (userId) => {
 const checkDailyUploadLimit = async (uploadSize, userId, dailySizeLimit) => {
     const uploadQuotaData = await getQoutaData(userId);
     const quotaUsed = uploadSize + uploadQuotaData.quotaUsed;
-    return quotaUsed > dailySizeLimit;
+    const isLimitUp = quotaUsed > dailySizeLimit;
+    if (!isLimitUp)
+        objects_1.appEvents.emit("update-daily-upload-quota", { userId, updatedSize: quotaUsed });
+    return isLimitUp;
 };
 exports.fileHandler = (0, express_async_handler_1.default)(async (req, res, next) => {
     const { buffer, mimetype, size } = req.file;

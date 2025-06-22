@@ -6,7 +6,7 @@ import { checkPathExists } from "../helpers/path";
 import { mkdir } from "fs/promises";
 import { allowedDocumentMimeTypes, allowedMediaMimeTypes } from "../constants/list";
 import { UploadFileDto } from "../../features/file/dtos/uploadFileDto";
-import { database, fileService } from "../constants/objects";
+import { appEvents, database, fileService } from "../constants/objects";
 import { SubScriptionBenefits } from "../../features/subscription/dto/subscriptionBenefits";
 import { getCurrentDate } from "../helpers/date";
 
@@ -17,27 +17,27 @@ type FileUploadLimits = {
 
 const getQoutaData = async (userId: number) => {
   const quotaData = await database.dailyUploadQuota.findUnique({ where: { userId } });
-  const cDate= getCurrentDate(); // current date in form yyyy-mm-dd
+  const cDate = getCurrentDate(); // current date in form yyyy-mm-dd
   if (!quotaData) {
     return await database.dailyUploadQuota.create({ data: { userId, day: cDate } });
-  }
-  else if(quotaData.day!==cDate){
-    quotaData.quotaUsed=0;
-    await database.dailyUploadQuota.update({where:{userId},data:{day:cDate,quotaUsed:0}})
+  } else if (quotaData.day !== cDate) {
+    quotaData.quotaUsed = 0;
+    await database.dailyUploadQuota.update({ where: { userId }, data: { day: cDate, quotaUsed: 0 } });
   }
 
   return quotaData;
 };
 
-
 const checkDailyUploadLimit = async (uploadSize: number, userId: number, dailySizeLimit: number) => {
   const uploadQuotaData = await getQoutaData(userId);
-  const quotaUsed=uploadSize+uploadQuotaData.quotaUsed
-  return quotaUsed>dailySizeLimit;
+  const quotaUsed = uploadSize + uploadQuotaData.quotaUsed;
+  const isLimitUp = quotaUsed > dailySizeLimit;
+  if (!isLimitUp) appEvents.emit("update-daily-upload-quota", { userId, updatedSize: quotaUsed });
+  return isLimitUp;
 };
 
 export const fileHandler = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
-  const { buffer, mimetype, size} = req.file!;
+  const { buffer, mimetype, size } = req.file!;
   const { mediaType, fileName, date } = req.body as UploadFileDto;
   const userSub = await database.userSubscription.findMany({ where: { userId: req.body.verifiedUserId, status: "paid" }, include: { subPlan: true } });
   const sizeInGb = size / 1073741824;
