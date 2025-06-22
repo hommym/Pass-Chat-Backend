@@ -26,10 +26,20 @@ class CommunityService {
             return await objects_1.database.community.findUnique({ where: { id: communityId, ownerId }, include: { members: { select: { userId: true } } } });
         return await objects_1.database.community.findUnique({ where: { type_ownerId_name: { name, type, ownerId } }, include: { members: { select: { userId: true } } } });
     }
+    async checkCommunityLimit(userId) {
+        const { communitiesOwned, userSubscriptions } = (await objects_1.database.user.findUnique({
+            where: { id: userId },
+            select: { userSubscriptions: { where: { status: "paid" }, select: { subPlan: true } }, communitiesOwned: true },
+        }));
+        const communityLimit = userSubscriptions.length !== 0 ? userSubscriptions[0].subPlan.benefit.maxOwnedCommunities : 10;
+        return communitiesOwned.length > communityLimit;
+    }
     async createCommunity(type, communityDto, ownerId) {
         const { name, description, visibility, profile } = communityDto;
         let permissions;
         let chatRoom;
+        if (await this.checkCommunityLimit(ownerId))
+            throw new errorHandler_1.AppError(`You have exceeded the number of ${type} you can create`, 413);
         const community = await this.checkCommunity(type, name, ownerId);
         if (!community || (community === null || community === void 0 ? void 0 : community.deleteFlag)) {
             chatRoom = await objects_1.database.chatRoom.create({ data: { type, name } });
