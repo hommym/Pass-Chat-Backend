@@ -16,24 +16,29 @@ class AppEvents {
     createListener(eventName, method) {
         this.event.on(eventName, method);
     }
-    setUpAllListners() {
+    setUpAllListners(isFile = false) {
         // all eventListners are setup here
         console.log("Setting Up event listeners...");
-        this.createListener("registration-email", sendRegisterationEmail_1.sendRegistrationEmail);
-        this.createListener("login-otp-email", sendLoginEmail_1.sendLogInEmail);
-        this.createListener("update-community-sub-count", objects_1.communityService.updateCommunitySubCount);
-        this.createListener("set-community-members-notifications", objects_1.chatNotificationService.saveCommunityNotifications);
-        this.createListener("add-to-daily-users", objects_1.dashboardService.addToDailyUsers);
-        this.createListener("add-to-active-communities", objects_1.dashboardService.addToActiveCommunities);
-        this.createListener("update-contacts-roomIds", objects_1.contactsService.updateContactsRommId);
-        this.createListener("community-verification-email", sendCommunityVerificationEmail_1.sendCommunityVerificationEmail);
-        this.createListener("community-call-notifier", objects_1.chatNotificationService.notifyOnlineMembersOfCall);
-        this.createListener("alert-contacts-user-online-status", objects_1.chatNotificationService.alertContactsOfUserOnlineStatus);
-        this.createListener("cleared-private-chat-alert", objects_1.chatNotificationService.notifyUsersOfClearedPrivateChats.bind(objects_1.chatNotificationService));
-        this.createListener("clear-community-chat-alert", objects_1.chatNotificationService.notifyUsersOfClearedCommunityChats.bind(objects_1.chatNotificationService));
-        this.createListener("story-update", objects_1.chatNotificationService.notifyUsersOfStory.bind(objects_1.chatNotificationService));
-        this.createListener("community-invitation-alert", objects_1.chatNotificationService.notifyUsersOfCommunityInvitation);
-        this.createListener("sub-update", objects_1.subscriptionService.alertUsersOfSubStatus);
+        if (isFile) {
+            this.createListener("update-daily-upload-quota", objects_1.fileService.updateDailyUploadQuota);
+        }
+        else {
+            this.createListener("registration-email", sendRegisterationEmail_1.sendRegistrationEmail);
+            this.createListener("login-otp-email", sendLoginEmail_1.sendLogInEmail);
+            this.createListener("update-community-sub-count", objects_1.communityService.updateCommunitySubCount);
+            this.createListener("set-community-members-notifications", objects_1.chatNotificationService.saveCommunityNotifications);
+            this.createListener("add-to-daily-users", objects_1.dashboardService.addToDailyUsers);
+            this.createListener("add-to-active-communities", objects_1.dashboardService.addToActiveCommunities);
+            this.createListener("update-contacts-roomIds", objects_1.contactsService.updateContactsRommId);
+            this.createListener("community-verification-email", sendCommunityVerificationEmail_1.sendCommunityVerificationEmail);
+            this.createListener("community-call-notifier", objects_1.chatNotificationService.notifyOnlineMembersOfCall);
+            this.createListener("alert-contacts-user-online-status", objects_1.chatNotificationService.alertContactsOfUserOnlineStatus);
+            this.createListener("cleared-private-chat-alert", objects_1.chatNotificationService.notifyUsersOfClearedPrivateChats.bind(objects_1.chatNotificationService));
+            this.createListener("clear-community-chat-alert", objects_1.chatNotificationService.notifyUsersOfClearedCommunityChats.bind(objects_1.chatNotificationService));
+            this.createListener("story-update", objects_1.chatNotificationService.notifyUsersOfStory.bind(objects_1.chatNotificationService));
+            this.createListener("community-invitation-alert", objects_1.chatNotificationService.notifyUsersOfCommunityInvitation);
+            this.createListener("sub-update", objects_1.subscriptionService.alertUsersOfSubStatus);
+        }
         console.log("Listeners Setup");
     }
     emit(eventName, data) {

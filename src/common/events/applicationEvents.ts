@@ -1,7 +1,7 @@
 import Event from "events";
 import { RegistrationOtpEmailI, sendRegistrationEmail } from "../../features/email/sendRegisterationEmail";
 import { LoginOtpEmailI, sendLogInEmail } from "../../features/email/sendLoginEmail";
-import { chatNotificationService, communityService, contactsService, dashboardService, subscriptionService } from "../constants/objects";
+import { chatNotificationService, communityService, contactsService, dashboardService, fileService, subscriptionService } from "../constants/objects";
 import { CommunityMember, CommunityType, NotificationAction, OS, Platform, PostType, Story } from "@prisma/client";
 import { SaveCommunityNotificationsArgs } from "../../features/community/dto/saveCommunityNotificationsArgs";
 import { CommunityVerificationEmail, sendCommunityVerificationEmail } from "../../features/email/sendCommunityVerificationEmail";
@@ -34,6 +34,7 @@ type EventName = {
   };
   "community-invitation-alert": { addMembersDto: AddMembersDto; senderPhone: string };
   "sub-update": { userId: number; subPlanId: number; status: "success" | "fail"; failType: "cardIssues" | "3Ds" | "unknown" | null };
+  "update-daily-upload-quota": { userId: number; updatedSize: number };
 };
 
 export class AppEvents {
@@ -43,24 +44,29 @@ export class AppEvents {
     this.event.on(eventName, method);
   }
 
-  setUpAllListners() {
+  setUpAllListners(isFile: boolean = false) {
     // all eventListners are setup here
     console.log("Setting Up event listeners...");
-    this.createListener("registration-email", sendRegistrationEmail);
-    this.createListener("login-otp-email", sendLogInEmail);
-    this.createListener("update-community-sub-count", communityService.updateCommunitySubCount);
-    this.createListener("set-community-members-notifications", chatNotificationService.saveCommunityNotifications);
-    this.createListener("add-to-daily-users", dashboardService.addToDailyUsers);
-    this.createListener("add-to-active-communities", dashboardService.addToActiveCommunities);
-    this.createListener("update-contacts-roomIds", contactsService.updateContactsRommId);
-    this.createListener("community-verification-email", sendCommunityVerificationEmail);
-    this.createListener("community-call-notifier", chatNotificationService.notifyOnlineMembersOfCall);
-    this.createListener("alert-contacts-user-online-status", chatNotificationService.alertContactsOfUserOnlineStatus);
-    this.createListener("cleared-private-chat-alert", chatNotificationService.notifyUsersOfClearedPrivateChats.bind(chatNotificationService));
-    this.createListener("clear-community-chat-alert", chatNotificationService.notifyUsersOfClearedCommunityChats.bind(chatNotificationService));
-    this.createListener("story-update", chatNotificationService.notifyUsersOfStory.bind(chatNotificationService));
-    this.createListener("community-invitation-alert", chatNotificationService.notifyUsersOfCommunityInvitation);
-    this.createListener("sub-update", subscriptionService.alertUsersOfSubStatus);
+
+    if (isFile) {
+      this.createListener("update-daily-upload-quota", fileService.updateDailyUploadQuota);
+    } else {
+      this.createListener("registration-email", sendRegistrationEmail);
+      this.createListener("login-otp-email", sendLogInEmail);
+      this.createListener("update-community-sub-count", communityService.updateCommunitySubCount);
+      this.createListener("set-community-members-notifications", chatNotificationService.saveCommunityNotifications);
+      this.createListener("add-to-daily-users", dashboardService.addToDailyUsers);
+      this.createListener("add-to-active-communities", dashboardService.addToActiveCommunities);
+      this.createListener("update-contacts-roomIds", contactsService.updateContactsRommId);
+      this.createListener("community-verification-email", sendCommunityVerificationEmail);
+      this.createListener("community-call-notifier", chatNotificationService.notifyOnlineMembersOfCall);
+      this.createListener("alert-contacts-user-online-status", chatNotificationService.alertContactsOfUserOnlineStatus);
+      this.createListener("cleared-private-chat-alert", chatNotificationService.notifyUsersOfClearedPrivateChats.bind(chatNotificationService));
+      this.createListener("clear-community-chat-alert", chatNotificationService.notifyUsersOfClearedCommunityChats.bind(chatNotificationService));
+      this.createListener("story-update", chatNotificationService.notifyUsersOfStory.bind(chatNotificationService));
+      this.createListener("community-invitation-alert", chatNotificationService.notifyUsersOfCommunityInvitation);
+      this.createListener("sub-update", subscriptionService.alertUsersOfSubStatus);
+    }
     console.log("Listeners Setup");
   }
 

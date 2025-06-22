@@ -52,7 +52,22 @@ export class FileService {
     return database.file.findUnique({ where: { ownerId_parentId_name_type: { name: itemName, ownerId, parentId: directoryId, type } } });
   }
 
+  async checkFolderLimit(userId: number) {
+    // this methods checks folder limits by returning true if the limit is up
+
+    const subPlan = await database.userSubscription.findMany({ where: { userId, status: "paid" }, include: { subPlan: true } });
+    const folderLimit = subPlan.length === 0 ? (subPlan[0].subPlan.benefit as any).maxFoldersCount : 5;
+
+    const totalFolderCount = await database.file.findMany({ where: { ownerId: userId, isRoot: false } });
+
+    return totalFolderCount.length > folderLimit;
+  }
+
   async saveFolderOrFile(createItemDto: CreateFolderDto | SaveFileInFolderDto, ownerId: number, type: "file" | "directory", urlToFile: string | null) {
+    // checking user folder count limit
+
+    if (type === "directory") if (await this.checkFolderLimit(ownerId)) throw new AppError(`Folder number exceeds the allowed limit`, 413);
+
     const { parentFolderId, name } = createItemDto;
     // setting parent folder to root folder if parentFolderId is not provided
     let parentFolder: File | null = await this.checkRootOrCreate(ownerId);
@@ -134,4 +149,9 @@ export class FileService {
         });
     });
   }
+
+  async updateDailyUploadQuota (args: { userId: number; updatedSize: number }) {
+    const { userId, updatedSize } = args;
+    await database.dailyUploadQuota.update({ where: { userId }, data: { quotaUsed: updatedSize } });
+  };
 }

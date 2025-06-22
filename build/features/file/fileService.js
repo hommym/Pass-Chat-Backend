@@ -43,7 +43,18 @@ class FileService {
     async checkFileOrFolderInDirectory(itemName, directoryId, ownerId, type) {
         return objects_1.database.file.findUnique({ where: { ownerId_parentId_name_type: { name: itemName, ownerId, parentId: directoryId, type } } });
     }
+    async checkFolderLimit(userId) {
+        // this methods checks folder limits by returning true if the limit is up
+        const subPlan = await objects_1.database.userSubscription.findMany({ where: { userId, status: "paid" }, include: { subPlan: true } });
+        const folderLimit = subPlan.length === 0 ? subPlan[0].subPlan.benefit.maxFoldersCount : 5;
+        const totalFolderCount = await objects_1.database.file.findMany({ where: { ownerId: userId, isRoot: false } });
+        return totalFolderCount.length > folderLimit;
+    }
     async saveFolderOrFile(createItemDto, ownerId, type, urlToFile) {
+        // checking user folder count limit
+        if (type === "directory")
+            if (await this.checkFolderLimit(ownerId))
+                throw new errorHandler_1.AppError(`Folder number exceeds the allowed limit`, 413);
         const { parentFolderId, name } = createItemDto;
         // setting parent folder to root folder if parentFolderId is not provided
         let parentFolder = await this.checkRootOrCreate(ownerId);
@@ -118,5 +129,10 @@ class FileService {
             });
         });
     }
+    async updateDailyUploadQuota(args) {
+        const { userId, updatedSize } = args;
+        await objects_1.database.dailyUploadQuota.update({ where: { userId }, data: { quotaUsed: updatedSize } });
+    }
+    ;
 }
 exports.FileService = FileService;
