@@ -109,6 +109,8 @@ class FileService {
         }
         else if ((await this.checkFileOrFolderInDirectory(item.name, parentFolderId, ownerId, item.type)) && item.parentId !== parentFolderId)
             throw new errorHandler_1.AppError(`A ${item.type === "norm" ? "file" : "directory"} with this name:${item.name} already exist in this location`, 409);
+        else if (item.isRoot)
+            throw new errorHandler_1.AppError("Move Failed,cannot move root directory", 402);
         await objects_1.database.file.update({ where: { id: itemId }, data: { parentId: parentFolderId } });
         return { mesage: "Move Successful" };
     }
@@ -133,6 +135,5 @@ class FileService {
         const { userId, updatedSize } = args;
         await objects_1.database.dailyUploadQuota.update({ where: { userId }, data: { quotaUsed: updatedSize } });
     }
-    ;
 }
 exports.FileService = FileService;

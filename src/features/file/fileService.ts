@@ -116,6 +116,7 @@ export class FileService {
     }
 
     const item = await this.checkFolderOrFile(itemId);
+
     const parentFolder = await this.checkFolderOrFile(parentFolderId);
 
     if (!item || !parentFolder) {
@@ -126,6 +127,7 @@ export class FileService {
       throw new AppError("Move Failed , you can only move items that belongs to you", 402);
     } else if ((await this.checkFileOrFolderInDirectory(item.name, parentFolderId, ownerId, item.type)) && item.parentId !== parentFolderId)
       throw new AppError(`A ${item.type === "norm" ? "file" : "directory"} with this name:${item.name} already exist in this location`, 409);
+    else if (item.isRoot) throw new AppError("Move Failed,cannot move root directory", 402);
 
     await database.file.update({ where: { id: itemId }, data: { parentId: parentFolderId } });
     return { mesage: "Move Successful" };
@@ -150,8 +152,8 @@ export class FileService {
     });
   }
 
-  async updateDailyUploadQuota (args: { userId: number; updatedSize: number }) {
+  async updateDailyUploadQuota(args: { userId: number; updatedSize: number }) {
     const { userId, updatedSize } = args;
     await database.dailyUploadQuota.update({ where: { userId }, data: { quotaUsed: updatedSize } });
-  };
+  }
 }
