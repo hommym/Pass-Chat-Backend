@@ -31,7 +31,7 @@ const renameFileOrFolderDto_1 = require("../dtos/renameFileOrFolderDto");
 const moveFileOrFolderDto_1 = require("../dtos/moveFileOrFolderDto");
 const deleteFilesOrFoldersDto_1 = require("../dtos/deleteFilesOrFoldersDto");
 exports.fileRouter = (0, express_1.Router)();
-exports.fileRouter.post("/upload", (0, multer_1.getFile)("file"), verifyJwt_1.verifyJwt, (0, bodyValidator_1.bodyValidator)(uploadFileDto_1.UploadFileDto), fileHandler_1.fileHandler, (0, express_async_handler_1.default)(async (req, res) => {
+exports.fileRouter.post("/upload", (0, multer_1.getFile)("file"), (0, bodyValidator_1.bodyValidator)(uploadFileDto_1.UploadFileDto), verifyJwt_1.verifyJwt, fileHandler_1.fileHandler, (0, express_async_handler_1.default)(async (req, res) => {
     const { date, mediaType, fileName } = req.body;
     res
         .status(201)

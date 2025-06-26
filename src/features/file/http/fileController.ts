@@ -20,8 +20,8 @@ export const fileRouter = Router();
 fileRouter.post(
   "/upload",
   getFile("file"),
-  verifyJwt,
   bodyValidator(UploadFileDto),
+  verifyJwt,
   fileHandler,
   asyncHandler(async (req: Request, res: Response) => {
     const { date, mediaType, fileName } = req.body as UploadFileDto;
