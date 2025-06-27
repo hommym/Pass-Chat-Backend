@@ -124,6 +124,7 @@ export class ChatService {
       // for commnunity chat
       if (!communityId) throw new WsError(`No value passed for communityId`);
       else if (communityId !== roomDetails.community[0].id) throw new WsError(`roomId used does not belong to this ${roomType}`);
+      else if ((socket as SocketV1).authUserId !== senderId) throw new WsError("SenderId used does not belong to this Account");
 
       if (!(await communityService.isMember(communityId, senderId))) throw new WsError("Sender is not a member");
       appEvents.emit("add-to-active-communities", { communityId, userId: senderId, type: roomType });
@@ -353,7 +354,7 @@ export class ChatService {
           }
         }
 
-        if (recipientAccount.webLoggedIn && (i === 1 || i === 3) && roomDetails.status==="active") {
+        if (recipientAccount.webLoggedIn && (i === 1 || i === 3) && roomDetails.status === "active") {
           // application sync mechanism
           await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "browser");
         } else if (i === 0 || i === 2) await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId);
@@ -396,7 +397,7 @@ export class ChatService {
           }
         }
 
-        if (recipientAccount.webLoggedIn && (i === 1 || i === 3)&&roomDetails.status==="active") {
+        if (recipientAccount.webLoggedIn && (i === 1 || i === 3) && roomDetails.status === "active") {
           // application sync mechanism
           await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "browser");
         } else if (i === 0 || i === 2) await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId);
@@ -438,7 +439,7 @@ export class ChatService {
           }
         }
 
-        if (recipientAccount.webLoggedIn && (i === 1 || i === 3) && roomDetails.status==="active") {
+        if (recipientAccount.webLoggedIn && (i === 1 || i === 3) && roomDetails.status === "active") {
           // application sync mechanism
           await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "browser", "updateChatRoom", roomDetails.id);
         } else if (i === 0 || i === 2) await chatNotificationService.saveNotification(messageId, i < 2 ? recipientId : userId, "mobile", "updateChatRoom", roomDetails.id);

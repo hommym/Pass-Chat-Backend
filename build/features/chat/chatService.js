@@ -121,6 +121,8 @@ class ChatService {
                 throw new errorHandler_1.WsError(`No value passed for communityId`);
             else if (communityId !== roomDetails.community[0].id)
                 throw new errorHandler_1.WsError(`roomId used does not belong to this ${roomType}`);
+            else if (socket.authUserId !== senderId)
+                throw new errorHandler_1.WsError("SenderId used does not belong to this Account");
             if (!(await objects_1.communityService.isMember(communityId, senderId)))
                 throw new errorHandler_1.WsError("Sender is not a member");
             objects_1.appEvents.emit("add-to-active-communities", { communityId, userId: senderId, type: roomType });
