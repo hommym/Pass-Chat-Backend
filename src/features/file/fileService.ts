@@ -54,9 +54,8 @@ export class FileService {
 
   async checkFolderLimit(userId: number) {
     // this methods checks folder limits by returning true if the limit is up
-
     const subPlan = await database.userSubscription.findMany({ where: { userId, status: "paid" }, include: { subPlan: true } });
-    const folderLimit = subPlan.length === 0 ? (subPlan[0].subPlan.benefit as any).maxFoldersCount : 5;
+    const folderLimit = subPlan.length !== 0 ? (subPlan[0].subPlan.benefit as any).maxFoldersCount : 5;
 
     const totalFolderCount = await database.file.findMany({ where: { ownerId: userId, isRoot: false } });
 
