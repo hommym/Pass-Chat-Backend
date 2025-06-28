@@ -397,7 +397,7 @@ class ChatService {
             const communityId = roomDetails.community[0].id;
             const allMembers = roomDetails.community[0].members;
             const membersIds = allMembers.map((member) => member.userId);
-            objects_1.appEvents.emit("set-community-members-notifications", { action: "updateChatRoom", communityId, membersIds, platform: "mobile", messageId, chatRoomId: roomDetails.id });
+            objects_1.appEvents.emit("set-community-members-notifications", { action: "updateMessage", communityId, membersIds, platform: "mobile", messageId, chatRoomId: roomDetails.id });
         }
         return { message: "Message Pinned Sucessfully" };
     }
