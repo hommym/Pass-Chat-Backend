@@ -235,8 +235,7 @@ model ChatRoom {
   name           String?          // must have a value if type is group or channel
   user1          User?            @relation("User1",fields: [user1Id], references: [id]) 
   user2          User?            @relation("User2",fields: [user2Id], references: [id]) 
-  status         ContactStatus?   // this only avialable for private chatRooms
-  pinnedMessages Json?            // a list message ids    
+  status         ContactStatus?   // this only avialable for private chatRooms   
   createdAt      DateTime         @default(now())
   messages       Message[]
   community      Community[]
@@ -263,6 +262,7 @@ model Message {
   deleteFlag     MessageDeleteFlag?      
   reportFlag     Boolean                  @default(false)
   blockedFlag    Boolean                  @default(false)
+  pinned         Boolean                  @default(false)
   views          Int                      @default(0)   // this should only be used in community kinds of chats
   comments       Json?                    // array of strings
   reactions      Json?                    // array of strings
