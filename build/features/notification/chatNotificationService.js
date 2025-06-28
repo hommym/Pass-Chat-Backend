@@ -201,7 +201,7 @@ class ChatNotificationService {
                     },
                     omit: { ownerId: true },
                 },
-                chatRoom: { select: { id: true, type: true, createdAt: true, user1: { select: { id: true, phone: true } }, user2: { select: { id: true, phone: true } }, pinnedMessages: true } },
+                chatRoom: { select: { id: true, type: true, createdAt: true, user1: { select: { id: true, phone: true } }, user2: { select: { id: true, phone: true } } } },
             },
         });
         for (let notification of notifications) {
@@ -264,7 +264,6 @@ class ChatNotificationService {
                                     roomId: roomDetails.id,
                                     roomType: roomDetails.type,
                                     createdAt: roomDetails.createdAt,
-                                    pinnedMessages: roomDetails.pinnedMessages,
                                     communityId: null,
                                     participants: [roomDetails.user1, roomDetails.user2],
                                 },
@@ -275,7 +274,6 @@ class ChatNotificationService {
                                     roomId: roomDetails.id,
                                     roomType: roomDetails.type,
                                     createdAt: roomDetails.createdAt,
-                                    pinnedMessages: roomDetails.pinnedMessages,
                                     communityId: notification.communityId,
                                     participants: null,
                                 },
