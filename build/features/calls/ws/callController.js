@@ -20,6 +20,9 @@ const callController = async (socket, request) => {
         case "startPrivateGroupCall":
             await objects_1.callService.startPrivateGroupCall(socket, details);
             break;
+        case "addUsersToPrivateGroupCall":
+            await objects_1.callService.inviteUsersToPrivateGroupCall(socket, details);
+            break;
         case "endCall":
             await objects_1.callService.endCall(socket, details);
             break;

@@ -13,6 +13,8 @@ import { Message, User } from "@prisma/client";
 import { JoinOrLeaveGroupCallDto } from "./dto/joinOrLeaveGroupCallDto";
 import { PrivateGroupCallDto } from "./dto/privateGroupCallDto";
 import { ConcurrentTaskExec } from "../../common/helpers/classes/concurrentTaskExec";
+import { PrivateGroupCallInvitationDto } from "./dto/privateGroupCallInvitationDto";
+import { Socket } from "socket.io";
 
 export class CallService {
   async isUserAlreadyInACall(userId: number, details: User | null = null) {
@@ -46,7 +48,15 @@ export class CallService {
 
     if (!isGroupCall) {
       message = await database.message.create({
-        data: { senderId: callerId, recipientId: recipientDetails.id, content: JSON.stringify({ content: callType, content_id: v4() }), type: "call", roomId, callType ,blockedFlag:roomDeatials.status=="blocked"}
+        data: {
+          senderId: callerId,
+          recipientId: recipientDetails.id,
+          content: JSON.stringify({ content: callType, content_id: v4() }),
+          type: "call",
+          roomId,
+          callType,
+          blockedFlag: roomDeatials.status == "blocked",
+        },
       });
 
       socket.emit("response", { action: "call", callAction: "sendSDPOffer", message });
@@ -204,16 +214,12 @@ export class CallService {
 
   async startPrivateGroupCall(socket: SocketV1, privateGroupCall: PrivateGroupCallDto) {
     await bodyValidatorWs(PrivateGroupCallDto, privateGroupCall);
-    const { existingUserPhone, newUserPhone } = privateGroupCall;
+    const { existingUserPhone } = privateGroupCall;
     const groupCallerId = socket.authUserId; // the id of the user who started the group call
 
     const existingUser = await database.user.findUnique({ where: { phone: existingUserPhone, type: "user" } });
 
     if (!existingUser) throw new WsError("PrivateGroupCall Failed , existingUserPhone is not as associated with any account");
-
-    const newUser = await database.user.findUnique({ where: { phone: newUserPhone, type: "user" } });
-
-    if (!newUser) throw new WsError("PrivateGroupCall Failed , existingUserPhone is not as associated with any account");
 
     const groupCaller = await database.user.findUnique({ where: { id: groupCallerId } });
 
@@ -237,24 +243,48 @@ export class CallService {
       include: { participants: { include: { participant: { select: { profile: true, phone: true, fullName: true } } } } },
     });
 
-    const participantsAccount = [groupCaller!, existingUser, newUser];
-    // sending callRoom details to call participants and a GroupCall Request to new user
-    for (let account of participantsAccount) {
-      const { id, onlineStatus, onlineStatusWeb, connectionId, webConnectionId } = account;
-      if (id === groupCallerId) {
-        socket.emit("groupCallResponse", { type: "startedGroupCall", callRooom: updatedCallRoomDetails });
-        continue;
-      }
+    // sending callRoom details to private call participants
+    socket.emit("groupCallResponse", { type: "startedPrivateGroupCall", callRooom: updatedCallRoomDetails });
 
-      const userConnection =
-        id === existingUser.id
-          ? chatRouterWs.sockets.get(onlineStatus === "call" ? connectionId! : webConnectionId!)
-          : chatRouterWs.sockets.get(onlineStatus === "online" ? connectionId! : onlineStatusWeb === "online" ? webConnectionId! : "N/A");
+    const userConnection = chatRouterWs.sockets.get(existingUser.onlineStatus === "call" ? existingUser.connectionId! : existingUser.webConnectionId!);
 
-      if (userConnection) {
-        userConnection.emit("groupCallResponse", { type: id === existingUser.id ? "startedGroupCall" : "groupCallRequest", callRooom: updatedCallRoomDetails, from: groupCaller!.phone });
-      }
+    if (userConnection) {
+      userConnection.emit("groupCallResponse", { type: "startedPrivateGroupCall", callRoom: updatedCallRoomDetails });
     }
+  }
+
+  async inviteUsersToPrivateGroupCall(socket: SocketV1, privateGroupInvitation: PrivateGroupCallInvitationDto) {
+    await bodyValidatorWs(PrivateGroupCallInvitationDto, privateGroupInvitation);
+    const { usersToAdd, callRoomId } = privateGroupInvitation;
+    const invitorId = socket.authUserId;
+    const invitor = await database.user.findUnique({ where: { id: invitorId } });
+    const users = await database.user.findMany({ where: { phone: { in: usersToAdd } } });
+    const callRoom = await database.callRoom.findUnique({
+      where: { id: callRoomId },
+      include: { participants: { include: { participant: { select: { profile: true, phone: true, fullName: true } } } } },
+    });
+
+    if (!callRoom) throw new WsError("No CallRoom with the id provided exist");
+
+    await new ConcurrentTaskExec(
+      users.map(async (user) => {
+        const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId } = user;
+
+        let userConnection: Socket | undefined;
+
+        if (onlineStatus !== "offline" && onlineStatus !== "call") {
+          userConnection = chatRouterWs.sockets.get(connectionId!);
+          if (userConnection) userConnection.emit("groupCallResponse", { type: "privateGroupCallRequest", callRoomId, from: invitor!.phone });
+        }
+
+        if (onlineStatusWeb !== "offline" && onlineStatusWeb !== "call") {
+          userConnection = chatRouterWs.sockets.get(webConnectionId!);
+          if (userConnection) userConnection.emit("groupCallResponse", { type: "privateGroupCallRequest", callRoomId, from: invitor!.phone });
+        }
+      })
+    ).executeTasks();
+
+    socket.emit("groupCallResponse", { type: "addUsersToPrivateGroupCall" });
   }
 
   async joinOrLeaveGroupCall(socket: SocketV1, joinOrLeaveGroupCallDto: JoinOrLeaveGroupCallDto, action: "join" | "leave" = "join") {

@@ -6,6 +6,7 @@ import { CallWsRequestDto } from "../dto/callWsRequestDto";
 import { CancelCallDto } from "../dto/cancelCallDto";
 import { JoinOrLeaveGroupCallDto } from "../dto/joinOrLeaveGroupCallDto";
 import { PrivateGroupCallDto } from "../dto/privateGroupCallDto";
+import { PrivateGroupCallInvitationDto } from "../dto/privateGroupCallInvitationDto";
 import { PublicGroupCallDto } from "../dto/publicGroupCallDto";
 import { SendIceDetailsDto } from "../dto/sendIceDetailsDto";
 import { SendSdpAnswerDto } from "../dto/sendSdpAnwerDto";
@@ -28,7 +29,11 @@ export const callController = async (socket: SocketV1, request: CallWsRequestDto
       await callService.startPublicGroupCall(details as PublicGroupCallDto, socket);
       break;
     case "startPrivateGroupCall":
-      await callService.startPrivateGroupCall( socket,details as PrivateGroupCallDto);
+      await callService.startPrivateGroupCall(socket, details as PrivateGroupCallDto);
+      break;
+
+    case "addUsersToPrivateGroupCall":
+      await callService.inviteUsersToPrivateGroupCall(socket, details as PrivateGroupCallInvitationDto);
       break;
     case "endCall":
       await callService.endCall(socket, details as CancelCallDto);

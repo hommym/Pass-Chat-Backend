@@ -17,7 +17,7 @@ class CallWsRequestDto {
 exports.CallWsRequestDto = CallWsRequestDto;
 __decorate([
     (0, class_transformer_1.Expose)(),
-    (0, class_validator_1.IsIn)(["sendSDPOffer", "sendSDPAnswer", "sendICEDetails", "startPublicGroupCall", "joinGroupCall", "leaveGroupCall", "endCall", "startPrivateGroupCall"]),
+    (0, class_validator_1.IsIn)(["sendSDPOffer", "sendSDPAnswer", "sendICEDetails", "startPublicGroupCall", "joinGroupCall", "leaveGroupCall", "endCall", "startPrivateGroupCall", "addUsersToPrivateGroupCall"]),
     __metadata("design:type", String)
 ], CallWsRequestDto.prototype, "callAction", void 0);
 __decorate([
