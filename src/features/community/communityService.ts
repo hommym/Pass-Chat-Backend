@@ -16,14 +16,33 @@ export class CommunityService {
     return await database.community.findUnique({ where: { type_ownerId_name: { name, type, ownerId } }, include: { members: { select: { userId: true } } } });
   }
 
-  private async checkCommunityLimit(userId: number) {
+  private async checkCommunityLimit(ownerId: number) {
+    //retuns true if limit is up
     const { communitiesOwned, userSubscriptions } = (await database.user.findUnique({
-      where: { id: userId },
+      where: { id: ownerId },
       select: { userSubscriptions: { where: { status: "paid" }, select: { subPlan: true } }, communitiesOwned: true },
     }))!;
 
     const communityLimit = userSubscriptions.length !== 0 ? (userSubscriptions[0].subPlan.benefit as any).maxOwnedCommunities : 10;
     return communitiesOwned.length > communityLimit;
+  }
+
+  private async checkMemberLimit(ownerId: number, subCount: number, type: "group" | "channel") {
+    //retuns true if limit is up
+    const { userSubscriptions } = (await database.user.findUnique({
+      where: { id: ownerId },
+      select: { userSubscriptions: { where: { status: "paid" }, select: { subPlan: true } } },
+    }))!;
+
+    let membersLimit;
+
+    if (type == "group") {
+      membersLimit = userSubscriptions.length !== 0 ? (userSubscriptions[0].subPlan.benefit as any).maxMembersPerGroup : 1000;
+    } else {
+      membersLimit = userSubscriptions.length !== 0 ? (userSubscriptions[0].subPlan.benefit as any).maxMembersPerChannel : 10000;
+    }
+
+    return subCount > membersLimit;
   }
 
   async createCommunity(type: "channel" | "group", communityDto: CreateCommunityDto, ownerId: number) {
@@ -127,10 +146,11 @@ export class CommunityService {
         members: { select: { role: true, userDetails: { select: { id: true, phone: true, bio: true, fullName: true, username: true, profile: true } } } },
         callRoom: { include: { participants: { include: { participant: { select: { profile: true, phone: true, username: true } } } } } },
       },
-      omit: { ownerId: true },
     });
 
     if (!communityDetails) throw new AppError(`No group or channel with this id exist`, 404);
+    else if (await this.checkMemberLimit(communityDetails.ownerId, communityDetails.subscriberCount, communityDetails.type))
+      throw new AppError(`Cannot join ${communityDetails.type} member limit reached.`, 403);
     const { id } = communityDetails;
 
     if (await this.isMember(id, userId)) throw new AppError("User is already a member", 409);
