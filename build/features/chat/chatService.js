@@ -387,19 +387,19 @@ class ChatService {
             objects_1.appEvents.emit("set-community-members-notifications", { action: "deleteMessage", communityId, membersIds, platform: "mobile", messageId, chatRoomId: null });
         }
     }
-    async pinMessage(messageId, userId) {
+    async pinMessage(messageId, userId, type) {
         const message = await objects_1.database.message.findUnique({ where: { id: messageId }, include: { room: { include: { community: { include: { members: true } } } } } });
         if (!message)
             throw new errorHandler_1.AppError("No Message With this Id Exist", 404);
         const roomDetails = message.room;
-        await objects_1.database.message.update({ where: { id: messageId }, data: { pinned: true } });
+        await objects_1.database.message.update({ where: { id: messageId }, data: { pinned: type === "pin" } });
         if (roomDetails.type !== "private") {
             const communityId = roomDetails.community[0].id;
             const allMembers = roomDetails.community[0].members;
             const membersIds = allMembers.map((member) => member.userId);
             objects_1.appEvents.emit("set-community-members-notifications", { action: "updateMessage", communityId, membersIds, platform: "mobile", messageId, chatRoomId: roomDetails.id });
         }
-        return { message: "Message Pinned Sucessfully" };
+        return { message: type === "pin" ? "Message Pinned Sucessfully" : "Message Unpinned Sucessfully" };
     }
     async clearAllChats(clearChatDto, userId) {
         const { chatRoomId, forAll } = clearChatDto;

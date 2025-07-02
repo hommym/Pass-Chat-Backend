@@ -49,11 +49,13 @@ exports.chatRouter.delete("/message", (0, bodyValidator_1.bodyValidator)(deleteM
     await objects_1.chatService.deleteMessage(+messageId, verifiedUserId, deleteFlag, webUser);
     res.status(204).end();
 }));
-exports.chatRouter.patch("/pin/message/:messageId", verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
-    const { messageId } = req.params;
+exports.chatRouter.patch("/:pinType/message/:messageId", verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
+    const { messageId, pinType } = req.params;
     const { verifiedUserId } = req.body;
+    if (!["pin", "unpin"].includes(pinType))
+        throw new errorHandler_1.AppError("Url parameter pinType must be of the values pin or unpin", 400);
     try {
-        res.status(200).json(await objects_1.chatService.pinMessage(+messageId, verifiedUserId));
+        res.status(200).json(await objects_1.chatService.pinMessage(+messageId, verifiedUserId, pinType));
     }
     catch (error) {
         if (error instanceof errorHandler_1.AppError)

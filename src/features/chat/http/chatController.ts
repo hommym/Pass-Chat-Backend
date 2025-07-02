@@ -58,13 +58,16 @@ chatRouter.delete(
 );
 
 chatRouter.patch(
-  "/pin/message/:messageId",
+  "/:pinType/message/:messageId",
   verifyJwt,
   asyncHandler(async (req: Request, res: Response) => {
-    const { messageId } = req.params;
+    const { messageId, pinType } = req.params;
     const { verifiedUserId } = req.body;
+
+    if (!["pin", "unpin"].includes(pinType)) throw new AppError("Url parameter pinType must be of the values pin or unpin", 400);
+
     try {
-      res.status(200).json(await chatService.pinMessage(+messageId, verifiedUserId));
+      res.status(200).json(await chatService.pinMessage(+messageId, verifiedUserId, pinType as "pin" | "unpin"));
     } catch (error) {
       if (error instanceof AppError) throw error;
       else throw new AppError("Url parameter messageId should be an integer", 400);
