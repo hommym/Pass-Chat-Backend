@@ -9,14 +9,20 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PrivateGroupCallDto = void 0;
+exports.PrivateGroupCallInvitationDto = void 0;
 const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
-class PrivateGroupCallDto {
+class PrivateGroupCallInvitationDto {
 }
-exports.PrivateGroupCallDto = PrivateGroupCallDto;
+exports.PrivateGroupCallInvitationDto = PrivateGroupCallInvitationDto;
 __decorate([
     (0, class_transformer_1.Expose)(),
-    (0, class_validator_1.IsPhoneNumber)(),
-    __metadata("design:type", String)
-], PrivateGroupCallDto.prototype, "existingUserPhone", void 0);
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsPhoneNumber)(undefined, { each: true }),
+    __metadata("design:type", Array)
+], PrivateGroupCallInvitationDto.prototype, "usersToAdd", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
+    (0, class_validator_1.IsInt)(),
+    __metadata("design:type", Number)
+], PrivateGroupCallInvitationDto.prototype, "callRoomId", void 0);

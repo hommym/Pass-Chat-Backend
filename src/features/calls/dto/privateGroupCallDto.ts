@@ -5,8 +5,4 @@ export class PrivateGroupCallDto {
   @Expose()
   @IsPhoneNumber()
   existingUserPhone: string;
-
-  @Expose()
-  @IsPhoneNumber()
-  newUserPhone: string;
 }
