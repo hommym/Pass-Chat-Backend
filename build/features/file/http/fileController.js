@@ -41,6 +41,7 @@ exports.fileRouter.post("/upload", (0, multer_1.getFile)("file"), (0, bodyValida
 }));
 exports.fileRouter.get("/:mediaType/:date/:fileName", (0, express_async_handler_1.default)(async (req, res) => {
     const { date, mediaType, fileName } = req.params;
+    res.setHeader("Cache-Control", "public, max-age=86400");
     res.status(200).sendFile(await objects_1.fileService.getPath({ date, mediaType, fileName }));
 }));
 exports.fileRouter.post("/save", (0, multer_1.getFile)("file"), (0, bodyValidator_1.bodyValidator)(saveFileInFolderDto_1.SaveFileInFolderDto), verifyJwt_1.verifyJwt, fileHandler_1.fileHandler, (0, express_async_handler_1.default)(async (req, res) => {
