@@ -209,6 +209,8 @@ class AuthService {
         else if (type === "admin" && oldInfo.type !== "admin")
             throw new errorHandler_1.AppError("Account been updated must be an admin account", 401);
         await objects_1.database.user.upsert({ where: { id: userId }, create: {}, update: updatedData });
+        // sending public updated info of account to contacts
+        objects_1.appEvents.emit("contact-update-alert", userId);
         return { message: "Account Updated sucessfull" };
     }
     async changePassword(updatedData, userId) {
@@ -235,7 +237,7 @@ class AuthService {
             return { userId: contact.ownerId, data: { newPhone, oldPhone }, action: "phoneChange" };
         });
         await objects_1.database.notification.createMany({ data: notificationsData });
-        return { nessage: `Phone has beeen changed sucessfully from ${oldPhone} to ${newPhone}` };
+        return { message: `Phone has beeen changed sucessfully from ${oldPhone} to ${newPhone}` };
     }
     async createLoginQrCode(socket) {
         const qrCode = await qrcode_1.default.toDataURL((0, jwt_1.jwtForWsConnectionId)(socket.id));

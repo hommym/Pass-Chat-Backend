@@ -20,7 +20,37 @@ const communityChatNotificationsDto_1 = require("./dto/communityChatNotification
 const chatHandler_1 = require("../chat/ws/chatHandler");
 const concurrentTaskExec_1 = require("../../common/helpers/classes/concurrentTaskExec");
 class ChatNotificationService {
-    async saveNotification(messageId, recipientId, platform = "mobile", action = "updateMessage", chatRoomId = null, storyId = null, subPlanId = null) {
+    constructor() {
+        this.notifyUsersOfAccountUpdate = async (userId) => {
+            // get account info and contact(get details too)
+            // send them the update
+            const { username, bio, contacts, fullName, phone, profile } = (await objects_1.database.user.findUnique({ where: { id: userId }, include: { contacts: true } }));
+            const contactsPhone = [];
+            contacts.forEach((contact) => contactsPhone.push(contact.phone));
+            await objects_1.database.userContact.updateMany({ where: { phone: phone }, data: { profile, contactName: fullName } });
+            const contactsAccounts = await objects_1.database.user.findMany({ where: { phone: { in: contactsPhone } } });
+            new concurrentTaskExec_1.ConcurrentTaskExec(contactsAccounts.map(async (account) => {
+                const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId, webLoggedIn, id } = account;
+                const connectionIds = [connectionId, webConnectionId];
+                const platformStatuses = [onlineStatus, onlineStatusWeb];
+                for (let i = 0; i < connectionIds.length; i++) {
+                    if (platformStatuses[i] !== "offline") {
+                        const userConnection = chatHandler_1.chatRouterWs.sockets.get(connectionIds[i]);
+                        if (userConnection) {
+                            userConnection.emit("response", { action: "contactUpdate", phone, contactName: fullName, profile, bio, username });
+                        }
+                        if (webLoggedIn && i === 1) {
+                            // application sync mechanism
+                            await this.saveNotification(null, id, "browser", "contactUpdate", null, null, null, { phone, contactName: fullName, profile, bio, username });
+                        }
+                        else if (i === 0)
+                            await this.saveNotification(null, id, "mobile", "contactUpdate", null, null, null, { phone, contactName: fullName, profile, bio, username });
+                    }
+                }
+            })).executeTasks();
+        };
+    }
+    async saveNotification(messageId, recipientId, platform = "mobile", action = "updateMessage", chatRoomId = null, storyId = null, subPlanId = null, data = null) {
         // this is for setting messages notifications and chatroom updates notifications
         // check if any notification with the above details exist
         const notifications = await objects_1.database.notification.findMany({
@@ -28,7 +58,7 @@ class ChatNotificationService {
         });
         //create if it does not exist
         if (notifications.length === 0)
-            await objects_1.database.notification.create({ data: chatRoomId ? { userId: recipientId, messageId, platform, action } : { userId: recipientId, chatRoomId, platform, action, storyId } });
+            await objects_1.database.notification.create({ data: chatRoomId ? { userId: recipientId, messageId, platform, action } : { userId: recipientId, chatRoomId, platform, action, storyId, data } });
         else
             await objects_1.database.notification.update({ where: { id: notifications[0].id }, data: { action } });
     }
@@ -290,6 +320,16 @@ class ChatNotificationService {
                         action: notification.action,
                         subPlanId: notification.subPlanId,
                         failType: notification.data.failType,
+                    };
+                    break;
+                case "contactUpdate":
+                    const { phone, contactName, bio, username } = notification.data;
+                    dataToSend = {
+                        action: notification.action,
+                        phone,
+                        contactName,
+                        bio,
+                        username,
                     };
                     break;
                 default:

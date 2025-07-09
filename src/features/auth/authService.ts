@@ -212,12 +212,17 @@ export class AuthService {
 
   async updateAccount(type: AccountType, updatedData: UpdateUserAccountDto | UpdateAdminAccountDto, userId: number) {
     const oldInfo = await database.user.findUnique({ where: { id: userId } });
+
     if (type === "user" && oldInfo!.type !== "user") throw new AppError("Account been updated must be an user account", 401);
     else if (type === "user" && (updatedData as UpdateUserAccountDto).email) {
       const details = await database.user.findUnique({ where: { email: (updatedData as UpdateUserAccountDto).email } });
       if (details && details.id !== userId) throw new AppError("An Account with this email exist", 404);
     } else if (type === "admin" && oldInfo!.type !== "admin") throw new AppError("Account been updated must be an admin account", 401);
+
     await database.user.upsert({ where: { id: userId }, create: {}, update: updatedData });
+    // sending public updated info of account to contacts
+    appEvents.emit("contact-update-alert", userId);
+
     return { message: "Account Updated sucessfull" };
   }
 
@@ -251,7 +256,7 @@ export class AuthService {
       return { userId: contact.ownerId, data: { newPhone, oldPhone }, action: "phoneChange" as NotificationAction };
     });
     await database.notification.createMany({ data: notificationsData });
-    return { nessage: `Phone has beeen changed sucessfully from ${oldPhone} to ${newPhone}` };
+    return { message: `Phone has beeen changed sucessfully from ${oldPhone} to ${newPhone}` };
   }
 
   async createLoginQrCode(socket: Socket) {

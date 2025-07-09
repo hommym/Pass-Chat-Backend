@@ -35,6 +35,7 @@ type EventName = {
   "community-invitation-alert": { addMembersDto: AddMembersDto; senderPhone: string };
   "sub-update": { userId: number; subPlanId: number; status: "success" | "fail"; failType: "cardIssues" | "3Ds" | "unknown" | null };
   "update-daily-upload-quota": { userId: number; updatedSize: number };
+  "contact-update-alert":number
 };
 
 export class AppEvents {
@@ -66,6 +67,7 @@ export class AppEvents {
       this.createListener("story-update", chatNotificationService.notifyUsersOfStory.bind(chatNotificationService));
       this.createListener("community-invitation-alert", chatNotificationService.notifyUsersOfCommunityInvitation);
       this.createListener("sub-update", subscriptionService.alertUsersOfSubStatus);
+      this.createListener("contact-update-alert",chatNotificationService.notifyUsersOfAccountUpdate);
     }
     console.log("Listeners Setup");
   }

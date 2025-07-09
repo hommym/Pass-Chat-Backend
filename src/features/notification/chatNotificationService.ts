@@ -20,7 +20,8 @@ export class ChatNotificationService {
     action: NotificationAction = "updateMessage",
     chatRoomId: number | null = null,
     storyId: number | null = null,
-    subPlanId: number | null = null
+    subPlanId: number | null = null,
+    data: any | null = null
   ) {
     // this is for setting messages notifications and chatroom updates notifications
 
@@ -31,7 +32,7 @@ export class ChatNotificationService {
 
     //create if it does not exist
     if (notifications.length === 0)
-      await database.notification.create({ data: chatRoomId ? { userId: recipientId, messageId, platform, action } : { userId: recipientId, chatRoomId, platform, action, storyId } });
+      await database.notification.create({ data: chatRoomId ? { userId: recipientId, messageId, platform, action } : { userId: recipientId, chatRoomId, platform, action, storyId, data } });
     else await database.notification.update({ where: { id: notifications[0].id }, data: { action } });
   }
 
@@ -211,7 +212,7 @@ export class ChatNotificationService {
           },
           omit: { ownerId: true },
         },
-        chatRoom: { select: { id: true, type: true, createdAt: true, user1: { select: { id: true, phone: true } }, user2: { select: { id: true, phone: true } }} },
+        chatRoom: { select: { id: true, type: true, createdAt: true, user1: { select: { id: true, phone: true } }, user2: { select: { id: true, phone: true } } } },
       },
     });
 
@@ -304,6 +305,16 @@ export class ChatNotificationService {
             action: notification.action,
             subPlanId: notification.subPlanId,
             failType: (notification.data as { failType: "cardIssues" | "3Ds" | "unknown" }).failType,
+          };
+          break;
+        case "contactUpdate":
+          const { phone, contactName, bio, username } = notification.data as { phone: string; contactName: string; profile: string; bio: string; username: string };
+          dataToSend = {
+            action: notification.action,
+            phone,
+            contactName,
+            bio,
+            username,
           };
           break;
         default:
@@ -500,6 +511,45 @@ export class ChatNotificationService {
             // application sync mechanism
             await database.notification.create({ data: { userId: user.id, platform: "browser", action: "communityInvitation", communityId, data: senderPhone } });
           } else if (i === 0) await database.notification.create({ data: { userId: user.id, platform: "mobile", action: "communityInvitation", communityId, data: senderPhone } });
+        }
+      })
+    ).executeTasks();
+  }
+
+   notifyUsersOfAccountUpdate= async (userId: number) =>{
+    // get account info and contact(get details too)
+
+    // send them the update
+
+    const { username, bio, contacts, fullName, phone, profile } = (await database.user.findUnique({ where: { id: userId }, include: { contacts: true } }))!;
+
+    const contactsPhone: string[] = [];
+    contacts.forEach((contact) => contactsPhone.push(contact.phone));
+
+    await database.userContact.updateMany({ where: { phone: phone! }, data: { profile, contactName: fullName } });
+
+    const contactsAccounts = await database.user.findMany({ where: { phone: { in: contactsPhone } } });
+
+    new ConcurrentTaskExec(
+      contactsAccounts.map(async (account) => {
+        const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId, webLoggedIn, id } = account;
+
+        const connectionIds = [connectionId, webConnectionId];
+
+        const platformStatuses = [onlineStatus, onlineStatusWeb];
+
+        for (let i = 0; i < connectionIds.length; i++) {
+          if (platformStatuses[i] !== "offline") {
+            const userConnection = chatRouterWs.sockets.get(connectionIds[i]!);
+            if (userConnection) {
+              userConnection.emit("response", { action: "contactUpdate", phone, contactName: fullName, profile, bio, username });
+            }
+
+            if (webLoggedIn && i === 1) {
+              // application sync mechanism
+              await this.saveNotification(null, id, "browser", "contactUpdate", null, null, null, { phone, contactName: fullName, profile, bio, username });
+            } else if (i === 0) await this.saveNotification(null, id, "mobile", "contactUpdate", null, null, null, { phone, contactName: fullName, profile, bio, username });
+          }
         }
       })
     ).executeTasks();

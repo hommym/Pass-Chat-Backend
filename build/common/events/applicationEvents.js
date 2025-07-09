@@ -38,6 +38,7 @@ class AppEvents {
             this.createListener("story-update", objects_1.chatNotificationService.notifyUsersOfStory.bind(objects_1.chatNotificationService));
             this.createListener("community-invitation-alert", objects_1.chatNotificationService.notifyUsersOfCommunityInvitation);
             this.createListener("sub-update", objects_1.subscriptionService.alertUsersOfSubStatus);
+            this.createListener("contact-update-alert", objects_1.chatNotificationService.notifyUsersOfAccountUpdate);
         }
         console.log("Listeners Setup");
     }
