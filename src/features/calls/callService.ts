@@ -9,7 +9,7 @@ import { SendSdpAnswerDto } from "./dto/sendSdpAnwerDto";
 import { SendSdpOfferDto } from "./dto/sendSdpOfferDto";
 import { CancelCallDto } from "./dto/cancelCallDto";
 import { PublicGroupCallDto } from "./dto/publicGroupCallDto";
-import { Message, User } from "@prisma/client";
+import { CallType, Message, User } from "@prisma/client";
 import { JoinOrLeaveGroupCallDto } from "./dto/joinOrLeaveGroupCallDto";
 import { PrivateGroupCallDto } from "./dto/privateGroupCallDto";
 import { ConcurrentTaskExec } from "../../common/helpers/classes/concurrentTaskExec";
@@ -183,7 +183,7 @@ export class CallService {
     const { id, callRoom, room, roomId, members } = community;
 
     // creating CallRoom
-    const callRoomDetails = await database.callRoom.create({ data: { creatorId: callerId, communityId } });
+    const callRoomDetails = await database.callRoom.create({ data: { creatorId: callerId, communityId, callType } });
 
     //Adding Caller to the CallRoom
     await database.callRoomParticipants.create({ data: { callRoomId: callRoomDetails.id, participantId: callerId } });
@@ -209,13 +209,14 @@ export class CallService {
     appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId: message.id, chatRoomId: null });
 
     // alerting online mmebers of the community that a group call has been started
-    appEvents.emit("community-call-notifier", { allMembersIds: membersIds, callerId, chatRoomId: roomId, callRoomId: callRoomDetails.id });
+    appEvents.emit("community-call-notifier", { allMembersIds: membersIds, callerId, chatRoomId: roomId, callRoomId: callRoomDetails.id,callType });
   }
 
   async startPrivateGroupCall(socket: SocketV1, privateGroupCall: PrivateGroupCallDto) {
     await bodyValidatorWs(PrivateGroupCallDto, privateGroupCall);
     const { existingUserPhone } = privateGroupCall;
     const groupCallerId = socket.authUserId; // the id of the user who started the group call
+    const callType = privateGroupCall.callType ? privateGroupCall.callType : CallType.audio;
 
     const existingUser = await database.user.findUnique({ where: { phone: existingUserPhone, type: "user" } });
 
@@ -227,7 +228,7 @@ export class CallService {
       throw new WsError("The user starting the call and the existing user should be in a call before a private group call can be started");
     }
     // create CallRoom
-    const callRoomDetails = await database.callRoom.create({ data: { creatorId: groupCallerId, type: "private" } });
+    const callRoomDetails = await database.callRoom.create({ data: { creatorId: groupCallerId, type: "private", callType } });
 
     //adding participants of the private call in the call room
     await database.callRoomParticipants.createMany({
@@ -257,8 +258,9 @@ export class CallService {
     await bodyValidatorWs(PrivateGroupCallInvitationDto, privateGroupInvitation);
     const { usersToAdd, callRoomId } = privateGroupInvitation;
     const invitorId = socket.authUserId;
-    const invitor = await database.user.findUnique({ where: { id: invitorId } });
-    const users = await database.user.findMany({ where: { phone: { in: usersToAdd } } });
+    const invitor = (await database.user.findUnique({ where: { id: invitorId } }))!;
+    const users = await database.user.findMany({ where: { phone: { in: usersToAdd } }, include: { contacts: { where: { phone: { contains: invitor.phone! } } } } });
+    const callType = privateGroupInvitation.callType ? privateGroupInvitation.callType : CallType.audio;
     const callRoom = await database.callRoom.findUnique({
       where: { id: callRoomId },
       include: { participants: { include: { participant: { select: { profile: true, phone: true, fullName: true } } } } },
@@ -268,18 +270,20 @@ export class CallService {
 
     await new ConcurrentTaskExec(
       users.map(async (user) => {
-        const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId } = user;
+        const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId, contacts } = user;
 
         let userConnection: Socket | undefined;
 
         if (onlineStatus !== "offline" && onlineStatus !== "call") {
           userConnection = chatRouterWs.sockets.get(connectionId!);
-          if (userConnection) userConnection.emit("groupCallResponse", { type: "privateGroupCallRequest", callRoomId, from: invitor!.phone });
+          if (userConnection)
+            userConnection.emit("groupCallResponse", { type: "privateGroupCallRequest", callRoomId, from: invitor!.phone, callType, chatRoomId: contacts.length !== 0 ? contacts[0].roomId : null });
         }
 
         if (onlineStatusWeb !== "offline" && onlineStatusWeb !== "call") {
           userConnection = chatRouterWs.sockets.get(webConnectionId!);
-          if (userConnection) userConnection.emit("groupCallResponse", { type: "privateGroupCallRequest", callRoomId, from: invitor!.phone });
+          if (userConnection)
+            userConnection.emit("groupCallResponse", { type: "privateGroupCallRequest", callRoomId, from: invitor!.phone, callType, chatRoomId: contacts.length !== 0 ? contacts[0].roomId : null });
         }
       })
     ).executeTasks();

@@ -1,5 +1,6 @@
+import { CallType } from "@prisma/client";
 import { Expose } from "class-transformer";
-import { IsArray, IsInt, IsPhoneNumber } from "class-validator";
+import { IsArray, IsEmpty, IsEnum, IsInt, IsOptional, IsPhoneNumber } from "class-validator";
 
 export class PrivateGroupCallInvitationDto {
   @Expose()
@@ -7,8 +8,12 @@ export class PrivateGroupCallInvitationDto {
   @IsPhoneNumber(undefined, { each: true })
   usersToAdd: string[];
 
-
   @Expose()
   @IsInt()
-  callRoomId:number;
+  callRoomId: number;
+
+  @Expose()
+  @IsOptional()
+  @IsEnum(CallType)
+  callType?: CallType;
 }

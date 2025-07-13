@@ -11,6 +11,7 @@ const sendSdpAnwerDto_1 = require("./dto/sendSdpAnwerDto");
 const sendSdpOfferDto_1 = require("./dto/sendSdpOfferDto");
 const cancelCallDto_1 = require("./dto/cancelCallDto");
 const publicGroupCallDto_1 = require("./dto/publicGroupCallDto");
+const client_1 = require("@prisma/client");
 const joinOrLeaveGroupCallDto_1 = require("./dto/joinOrLeaveGroupCallDto");
 const privateGroupCallDto_1 = require("./dto/privateGroupCallDto");
 const concurrentTaskExec_1 = require("../../common/helpers/classes/concurrentTaskExec");
@@ -180,7 +181,7 @@ class CallService {
             throw new errorHandler_1.WsError(`A Call Has Already been Started in the ${community.type}`);
         const { id, callRoom, room, roomId, members } = community;
         // creating CallRoom
-        const callRoomDetails = await objects_1.database.callRoom.create({ data: { creatorId: callerId, communityId } });
+        const callRoomDetails = await objects_1.database.callRoom.create({ data: { creatorId: callerId, communityId, callType } });
         //Adding Caller to the CallRoom
         await objects_1.database.callRoomParticipants.create({ data: { callRoomId: callRoomDetails.id, participantId: callerId } });
         const updatedCallRoomDetails = await objects_1.database.callRoom.findUnique({
@@ -198,12 +199,13 @@ class CallService {
         objects_1.appEvents.emit("set-community-members-notifications", { action: "comunityInfoUpdate", communityId, membersIds, platform: "mobile", messageId: null, chatRoomId: null });
         objects_1.appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId: message.id, chatRoomId: null });
         // alerting online mmebers of the community that a group call has been started
-        objects_1.appEvents.emit("community-call-notifier", { allMembersIds: membersIds, callerId, chatRoomId: roomId, callRoomId: callRoomDetails.id });
+        objects_1.appEvents.emit("community-call-notifier", { allMembersIds: membersIds, callerId, chatRoomId: roomId, callRoomId: callRoomDetails.id, callType });
     }
     async startPrivateGroupCall(socket, privateGroupCall) {
         await (0, bodyValidator_1.bodyValidatorWs)(privateGroupCallDto_1.PrivateGroupCallDto, privateGroupCall);
         const { existingUserPhone } = privateGroupCall;
         const groupCallerId = socket.authUserId; // the id of the user who started the group call
+        const callType = privateGroupCall.callType ? privateGroupCall.callType : client_1.CallType.audio;
         const existingUser = await objects_1.database.user.findUnique({ where: { phone: existingUserPhone, type: "user" } });
         if (!existingUser)
             throw new errorHandler_1.WsError("PrivateGroupCall Failed , existingUserPhone is not as associated with any account");
@@ -212,7 +214,7 @@ class CallService {
             throw new errorHandler_1.WsError("The user starting the call and the existing user should be in a call before a private group call can be started");
         }
         // create CallRoom
-        const callRoomDetails = await objects_1.database.callRoom.create({ data: { creatorId: groupCallerId, type: "private" } });
+        const callRoomDetails = await objects_1.database.callRoom.create({ data: { creatorId: groupCallerId, type: "private", callType } });
         //adding participants of the private call in the call room
         await objects_1.database.callRoomParticipants.createMany({
             data: [
@@ -236,8 +238,9 @@ class CallService {
         await (0, bodyValidator_1.bodyValidatorWs)(privateGroupCallInvitationDto_1.PrivateGroupCallInvitationDto, privateGroupInvitation);
         const { usersToAdd, callRoomId } = privateGroupInvitation;
         const invitorId = socket.authUserId;
-        const invitor = await objects_1.database.user.findUnique({ where: { id: invitorId } });
-        const users = await objects_1.database.user.findMany({ where: { phone: { in: usersToAdd } } });
+        const invitor = (await objects_1.database.user.findUnique({ where: { id: invitorId } }));
+        const users = await objects_1.database.user.findMany({ where: { phone: { in: usersToAdd } }, include: { contacts: { where: { phone: { contains: invitor.phone } } } } });
+        const callType = privateGroupInvitation.callType ? privateGroupInvitation.callType : client_1.CallType.audio;
         const callRoom = await objects_1.database.callRoom.findUnique({
             where: { id: callRoomId },
             include: { participants: { include: { participant: { select: { profile: true, phone: true, fullName: true } } } } },
@@ -245,17 +248,17 @@ class CallService {
         if (!callRoom)
             throw new errorHandler_1.WsError("No CallRoom with the id provided exist");
         await new concurrentTaskExec_1.ConcurrentTaskExec(users.map(async (user) => {
-            const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId } = user;
+            const { onlineStatus, onlineStatusWeb, connectionId, webConnectionId, contacts } = user;
             let userConnection;
             if (onlineStatus !== "offline" && onlineStatus !== "call") {
                 userConnection = chatHandler_1.chatRouterWs.sockets.get(connectionId);
                 if (userConnection)
-                    userConnection.emit("groupCallResponse", { type: "privateGroupCallRequest", callRoomId, from: invitor.phone });
+                    userConnection.emit("groupCallResponse", { type: "privateGroupCallRequest", callRoomId, from: invitor.phone, callType, chatRoomId: contacts.length !== 0 ? contacts[0].roomId : null });
             }
             if (onlineStatusWeb !== "offline" && onlineStatusWeb !== "call") {
                 userConnection = chatHandler_1.chatRouterWs.sockets.get(webConnectionId);
                 if (userConnection)
-                    userConnection.emit("groupCallResponse", { type: "privateGroupCallRequest", callRoomId, from: invitor.phone });
+                    userConnection.emit("groupCallResponse", { type: "privateGroupCallRequest", callRoomId, from: invitor.phone, callType, chatRoomId: contacts.length !== 0 ? contacts[0].roomId : null });
             }
         })).executeTasks();
         socket.emit("groupCallResponse", { type: "addUsersToPrivateGroupCall" });

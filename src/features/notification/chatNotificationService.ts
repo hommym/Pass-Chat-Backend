@@ -335,7 +335,7 @@ export class ChatNotificationService {
 
   async notifyOnlineMembersOfCall(args: CommunityCallNotifier) {
     // this method will send an alert to online members of a particular community that a group call for that community has started
-    const { allMembersIds, chatRoomId, callerId, callRoomId } = args;
+    const { allMembersIds, chatRoomId, callerId, callRoomId,callType } = args;
 
     const users = await database.user.findMany({ where: { id: { in: allMembersIds } } });
     await new ConcurrentTaskExec(
@@ -352,7 +352,7 @@ export class ChatNotificationService {
             }
             const userConnection = chatRouterWs.sockets.get(id!);
             if (userConnection) {
-              userConnection.emit("groupCallResponse", { type: "groupCallAlert", chatRoomId, callRoomId });
+              userConnection.emit("groupCallResponse", { type: "groupCallAlert", chatRoomId, callRoomId,callType });
             }
           }
         }
