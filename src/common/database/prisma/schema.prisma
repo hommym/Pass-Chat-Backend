@@ -444,6 +444,7 @@ model CommunityVerification {
 model CallRoom {
   id                    Int                         @id @default(autoincrement())
   type                  CallRoomType                @default(public)
+  callType              CallType                    @default(audio)
   creatorId             Int
   communityId           Int?                        // this is only set for when type is public
   creator               User                        @relation(fields:[creatorId],references:[id])
