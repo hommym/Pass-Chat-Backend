@@ -277,8 +277,11 @@ class CallService {
         //check if this callRoom exist
         if (!callRoomDetails)
             throw new errorHandler_1.WsError("No CallRoom With This Id Exist");
-        if (action === "join")
+        if (action === "join") {
+            // updating isOnCall of all participants of the call
+            await objects_1.database.callRoomParticipants.updateMany({ where: { callRoomId, isOnCall: false }, data: { isOnCall: true } });
             await objects_1.database.callRoomParticipants.create({ data: { participantId: userId, callRoomId } });
+        }
         else {
             await objects_1.database.callRoomParticipants.delete({ where: { callRoomId_participantId: { callRoomId, participantId: userId } } });
             await objects_1.database.user.update({ where: { id: userId }, data: isWebUser ? { onlineStatusWeb: "online" } : { onlineStatus: "online" } });

@@ -209,7 +209,7 @@ export class CallService {
     appEvents.emit("set-community-members-notifications", { action: "saveMessage", communityId, membersIds, platform: "mobile", messageId: message.id, chatRoomId: null });
 
     // alerting online mmebers of the community that a group call has been started
-    appEvents.emit("community-call-notifier", { allMembersIds: membersIds, callerId, chatRoomId: roomId, callRoomId: callRoomDetails.id,callType });
+    appEvents.emit("community-call-notifier", { allMembersIds: membersIds, callerId, chatRoomId: roomId, callRoomId: callRoomDetails.id, callType });
   }
 
   async startPrivateGroupCall(socket: SocketV1, privateGroupCall: PrivateGroupCallDto) {
@@ -306,8 +306,11 @@ export class CallService {
     //check if this callRoom exist
     if (!callRoomDetails) throw new WsError("No CallRoom With This Id Exist");
 
-    if (action === "join") await database.callRoomParticipants.create({ data: { participantId: userId, callRoomId } });
-    else {
+    if (action === "join") {
+      // updating isOnCall of all participants of the call
+      await database.callRoomParticipants.updateMany({ where: { callRoomId, isOnCall: false }, data: { isOnCall: true } });
+      await database.callRoomParticipants.create({ data: { participantId: userId, callRoomId } });
+    } else {
       await database.callRoomParticipants.delete({ where: { callRoomId_participantId: { callRoomId, participantId: userId } } });
       await database.user.update({ where: { id: userId }, data: isWebUser ? { onlineStatusWeb: "online" } : { onlineStatus: "online" } });
     }
