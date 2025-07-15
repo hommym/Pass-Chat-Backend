@@ -462,7 +462,8 @@ model CallRoomParticipants{
   callRoomId            Int 
   callRoom              CallRoom                    @relation(fields:[callRoomId],references:[id])   
   participantId         Int
-  participant           User                        @relation(fields:[participantId],references:[id])          
+  participant           User                        @relation(fields:[participantId],references:[id]) 
+  isOnCall              Boolean                     @default(false)
 
   @@unique([callRoomId,participantId])
   @@map("call_room_participants")
