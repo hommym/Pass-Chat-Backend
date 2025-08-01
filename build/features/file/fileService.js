@@ -27,6 +27,8 @@ class FileService {
         const optimizeFilePath = (0, path_1.join)(__dirname, "..", "..", "..", `/storage/${mediaType}s/${date}/${fileName.split(".")[0]}/optimize.${fileName.split(".")[1]}`);
         if (await (0, path_2.checkPathExists)(optimizeFilePath))
             return optimizeFilePath;
+        else if (!await (0, path_2.checkPathExists)(originalFilePath))
+            throw new errorHandler_1.AppError("No such file exist", 404);
         return originalFilePath;
     }
     async checkRootOrCreate(ownerId) {
