@@ -51,7 +51,7 @@ class FileService {
     async getPath(detail) {
         const { date, fileName, mediaType } = detail;
         const originalFilePath = (0, path_1.join)(__dirname, "..", "..", "..", `/storage/${mediaType}s/${date}/${fileName.split(".")[0]}/original.${fileName.split(".")[1]}`);
-        const optimizeFilePath = (0, path_1.join)(__dirname, "..", "..", "..", `/storage/${mediaType}s/${date}/${fileName.split(".")[0]}/optimize.${fileName.split(".")[1]}`);
+        const optimizeFilePath = (0, path_1.join)(__dirname, "..", "..", "..", `/storage/${mediaType}s/${date}/${fileName.split(".")[0]}/compressed.${fileName.split(".")[1]}`);
         if (await (0, path_2.checkPathExists)(optimizeFilePath))
             return optimizeFilePath;
         else if (!(await (0, path_2.checkPathExists)(originalFilePath)))

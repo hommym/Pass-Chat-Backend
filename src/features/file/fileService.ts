@@ -39,7 +39,7 @@ export class FileService {
     const { date, fileName, mediaType } = detail;
     const originalFilePath = join(__dirname, "..", "..", "..", `/storage/${mediaType}s/${date}/${fileName.split(".")[0]}/original.${fileName.split(".")[1]}`);
 
-    const optimizeFilePath = join(__dirname, "..", "..", "..", `/storage/${mediaType}s/${date}/${fileName.split(".")[0]}/optimize.${fileName.split(".")[1]}`);
+    const optimizeFilePath = join(__dirname, "..", "..", "..", `/storage/${mediaType}s/${date}/${fileName.split(".")[0]}/compressed.${fileName.split(".")[1]}`);
 
     if (await checkPathExists(optimizeFilePath)) return optimizeFilePath;
     else if (!(await checkPathExists(originalFilePath))) throw new AppError("No such file exist", 404);
