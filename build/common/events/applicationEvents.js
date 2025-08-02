@@ -21,6 +21,8 @@ class AppEvents {
         console.log("Setting Up event listeners...");
         if (isFile) {
             this.createListener("update-daily-upload-quota", objects_1.fileService.updateDailyUploadQuota);
+            this.createListener("save-file", objects_1.fileService.saveFile);
+            this.createListener("compress-file", objects_1.fileService.compressFile);
         }
         else {
             this.createListener("registration-email", sendRegisterationEmail_1.sendRegistrationEmail);

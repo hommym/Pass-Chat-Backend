@@ -35,7 +35,9 @@ type EventName = {
   "community-invitation-alert": { addMembersDto: AddMembersDto; senderPhone: string };
   "sub-update": { userId: number; subPlanId: number; status: "success" | "fail"; failType: "cardIssues" | "3Ds" | "unknown" | null };
   "update-daily-upload-quota": { userId: number; updatedSize: number };
-  "contact-update-alert":number
+  "contact-update-alert": number;
+  "compress-file": { originalPath: string; compressedPath: string; mediaType: "video" | "image" | "audio" };
+  "save-file": { dirPath: string; file: Buffer; extention: string; mediaType: "video" | "image" | "audio" | "doc",date:string ,thumpNailFileName:string};
 };
 
 export class AppEvents {
@@ -51,6 +53,8 @@ export class AppEvents {
 
     if (isFile) {
       this.createListener("update-daily-upload-quota", fileService.updateDailyUploadQuota);
+      this.createListener("save-file", fileService.saveFile);
+      this.createListener("compress-file", fileService.compressFile);
     } else {
       this.createListener("registration-email", sendRegistrationEmail);
       this.createListener("login-otp-email", sendLogInEmail);

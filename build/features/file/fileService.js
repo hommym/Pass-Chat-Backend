@@ -11,15 +11,42 @@ const objects_1 = require("../../common/constants/objects");
 const errorHandler_1 = require("../../common/middlewares/errorHandler");
 const fluent_ffmpeg_1 = __importDefault(require("fluent-ffmpeg"));
 class FileService {
-    async saveFile(dirPath, file, extention) {
+    constructor() {
+        this.compressFile = async (args) => {
+            const { compressedPath, mediaType, originalPath } = args;
+            console.log(`Compressing ${mediaType}...`);
+            switch (mediaType) {
+                case "video":
+                    this.compressVideo(originalPath, compressedPath);
+                    break;
+                case "image":
+                    this.compressImage(originalPath, compressedPath);
+                    break;
+                default:
+                    this.compressAudio(originalPath, compressedPath);
+                    break;
+            }
+        };
+    }
+    async saveFile(args) {
         // check if path dir exist
         //if no create dirs
         // if yes save file through events
+        const { dirPath, extention, file, mediaType, date, thumpNailFileName } = args;
         if (!(await (0, path_2.checkPathExists)(dirPath))) {
             await (0, promises_1.mkdir)(dirPath, { recursive: true });
         }
-        await (0, promises_1.writeFile)((0, path_1.join)(dirPath, `/original.${extention}`), file);
-        // Add file optimizations(N/A)
+        const originalPath = (0, path_1.join)(dirPath, `/original.${extention}`);
+        const compressedPath = (0, path_1.join)(dirPath, `/compressed.${extention}`);
+        await (0, promises_1.writeFile)(originalPath, file);
+        if (mediaType === "video") {
+            // create and save a video thumbnail
+            const thumbNailPath = (0, path_1.join)(__dirname, "..", "..", "..", `/storage/images/${date}/${thumpNailFileName}`);
+            await this.getVideoThumbNail(originalPath, thumbNailPath, "original.png");
+        }
+        //compress media files
+        if (mediaType !== "doc")
+            objects_1.appEvents.emit("compress-file", { originalPath, compressedPath, mediaType });
     }
     async getPath(detail) {
         const { date, fileName, mediaType } = detail;
@@ -27,7 +54,7 @@ class FileService {
         const optimizeFilePath = (0, path_1.join)(__dirname, "..", "..", "..", `/storage/${mediaType}s/${date}/${fileName.split(".")[0]}/optimize.${fileName.split(".")[1]}`);
         if (await (0, path_2.checkPathExists)(optimizeFilePath))
             return optimizeFilePath;
-        else if (!await (0, path_2.checkPathExists)(originalFilePath))
+        else if (!(await (0, path_2.checkPathExists)(originalFilePath)))
             throw new errorHandler_1.AppError("No such file exist", 404);
         return originalFilePath;
     }
@@ -136,6 +163,29 @@ class FileService {
     async updateDailyUploadQuota(args) {
         const { userId, updatedSize } = args;
         await objects_1.database.dailyUploadQuota.update({ where: { userId }, data: { quotaUsed: updatedSize } });
+    }
+    async compressVideo(originalPath, compressedPath) {
+        console.log("Video Sucessfully Compressed");
+    }
+    async compressAudio(originalPath, compressedPath) {
+        console.log("Audio Sucessfully Compressed");
+    }
+    async compressImage(originalPath, compressedPath) {
+        let compressionOpt;
+        if (originalPath.endsWith(".png")) {
+            compressionOpt = "-compression_level 60";
+        }
+        else if (originalPath.endsWith(".jpg") || originalPath.endsWith(".jpeg")) {
+            compressionOpt = "-q:v 5";
+        }
+        else
+            return;
+        (0, fluent_ffmpeg_1.default)(originalPath)
+            .outputOption(["-vf scale=iw*0.5:-1", "-map_metadata -1", compressionOpt])
+            .on("start", (cmd) => console.log("running compression..."))
+            .on("error", (err) => console.log("error occurred during compression:" + err))
+            .on("end", () => console.log("image Sucessfully Compressed"))
+            .save(compressedPath);
     }
 }
 exports.FileService = FileService;

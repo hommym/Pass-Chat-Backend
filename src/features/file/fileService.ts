@@ -2,7 +2,7 @@ import { join } from "path";
 import { checkPathExists } from "../../common/helpers/path";
 import { mkdir, writeFile } from "fs/promises";
 import { UploadFileDto } from "./dtos/uploadFileDto";
-import { database, randomData } from "../../common/constants/objects";
+import { appEvents, database, randomData } from "../../common/constants/objects";
 import { CreateFolderDto } from "./dtos/createFolderDto";
 import { SaveFileInFolderDto } from "./dtos/saveFileInFolderDto";
 import { RenameFileOrFolderDto } from "./dtos/renameFileOrFolderDto";
@@ -13,15 +13,26 @@ import { DeleteFileOrFolderDto } from "./dtos/deleteFilesOrFoldersDto";
 import ffmpeg from "fluent-ffmpeg";
 
 export class FileService {
-  async saveFile(dirPath: string, file: Buffer, extention: string) {
+  async saveFile(args: { dirPath: string; file: Buffer; extention: string; mediaType: "video" | "image" | "audio" | "doc"; date: string; thumpNailFileName: string }) {
     // check if path dir exist
     //if no create dirs
     // if yes save file through events
+    const { dirPath, extention, file, mediaType, date, thumpNailFileName } = args;
     if (!(await checkPathExists(dirPath))) {
       await mkdir(dirPath, { recursive: true });
     }
-    await writeFile(join(dirPath, `/original.${extention}`), file);
-    // Add file optimizations(N/A)
+    const originalPath = join(dirPath, `/original.${extention}`);
+    const compressedPath = join(dirPath, `/compressed.${extention}`);
+    await writeFile(originalPath, file);
+
+    if (mediaType === "video") {
+      // create and save a video thumbnail
+      const thumbNailPath = join(__dirname, "..", "..", "..", `/storage/images/${date}/${thumpNailFileName}`);
+      await this.getVideoThumbNail(originalPath, thumbNailPath, "original.png");
+    }
+
+    //compress media files
+    if (mediaType !== "doc") appEvents.emit("compress-file", { originalPath, compressedPath, mediaType });
   }
 
   async getPath(detail: UploadFileDto) {
@@ -31,7 +42,7 @@ export class FileService {
     const optimizeFilePath = join(__dirname, "..", "..", "..", `/storage/${mediaType}s/${date}/${fileName.split(".")[0]}/optimize.${fileName.split(".")[1]}`);
 
     if (await checkPathExists(optimizeFilePath)) return optimizeFilePath;
-    else if (!await checkPathExists(originalFilePath)) throw new AppError("No such file exist", 404);
+    else if (!(await checkPathExists(originalFilePath))) throw new AppError("No such file exist", 404);
     return originalFilePath;
   }
 
@@ -156,4 +167,45 @@ export class FileService {
     const { userId, updatedSize } = args;
     await database.dailyUploadQuota.update({ where: { userId }, data: { quotaUsed: updatedSize } });
   }
+
+  compressFile = async (args: { originalPath: string; compressedPath: string; mediaType: "video" | "image" | "audio" }) => {
+    const { compressedPath, mediaType, originalPath } = args;
+    console.log(`Compressing ${mediaType}...`);
+    switch (mediaType) {
+      case "video":
+        this.compressVideo(originalPath, compressedPath);
+        break;
+      case "image":
+        this.compressImage(originalPath, compressedPath);
+        break;
+      default:
+        this.compressAudio(originalPath, compressedPath);
+        break;
+    }
+  };
+
+  async compressVideo(originalPath: string, compressedPath: string) {
+    console.log("Video Sucessfully Compressed");
+  }
+
+  async compressAudio(originalPath: string, compressedPath: string) {
+    console.log("Audio Sucessfully Compressed");
+  }
+
+  async compressImage(originalPath: string, compressedPath: string) {
+    let compressionOpt: string;
+    if (originalPath.endsWith(".png")) {
+      compressionOpt = "-compression_level 60";
+    } else if (originalPath.endsWith(".jpg") || originalPath.endsWith(".jpeg")) {
+      compressionOpt = "-q:v 5";
+    } else return;
+
+    ffmpeg(originalPath)
+      .outputOption(["-vf scale=iw*0.5:-1", "-map_metadata -1", compressionOpt])
+      .on("start", (cmd) => console.log("running compression..."))
+      .on("error", (err) => console.log("error occurred during compression:" + err))
+      .on("end", () => console.log("image Sucessfully Compressed"))
+      .save(compressedPath);
+  }
+
 }
