@@ -194,7 +194,40 @@ class FileService {
             .save(compressedPath);
     }
     async compressAudio(originalPath, compressedPath) {
-        console.log("Audio Sucessfully Compressed");
+        let audCodec;
+        let compressionOpt;
+        let freq;
+        let bitRate;
+        if (originalPath.endsWith(".mp3")) {
+            audCodec = "libmp3lame";
+            compressionOpt = [];
+            freq = 22050;
+            bitRate = "64k";
+        }
+        else if (originalPath.endsWith(".m4a") || originalPath.endsWith(".aac")) {
+            audCodec = "aac";
+            compressionOpt = ["-movflags +faststart"];
+            freq = 22050;
+            bitRate = "64k";
+        }
+        else if (originalPath.endsWith(".ogg")) {
+            audCodec = "libvorbis";
+            compressionOpt = [];
+            freq = 22050;
+            bitRate = "64k";
+        }
+        else
+            return;
+        // ffmpeg(originalPath)
+        //   .audioCodec(audCodec)
+        //   .audioBitrate(bitRate)
+        //   .audioChannels(1)
+        //   .audioFrequency(freq)
+        //   .outputOption(compressionOpt)
+        //   .on("start", (cmd) => console.log("running compression..."))
+        //   .on("error", (err) => console.log("error occurred during compression:" + err))
+        //   .on("end", () => console.log("Audio Sucessfully Compressed"))
+        //   .save(compressedPath);
     }
     compressImage(originalPath, compressedPath) {
         let compressionOpt;
