@@ -13,7 +13,7 @@ import { DeleteFileOrFolderDto } from "./dtos/deleteFilesOrFoldersDto";
 import ffmpeg from "fluent-ffmpeg";
 
 export class FileService {
-  async saveFile(args: { dirPath: string; file: Buffer; extention: string; mediaType: "video" | "image" | "audio" | "doc"; date: string; thumpNailFileName: string }) {
+  saveFile = async (args: { dirPath: string; file: Buffer; extention: string; mediaType: "video" | "image" | "audio" | "doc"; date: string; thumpNailFileName: string }) => {
     // check if path dir exist
     //if no create dirs
     // if yes save file through events
@@ -28,12 +28,17 @@ export class FileService {
     if (mediaType === "video") {
       // create and save a video thumbnail
       const thumbNailPath = join(__dirname, "..", "..", "..", `/storage/images/${date}/${thumpNailFileName}`);
+      await mkdir(thumbNailPath, { recursive: true });
       await this.getVideoThumbNail(originalPath, thumbNailPath, "original.png");
+      const thumpOrigPath = join(thumbNailPath, `/original.png`);
+      const thumbComPath = join(thumbNailPath, `/compressed.png`);
+      appEvents.emit("compress-file", { originalPath:thumpOrigPath, compressedPath:thumbComPath, mediaType:"image" });
+
     }
 
     //compress media files
     if (mediaType !== "doc") appEvents.emit("compress-file", { originalPath, compressedPath, mediaType });
-  }
+  };
 
   async getPath(detail: UploadFileDto) {
     const { date, fileName, mediaType } = detail;
@@ -184,15 +189,35 @@ export class FileService {
     }
   };
 
-  async compressVideo(originalPath: string, compressedPath: string) {
-    console.log("Video Sucessfully Compressed");
+  compressVideo(originalPath: string, compressedPath: string) {
+    if (originalPath.endsWith(".mp4")) ffmpeg(originalPath)
+      .videoCodec("libx264")
+      .audioCodec("aac")
+      .outputOption(["-preset slow", "-crf 23", "-b:a 128k"])
+      .on("start", (cmd) => console.log("running compression..."))
+      .on("error", (err) => console.log("error occurred during compression:" + err))
+      .on("end", () => console.log("Video Sucessfully Compressed"))
+      .save(compressedPath);
+       else if (originalPath.endsWith(".webm"))
+      ffmpeg(originalPath)
+        .videoCodec("libvpx-vp9")
+        .audioCodec("libvorbis")
+        .outputOptions([
+          "-b:v 0", // Must be 0 to use CRF
+          "-crf 33", // VP9 CRF, 28–35 for web-quality
+          "-b:a 128k",
+        ])
+        .on("start", (cmd) => console.log("running compression..."))
+        .on("error", (err) => console.log("error occurred during compression:" + err))
+        .on("end", () => console.log("Video Sucessfully Compressed"))
+        .save(compressedPath);
   }
 
   async compressAudio(originalPath: string, compressedPath: string) {
     console.log("Audio Sucessfully Compressed");
   }
 
-  async compressImage(originalPath: string, compressedPath: string) {
+  compressImage(originalPath: string, compressedPath: string) {
     let compressionOpt: string;
     if (originalPath.endsWith(".png")) {
       compressionOpt = "-compression_level 60";
@@ -207,5 +232,4 @@ export class FileService {
       .on("end", () => console.log("image Sucessfully Compressed"))
       .save(compressedPath);
   }
-
 }

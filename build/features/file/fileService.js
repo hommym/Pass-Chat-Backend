@@ -12,6 +12,30 @@ const errorHandler_1 = require("../../common/middlewares/errorHandler");
 const fluent_ffmpeg_1 = __importDefault(require("fluent-ffmpeg"));
 class FileService {
     constructor() {
+        this.saveFile = async (args) => {
+            // check if path dir exist
+            //if no create dirs
+            // if yes save file through events
+            const { dirPath, extention, file, mediaType, date, thumpNailFileName } = args;
+            if (!(await (0, path_2.checkPathExists)(dirPath))) {
+                await (0, promises_1.mkdir)(dirPath, { recursive: true });
+            }
+            const originalPath = (0, path_1.join)(dirPath, `/original.${extention}`);
+            const compressedPath = (0, path_1.join)(dirPath, `/compressed.${extention}`);
+            await (0, promises_1.writeFile)(originalPath, file);
+            if (mediaType === "video") {
+                // create and save a video thumbnail
+                const thumbNailPath = (0, path_1.join)(__dirname, "..", "..", "..", `/storage/images/${date}/${thumpNailFileName}`);
+                await (0, promises_1.mkdir)(thumbNailPath, { recursive: true });
+                await this.getVideoThumbNail(originalPath, thumbNailPath, "original.png");
+                const thumpOrigPath = (0, path_1.join)(thumbNailPath, `/original.png`);
+                const thumbComPath = (0, path_1.join)(thumbNailPath, `/compressed.png`);
+                objects_1.appEvents.emit("compress-file", { originalPath: thumpOrigPath, compressedPath: thumbComPath, mediaType: "image" });
+            }
+            //compress media files
+            if (mediaType !== "doc")
+                objects_1.appEvents.emit("compress-file", { originalPath, compressedPath, mediaType });
+        };
         this.compressFile = async (args) => {
             const { compressedPath, mediaType, originalPath } = args;
             console.log(`Compressing ${mediaType}...`);
@@ -27,26 +51,6 @@ class FileService {
                     break;
             }
         };
-    }
-    async saveFile(args) {
-        // check if path dir exist
-        //if no create dirs
-        // if yes save file through events
-        const { dirPath, extention, file, mediaType, date, thumpNailFileName } = args;
-        if (!(await (0, path_2.checkPathExists)(dirPath))) {
-            await (0, promises_1.mkdir)(dirPath, { recursive: true });
-        }
-        const originalPath = (0, path_1.join)(dirPath, `/original.${extention}`);
-        const compressedPath = (0, path_1.join)(dirPath, `/compressed.${extention}`);
-        await (0, promises_1.writeFile)(originalPath, file);
-        if (mediaType === "video") {
-            // create and save a video thumbnail
-            const thumbNailPath = (0, path_1.join)(__dirname, "..", "..", "..", `/storage/images/${date}/${thumpNailFileName}`);
-            await this.getVideoThumbNail(originalPath, thumbNailPath, "original.png");
-        }
-        //compress media files
-        if (mediaType !== "doc")
-            objects_1.appEvents.emit("compress-file", { originalPath, compressedPath, mediaType });
     }
     async getPath(detail) {
         const { date, fileName, mediaType } = detail;
@@ -164,13 +168,34 @@ class FileService {
         const { userId, updatedSize } = args;
         await objects_1.database.dailyUploadQuota.update({ where: { userId }, data: { quotaUsed: updatedSize } });
     }
-    async compressVideo(originalPath, compressedPath) {
-        console.log("Video Sucessfully Compressed");
+    compressVideo(originalPath, compressedPath) {
+        if (originalPath.endsWith(".mp4"))
+            (0, fluent_ffmpeg_1.default)(originalPath)
+                .videoCodec("libx264")
+                .audioCodec("aac")
+                .outputOption(["-preset slow", "-crf 23", "-b:a 128k"])
+                .on("start", (cmd) => console.log("running compression..."))
+                .on("error", (err) => console.log("error occurred during compression:" + err))
+                .on("end", () => console.log("Video Sucessfully Compressed"))
+                .save(compressedPath);
+        else if (originalPath.endsWith(".webm"))
+            (0, fluent_ffmpeg_1.default)(originalPath)
+                .videoCodec("libvpx-vp9")
+                .audioCodec("libvorbis")
+                .outputOptions([
+                "-b:v 0", // Must be 0 to use CRF
+                "-crf 33", // VP9 CRF, 28–35 for web-quality
+                "-b:a 128k",
+            ])
+                .on("start", (cmd) => console.log("running compression..."))
+                .on("error", (err) => console.log("error occurred during compression:" + err))
+                .on("end", () => console.log("Video Sucessfully Compressed"))
+                .save(compressedPath);
     }
     async compressAudio(originalPath, compressedPath) {
         console.log("Audio Sucessfully Compressed");
     }
-    async compressImage(originalPath, compressedPath) {
+    compressImage(originalPath, compressedPath) {
         let compressionOpt;
         if (originalPath.endsWith(".png")) {
             compressionOpt = "-compression_level 60";
