@@ -32,8 +32,7 @@ export class FileService {
       await this.getVideoThumbNail(originalPath, thumbNailPath, "original.png");
       const thumpOrigPath = join(thumbNailPath, `/original.png`);
       const thumbComPath = join(thumbNailPath, `/compressed.png`);
-      appEvents.emit("compress-file", { originalPath:thumpOrigPath, compressedPath:thumbComPath, mediaType:"image" });
-
+      appEvents.emit("compress-file", { originalPath: thumpOrigPath, compressedPath: thumbComPath, mediaType: "image" });
     }
 
     //compress media files
@@ -190,27 +189,28 @@ export class FileService {
   };
 
   compressVideo(originalPath: string, compressedPath: string) {
-    if (originalPath.endsWith(".mp4")) ffmpeg(originalPath)
-      .videoCodec("libx264")
-      .audioCodec("aac")
-      .outputOption(["-preset slow", "-crf 23", "-b:a 128k"])
+    let vidCodec: string;
+    let audCodec: string;
+    let compressionOpt: string[];
+
+    if (originalPath.endsWith(".mp4")) {
+      vidCodec = "libx264";
+      audCodec = "aac";
+      compressionOpt = ["-preset slow", "-crf 23", "-b:a 128k"];
+    } else if (originalPath.endsWith(".webm")) {
+      vidCodec = "libvpx-vp9";
+      audCodec = "libvorbis";
+      compressionOpt = ["-b:v 0", "-crf 33", "-b:a 128k"];
+    } else return;
+
+    ffmpeg(originalPath)
+      .videoCodec(vidCodec)
+      .audioCodec(audCodec)
+      .outputOption(compressionOpt)
       .on("start", (cmd) => console.log("running compression..."))
       .on("error", (err) => console.log("error occurred during compression:" + err))
       .on("end", () => console.log("Video Sucessfully Compressed"))
       .save(compressedPath);
-       else if (originalPath.endsWith(".webm"))
-      ffmpeg(originalPath)
-        .videoCodec("libvpx-vp9")
-        .audioCodec("libvorbis")
-        .outputOptions([
-          "-b:v 0", // Must be 0 to use CRF
-          "-crf 33", // VP9 CRF, 28–35 for web-quality
-          "-b:a 128k",
-        ])
-        .on("start", (cmd) => console.log("running compression..."))
-        .on("error", (err) => console.log("error occurred during compression:" + err))
-        .on("end", () => console.log("Video Sucessfully Compressed"))
-        .save(compressedPath);
   }
 
   async compressAudio(originalPath: string, compressedPath: string) {

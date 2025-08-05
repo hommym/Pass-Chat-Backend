@@ -169,28 +169,29 @@ class FileService {
         await objects_1.database.dailyUploadQuota.update({ where: { userId }, data: { quotaUsed: updatedSize } });
     }
     compressVideo(originalPath, compressedPath) {
-        if (originalPath.endsWith(".mp4"))
-            (0, fluent_ffmpeg_1.default)(originalPath)
-                .videoCodec("libx264")
-                .audioCodec("aac")
-                .outputOption(["-preset slow", "-crf 23", "-b:a 128k"])
-                .on("start", (cmd) => console.log("running compression..."))
-                .on("error", (err) => console.log("error occurred during compression:" + err))
-                .on("end", () => console.log("Video Sucessfully Compressed"))
-                .save(compressedPath);
-        else if (originalPath.endsWith(".webm"))
-            (0, fluent_ffmpeg_1.default)(originalPath)
-                .videoCodec("libvpx-vp9")
-                .audioCodec("libvorbis")
-                .outputOptions([
-                "-b:v 0", // Must be 0 to use CRF
-                "-crf 33", // VP9 CRF, 28–35 for web-quality
-                "-b:a 128k",
-            ])
-                .on("start", (cmd) => console.log("running compression..."))
-                .on("error", (err) => console.log("error occurred during compression:" + err))
-                .on("end", () => console.log("Video Sucessfully Compressed"))
-                .save(compressedPath);
+        let vidCodec;
+        let audCodec;
+        let compressionOpt;
+        if (originalPath.endsWith(".mp4")) {
+            vidCodec = "libx264";
+            audCodec = "aac";
+            compressionOpt = ["-preset slow", "-crf 23", "-b:a 128k"];
+        }
+        else if (originalPath.endsWith(".webm")) {
+            vidCodec = "libvpx-vp9";
+            audCodec = "libvorbis";
+            compressionOpt = ["-b:v 0", "-crf 33", "-b:a 128k"];
+        }
+        else
+            return;
+        (0, fluent_ffmpeg_1.default)(originalPath)
+            .videoCodec(vidCodec)
+            .audioCodec(audCodec)
+            .outputOption(compressionOpt)
+            .on("start", (cmd) => console.log("running compression..."))
+            .on("error", (err) => console.log("error occurred during compression:" + err))
+            .on("end", () => console.log("Video Sucessfully Compressed"))
+            .save(compressedPath);
     }
     async compressAudio(originalPath, compressedPath) {
         console.log("Audio Sucessfully Compressed");
