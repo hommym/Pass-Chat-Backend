@@ -11,6 +11,7 @@ import { File } from "@prisma/client";
 import { AppError } from "../../common/middlewares/errorHandler";
 import { DeleteFileOrFolderDto } from "./dtos/deleteFilesOrFoldersDto";
 import ffmpeg from "fluent-ffmpeg";
+import { getFileMetaData } from "../../common/helpers/file";
 
 export class FileService {
   saveFile = async (args: { dirPath: string; file: Buffer; extention: string; mediaType: "video" | "image" | "audio" | "doc"; date: string; thumpNailFileName: string }) => {
@@ -173,17 +174,21 @@ export class FileService {
   }
 
   compressFile = async (args: { originalPath: string; compressedPath: string; mediaType: "video" | "image" | "audio" }) => {
+    
+
     const { compressedPath, mediaType, originalPath } = args;
     console.log(`Compressing ${mediaType}...`);
+    console.log("Checking if file is valid for compression..");
+    const fileSize= (await getFileMetaData(originalPath)).size
     switch (mediaType) {
       case "video":
-        this.compressVideo(originalPath, compressedPath);
+         if (fileSize >= 1048576) this.compressVideo(originalPath, compressedPath);
         break;
       case "image":
-        this.compressImage(originalPath, compressedPath);
+         if (fileSize >= 102400) this.compressImage(originalPath, compressedPath);
         break;
       default:
-        this.compressAudio(originalPath, compressedPath);
+         if ((fileSize >= 512000)) this.compressAudio(originalPath, compressedPath);
         break;
     }
   };

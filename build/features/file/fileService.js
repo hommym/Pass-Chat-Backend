@@ -10,6 +10,7 @@ const promises_1 = require("fs/promises");
 const objects_1 = require("../../common/constants/objects");
 const errorHandler_1 = require("../../common/middlewares/errorHandler");
 const fluent_ffmpeg_1 = __importDefault(require("fluent-ffmpeg"));
+const file_1 = require("../../common/helpers/file");
 class FileService {
     constructor() {
         this.saveFile = async (args) => {
@@ -39,15 +40,20 @@ class FileService {
         this.compressFile = async (args) => {
             const { compressedPath, mediaType, originalPath } = args;
             console.log(`Compressing ${mediaType}...`);
+            console.log("Checking if file is valid for compression..");
+            const fileSize = (await (0, file_1.getFileMetaData)(originalPath)).size;
             switch (mediaType) {
                 case "video":
-                    this.compressVideo(originalPath, compressedPath);
+                    if (fileSize >= 1048576)
+                        this.compressVideo(originalPath, compressedPath);
                     break;
                 case "image":
-                    this.compressImage(originalPath, compressedPath);
+                    if (fileSize >= 102400)
+                        this.compressImage(originalPath, compressedPath);
                     break;
                 default:
-                    this.compressAudio(originalPath, compressedPath);
+                    if ((fileSize >= 512000))
+                        this.compressAudio(originalPath, compressedPath);
                     break;
             }
         };
