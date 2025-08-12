@@ -1,4 +1,4 @@
-import { access, copyFile, mkdir } from "fs/promises";
+import { access, copyFile, mkdir, stat } from "fs/promises";
 import { dirname } from "path";
 
 export const copyFileToStorage = async (sourcePath: string, destinationPath: string): Promise<void> => {
@@ -18,4 +18,8 @@ export const copyFileToStorage = async (sourcePath: string, destinationPath: str
     console.error(`Error copying file:`, error);
     throw error;
   }
+};
+
+export const getFileMetaData = async (url: string) => {
+  return await stat(url);
 };

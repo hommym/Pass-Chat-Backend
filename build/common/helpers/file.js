@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.copyFileToStorage = void 0;
+exports.getFileMetaData = exports.copyFileToStorage = void 0;
 const promises_1 = require("fs/promises");
 const path_1 = require("path");
 const copyFileToStorage = async (sourcePath, destinationPath) => {
@@ -20,3 +20,7 @@ const copyFileToStorage = async (sourcePath, destinationPath) => {
     }
 };
 exports.copyFileToStorage = copyFileToStorage;
+const getFileMetaData = async (url) => {
+    return await (0, promises_1.stat)(url);
+};
+exports.getFileMetaData = getFileMetaData;
