@@ -223,28 +223,28 @@ export class FileService {
       audCodec = "libmp3lame";
       compressionOpt = [];
       freq = 22050;
-      bitRate = "64k";
+      bitRate = "16k";
     } else if (originalPath.endsWith(".m4a") || originalPath.endsWith(".aac")) {
       audCodec = "aac";
       compressionOpt = ["-movflags +faststart"];
       freq = 22050;
-      bitRate = "64k";
+      bitRate = "16k";
     } else if (originalPath.endsWith(".ogg")) {
       audCodec = "libvorbis";
       compressionOpt = [];
       freq = 22050;
-      bitRate = "64k";
+      bitRate = "16k";
     } else return;
-    // ffmpeg(originalPath)
-    //   .audioCodec(audCodec)
-    //   .audioBitrate(bitRate)
-    //   .audioChannels(1)
-    //   .audioFrequency(freq)
-    //   .outputOption(compressionOpt)
-    //   .on("start", (cmd) => console.log("running compression..."))
-    //   .on("error", (err) => console.log("error occurred during compression:" + err))
-    //   .on("end", () => console.log("Audio Sucessfully Compressed"))
-    //   .save(compressedPath);
+    ffmpeg(originalPath)
+      .audioCodec(audCodec)
+      .audioBitrate(bitRate)
+      .audioChannels(1)
+      .audioFrequency(freq)
+      .outputOption(compressionOpt)
+      .on("start", (cmd) => console.log("running compression..."))
+      .on("error", (err) => console.log("error occurred during compression:" + err))
+      .on("end", () => console.log("Audio Sucessfully Compressed"))
+      .save(compressedPath);
   }
 
   compressImage(originalPath: string, compressedPath: string) {
