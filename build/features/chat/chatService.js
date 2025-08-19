@@ -141,14 +141,14 @@ class ChatService {
         if (!userInfo) {
             throw new errorHandler_1.WsError("No Account with this id exist");
         }
-        const { onlineStatus, updatedAt, onlineStatusWeb } = userInfo;
+        const { onlineStatus, updatedAt, onlineStatusWeb, hideOnlineStatus } = userInfo;
         const isUserOnlineM = onlineStatus !== "offline"; // for mobile
         const isUserOnlineW = onlineStatusWeb !== "offline"; // fro web
         socket.emit("response", {
             action: "checkStatus",
-            userStatus: isUserOnlineM && status == "active" ? onlineStatus : isUserOnlineW && status == "active" ? onlineStatusWeb : "offline",
+            userStatus: isUserOnlineM && status == "active" && !hideOnlineStatus ? onlineStatus : isUserOnlineW && status == "active" && !hideOnlineStatus ? onlineStatusWeb : "offline",
             roomId,
-            lastSeen: isUserOnlineM || isUserOnlineW || status == "blocked" ? null : updatedAt,
+            lastSeen: isUserOnlineM || isUserOnlineW || status == "blocked" || !hideOnlineStatus ? null : updatedAt,
         });
     }
     async setUserStatus(socket, data) {

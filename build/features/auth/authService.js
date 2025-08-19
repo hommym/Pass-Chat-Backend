@@ -243,5 +243,9 @@ class AuthService {
         const qrCode = await qrcode_1.default.toDataURL((0, jwt_1.jwtForWsConnectionId)(socket.id));
         socket.emit("response", { action: "createLoginQrCode", qrCode });
     }
+    async hideOnlineStatus(userId, hide) {
+        await objects_1.database.user.update({ where: { id: userId }, data: { hideOnlineStatus: hide } });
+        return { message: hide ? "Account Updated,online status not visible to contacts" : "Account Updated,online status visible to contacts" };
+    }
 }
 exports.AuthService = AuthService;

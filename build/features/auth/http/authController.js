@@ -30,6 +30,7 @@ const changePasswordDto_1 = require("../dtos/changePasswordDto");
 const createAdminDto_1 = require("../dtos/createAdminDto");
 const errorHandler_1 = require("../../../common/middlewares/errorHandler");
 const changePhoneDto_1 = require("../dtos/changePhoneDto");
+const hideOnlineStatusDto_1 = require("../dtos/hideOnlineStatusDto");
 exports.authRouter = (0, express_1.Router)();
 // All Auth Endpoints
 exports.authRouter.post("/admin/create-account", (0, bodyValidator_1.bodyValidator)(createAdminDto_1.CreateAdminDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
@@ -86,4 +87,8 @@ exports.authRouter.patch("/admin/account", (0, bodyValidator_1.bodyValidator)(up
 exports.authRouter.patch("/admin/change-password", (0, bodyValidator_1.bodyValidator)(changePasswordDto_1.ChangePasswordDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
     const _a = req.body, { verifiedUserId } = _a, updatedData = __rest(_a, ["verifiedUserId"]);
     res.status(200).json(await objects_1.authService.changePassword(updatedData, verifiedUserId));
+}));
+exports.authRouter.patch("/user/hide-online-status", (0, bodyValidator_1.bodyValidator)(hideOnlineStatusDto_1.HideOnlineStatusDto), verifyJwt_1.verifyJwt, (0, express_async_handler_1.default)(async (req, res) => {
+    const { verifiedUserId, hide } = req.body;
+    res.status(200).json(await objects_1.authService.hideOnlineStatus(verifiedUserId, hide));
 }));

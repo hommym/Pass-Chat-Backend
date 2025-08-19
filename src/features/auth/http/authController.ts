@@ -14,6 +14,7 @@ import { ChangePasswordDto } from "../dtos/changePasswordDto";
 import { CreateAdminDto } from "../dtos/createAdminDto";
 import { AppError } from "../../../common/middlewares/errorHandler";
 import { ChangePhoneDto } from "../dtos/changePhoneDto";
+import { HideOnlineStatusDto } from "../dtos/hideOnlineStatusDto";
 
 export const authRouter = Router();
 
@@ -149,5 +150,15 @@ authRouter.patch(
   asyncHandler(async (req: Request, res: Response) => {
     const { verifiedUserId, ...updatedData } = req.body;
     res.status(200).json(await authService.changePassword(updatedData, verifiedUserId));
+  })
+);
+
+authRouter.patch(
+  "/user/hide-online-status",
+  bodyValidator(HideOnlineStatusDto),
+  verifyJwt,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { verifiedUserId, hide } = req.body;
+    res.status(200).json(await authService.hideOnlineStatus(verifiedUserId, hide));
   })
 );

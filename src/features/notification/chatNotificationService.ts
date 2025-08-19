@@ -335,7 +335,7 @@ export class ChatNotificationService {
 
   async notifyOnlineMembersOfCall(args: CommunityCallNotifier) {
     // this method will send an alert to online members of a particular community that a group call for that community has started
-    const { allMembersIds, chatRoomId, callerId, callRoomId,callType } = args;
+    const { allMembersIds, chatRoomId, callerId, callRoomId, callType } = args;
 
     const users = await database.user.findMany({ where: { id: { in: allMembersIds } } });
     await new ConcurrentTaskExec(
@@ -352,7 +352,7 @@ export class ChatNotificationService {
             }
             const userConnection = chatRouterWs.sockets.get(id!);
             if (userConnection) {
-              userConnection.emit("groupCallResponse", { type: "groupCallAlert", chatRoomId, callRoomId,callType });
+              userConnection.emit("groupCallResponse", { type: "groupCallAlert", chatRoomId, callRoomId, callType });
             }
           }
         }
@@ -365,10 +365,11 @@ export class ChatNotificationService {
 
     //get user details
     //get all contacts user chats with
-    const { contacts, updatedAt, onlineStatus, onlineStatusWeb } = (await database.user.findUnique({
+    const { contacts, updatedAt, onlineStatus, onlineStatusWeb, hideOnlineStatus } = (await database.user.findUnique({
       where: { id: userId },
       include: { contacts: { where: { roomId: { not: null }, status: { not: "blocked" } } } },
     }))!;
+    if (hideOnlineStatus) return;
     const isUserOnline = onlineStatus !== "offline" || onlineStatusWeb !== "offline";
     await new ConcurrentTaskExec(
       contacts.map(async (contact) => {
@@ -516,7 +517,7 @@ export class ChatNotificationService {
     ).executeTasks();
   }
 
-   notifyUsersOfAccountUpdate= async (userId: number) =>{
+  notifyUsersOfAccountUpdate = async (userId: number) => {
     // get account info and contact(get details too)
 
     // send them the update
@@ -553,5 +554,5 @@ export class ChatNotificationService {
         }
       })
     ).executeTasks();
-  }
+  };
 }
