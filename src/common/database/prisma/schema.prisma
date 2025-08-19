@@ -198,6 +198,7 @@ model User {
   status            AccountStatus   @default(active)
   onlineStatus      OnlineStatus    @default(offline)
   onlineStatusWeb   OnlineStatus    @default(offline) 
+  hideOnlineStatus  Boolean         @default(false)   // if true will prevent contacts from see online status or lastseen
   webConnectionId   String?         @unique
   connectionId      String?         @unique
   role              AdminRoles?
