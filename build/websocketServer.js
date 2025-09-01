@@ -5,12 +5,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 require("reflect-metadata");
 const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
 const objects_1 = require("./common/constants/objects");
 const checkDbConnection_1 = require("./common/database/checkDbConnection");
 const wsRouter_1 = require("./common/routers/wsRouter");
-const cors_1 = __importDefault(require("cors"));
-dotenv_1.default.config();
-objects_1.app.use((0, cors_1.default)({ origin: "*", methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"], credentials: true }));
 //ws routes
 (0, wsRouter_1.wsRouter)("/ws");
 const port = process.env.WSSERVER ? process.env.WSSERVER : 4000;

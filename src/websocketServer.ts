@@ -1,21 +1,9 @@
 import "reflect-metadata";
-import express from "express";
 import dotenv from "dotenv";
-import { app, appEvents, server } from "./common/constants/objects";
-import { httpRouter } from "./common/routers/httpRouter";
-import { checkDbConnection } from "./common/database/checkDbConnection";
-import { errorHandler } from "./common/middlewares/errorHandler";
-import { wsRouter } from "./common/routers/wsRouter";
-import cors from "cors";
-import { verifyJwtForWs } from "./common/middlewares/verifyJwt";
-
 dotenv.config();
-
-
-app.use(cors({ origin: "*", methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"], credentials: true }));
-
-
-
+import { app, appEvents, server } from "./common/constants/objects";
+import { checkDbConnection } from "./common/database/checkDbConnection";
+import { wsRouter } from "./common/routers/wsRouter";
 
 
 //ws routes
