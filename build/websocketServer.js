@@ -4,20 +4,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 require("reflect-metadata");
-const express_1 = __importDefault(require("express"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const objects_1 = require("./common/constants/objects");
 const checkDbConnection_1 = require("./common/database/checkDbConnection");
 const wsRouter_1 = require("./common/routers/wsRouter");
 const cors_1 = __importDefault(require("cors"));
 dotenv_1.default.config();
-// middlewares
-objects_1.app.use((req, res, next) => {
-    // Skip JSON parsing for a specific endpoint, e.g., /api/v1/raw
-    if (req.path.startsWith("/api/v1/subscription/webhooks"))
-        return next();
-    express_1.default.json({ limit: "100mb" })(req, res, next);
-});
 objects_1.app.use((0, cors_1.default)({ origin: "*", methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"], credentials: true }));
 //ws routes
 (0, wsRouter_1.wsRouter)("/ws");

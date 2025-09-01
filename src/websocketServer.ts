@@ -11,12 +11,7 @@ import { verifyJwtForWs } from "./common/middlewares/verifyJwt";
 
 dotenv.config();
 
-// middlewares
-app.use((req, res, next) => {
-  // Skip JSON parsing for a specific endpoint, e.g., /api/v1/raw
-  if (req.path.startsWith("/api/v1/subscription/webhooks")) return next();
-  express.json({ limit: "100mb" })(req, res, next);
-});
+
 app.use(cors({ origin: "*", methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"], credentials: true }));
 
 
