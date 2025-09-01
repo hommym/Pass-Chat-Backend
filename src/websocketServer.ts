@@ -19,26 +19,21 @@ app.use((req, res, next) => {
 });
 app.use(cors({ origin: "*", methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"], credentials: true }));
 
-// routes
-app.use("/api/v1", httpRouter);
 
-// error handling middlware
-app.use(errorHandler);
 
-// ws middleware
-// ws.use(verifyJwtForWs)
+
 
 //ws routes
-// wsRouter("/ws");
+wsRouter("/ws");
 
-const port = process.env.PORT ? process.env.PORT : 8000;
+const port = process.env.WSSERVER ? process.env.WSSERVER : 4000;
 
 const startServer = async () => {
   try {
     await checkDbConnection();
     appEvents.setUpAllListners();
     server.listen(port, () => {
-      console.log(`Server listening on port ${port}..`);
+      console.log(`Websocket Server listening on port ${port}..`);
     });
   } catch (error) {
     // log to loging file

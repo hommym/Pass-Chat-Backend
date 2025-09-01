@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "scripts": {
     "start": "tsc&nodemon ./build/server.js",
-    "start:file-server":"tsc&nodemon ./build/fileServer.js",
+    "start:file-server": "tsc&nodemon ./build/fileServer.js",
+    "start:websocket-server": "tsc&nodemon ./build/websocketServer.js",
     "build": "tsc",
     "db:generate": "npx prisma generate",
     "db:change": "npx prisma migrate dev --name",
