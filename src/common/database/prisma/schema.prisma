@@ -204,6 +204,8 @@ model User {
   role              AdminRoles?
   loggedIn          Boolean         @default(false)
   webLoggedIn       Boolean         @default(false)
+  platform          OS?                                 // current device user is connected with
+  timezone          String?                             // recent time zone user is connected from
   recentLoginDate   String?
   notifications     Notification[]
   contacts          UserContact[]
@@ -380,7 +382,7 @@ model DailyUser {
    id                    Int                   @id @default(autoincrement())
    userId                Int
    platform              OS
-   date                  String
+   date                  DateTime              @db.Date @default(dbgenerated("CURRENT_DATE")) 
    timezone              String               
 
    @@unique([userId,date])
