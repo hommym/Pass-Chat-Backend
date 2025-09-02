@@ -103,7 +103,7 @@ class DashboardService {
         }
     }
     async getUserGrowthTrend(year) {
-        return await objects_1.database.dailyUser.findMany({ where: { date: { gte: `${year}-01-01`, lte: `${year}-12-31` } } });
+        return await objects_1.database.dailyUser.findMany({ where: { date: { gte: new Date(`${year}-01-01`).toISOString(), lte: new Date(`${year}-12-31`).toISOString() } } });
     }
     async getAllPendingComunityVerfRequests() {
         return await objects_1.database.communityVerification.findMany({ where: { status: "pending" } });
@@ -243,7 +243,10 @@ class DashboardService {
         const totalMessagesSent = await objects_1.database.message.count();
         const totalGroupsCreated = await objects_1.database.community.count({ where: { type: "group" } });
         const totalChannelsCreated = await objects_1.database.community.count({ where: { type: "channel" } });
-        const deviceAndTimezoneStats = await objects_1.database.dailyUser.findMany({ where: { date: { gte: `${currentYear}-01-01`, lte: `${currentYear}-12-31` } }, omit: { userId: true } });
+        const deviceAndTimezoneStats = await objects_1.database.dailyUser.findMany({
+            where: { date: { gte: new Date(`${currentYear}-01-01`).toISOString(), lte: new Date(`${currentYear}-12-31`).toISOString() } },
+            omit: { userId: true },
+        });
         // code for getting top performing group
         const topPerformingGroups = await objects_1.database.activeCommunity.findMany({
             where: { date: currentDate },
