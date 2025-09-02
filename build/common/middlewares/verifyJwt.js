@@ -58,9 +58,8 @@ const verifyJwtForWs = async (socket, next) => {
                 return next(new errorHandler_1.WsError(`Account has been ${userDetails.status}`));
             else if ((userDetails.onlineStatus !== "offline" && !isWebUser) || (userDetails.onlineStatusWeb !== "offline" && isWebUser))
                 return next(new errorHandler_1.WsError("User Already Online"));
-            await objects_1.chatService.setUserOnlineStatus("online", userId, socket.id, isWebUser);
+            await objects_1.chatService.setUserOnlineStatus("online", userId, socket.id, isWebUser, platform, timezone);
             objects_1.appEvents.emit("alert-contacts-user-online-status", userId);
-            objects_1.appEvents.emit("add-to-daily-users", { userId, platform, timezone });
         }
         socket.authUserId = userId;
         socket.isWebUser = isWebUser;

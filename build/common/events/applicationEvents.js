@@ -29,7 +29,6 @@ class AppEvents {
             this.createListener("login-otp-email", sendLoginEmail_1.sendLogInEmail);
             this.createListener("update-community-sub-count", objects_1.communityService.updateCommunitySubCount);
             this.createListener("set-community-members-notifications", objects_1.chatNotificationService.saveCommunityNotifications);
-            this.createListener("add-to-daily-users", objects_1.dashboardService.addToDailyUsers);
             this.createListener("add-to-active-communities", objects_1.dashboardService.addToActiveCommunities);
             this.createListener("update-contacts-roomIds", objects_1.contactsService.updateContactsRommId);
             this.createListener("community-verification-email", sendCommunityVerificationEmail_1.sendCommunityVerificationEmail);

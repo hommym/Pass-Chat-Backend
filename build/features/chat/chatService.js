@@ -7,9 +7,9 @@ const chatHandler_1 = require("./ws/chatHandler");
 const date_fns_tz_1 = require("date-fns-tz");
 const concurrentTaskExec_1 = require("../../common/helpers/classes/concurrentTaskExec");
 class ChatService {
-    async setUserOnlineStatus(status, userId, connectionId, isWebUser = false) {
+    async setUserOnlineStatus(status, userId, connectionId, isWebUser = false, platform, timezone) {
         if (userId) {
-            await objects_1.database.user.update({ where: { id: userId }, data: isWebUser ? { onlineStatusWeb: status, webConnectionId: connectionId } : { onlineStatus: status, connectionId } });
+            await objects_1.database.user.update({ where: { id: userId }, data: isWebUser ? { onlineStatusWeb: status, webConnectionId: connectionId, timezone, platform } : { onlineStatus: status, connectionId, timezone, platform } });
             // console.log(`User with id=${userId} is ${status}`);
         }
         else {

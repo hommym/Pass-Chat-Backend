@@ -13,12 +13,6 @@ import { readdir } from "fs/promises";
 import { checkPathExists } from "../../common/helpers/path";
 
 export class DashboardService {
-  async addToDailyUsers(args: { userId: number; platform: OS; timezone: string }) {
-    const { userId, platform, timezone } = args;
-    const currentDate = getCurrentDate();
-    await database.dailyUser.upsert({ where: { userId_date: { userId, date: currentDate } }, create: { userId, date: currentDate, platform, timezone }, update: {} });
-  }
-
   async addToActiveCommunities(args: { communityId: number; userId: number; type: CommunityType }) {
     try {
       const { communityId, userId, type } = args;
@@ -108,7 +102,7 @@ export class DashboardService {
   }
 
   async getUserGrowthTrend(year: number) {
-    return await database.dailyUser.findMany({ where: { date: { startsWith: `${year}` } } });
+    return await database.dailyUser.findMany({ where: { date: { gte: `${year}-01-01`, lte: `${year}-12-31` } } });
   }
 
   async getAllPendingComunityVerfRequests() {
@@ -161,7 +155,7 @@ export class DashboardService {
       where: { type },
       skip: skip,
       take: limit,
-      select: { createdAt: true, ownerId: true, name: true, subscriberCount: true, id: true ,status:true},
+      select: { createdAt: true, ownerId: true, name: true, subscriberCount: true, id: true, status: true },
     });
 
     const totalCommunities = await database.community.count({ where: { type } });
@@ -270,7 +264,7 @@ export class DashboardService {
     const totalMessagesSent = await database.message.count();
     const totalGroupsCreated = await database.community.count({ where: { type: "group" } });
     const totalChannelsCreated = await database.community.count({ where: { type: "channel" } });
-    const deviceAndTimezoneStats = await database.dailyUser.findMany({ where: { date: { startsWith: currentYear } }, omit: { userId: true } });
+    const deviceAndTimezoneStats = await database.dailyUser.findMany({ where: { date: { gte: `${currentYear}-01-01`, lte: `${currentYear}-12-31` } }, omit: { userId: true } });
 
     // code for getting top performing group
     const topPerformingGroups = await database.activeCommunity.findMany({

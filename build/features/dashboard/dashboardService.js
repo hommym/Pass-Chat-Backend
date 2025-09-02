@@ -14,11 +14,6 @@ const asyncCmd_1 = require("../../common/helpers/classes/asyncCmd");
 const promises_1 = require("fs/promises");
 const path_2 = require("../../common/helpers/path");
 class DashboardService {
-    async addToDailyUsers(args) {
-        const { userId, platform, timezone } = args;
-        const currentDate = (0, date_1.getCurrentDate)();
-        await objects_1.database.dailyUser.upsert({ where: { userId_date: { userId, date: currentDate } }, create: { userId, date: currentDate, platform, timezone }, update: {} });
-    }
     async addToActiveCommunities(args) {
         try {
             const { communityId, userId, type } = args;
@@ -108,7 +103,7 @@ class DashboardService {
         }
     }
     async getUserGrowthTrend(year) {
-        return await objects_1.database.dailyUser.findMany({ where: { date: { startsWith: `${year}` } } });
+        return await objects_1.database.dailyUser.findMany({ where: { date: { gte: `${year}-01-01`, lte: `${year}-12-31` } } });
     }
     async getAllPendingComunityVerfRequests() {
         return await objects_1.database.communityVerification.findMany({ where: { status: "pending" } });
@@ -248,7 +243,7 @@ class DashboardService {
         const totalMessagesSent = await objects_1.database.message.count();
         const totalGroupsCreated = await objects_1.database.community.count({ where: { type: "group" } });
         const totalChannelsCreated = await objects_1.database.community.count({ where: { type: "channel" } });
-        const deviceAndTimezoneStats = await objects_1.database.dailyUser.findMany({ where: { date: { startsWith: currentYear } }, omit: { userId: true } });
+        const deviceAndTimezoneStats = await objects_1.database.dailyUser.findMany({ where: { date: { gte: `${currentYear}-01-01`, lte: `${currentYear}-12-31` } }, omit: { userId: true } });
         // code for getting top performing group
         const topPerformingGroups = await objects_1.database.activeCommunity.findMany({
             where: { date: currentDate },

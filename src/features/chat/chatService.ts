@@ -1,4 +1,4 @@
-import { ClearedChatsTracker, Message, OnlineStatus, RoomType } from "@prisma/client";
+import { ClearedChatsTracker, Message, OnlineStatus, OS, RoomType } from "@prisma/client";
 import { appEvents, chatNotificationService, communityService, database } from "../../common/constants/objects";
 import { MessageDto } from "./dto/messageDto";
 import { AppError, WsError } from "../../common/middlewares/errorHandler";
@@ -14,9 +14,9 @@ import { GetAllMessagesDto } from "./dto/getAllMesaagesDto";
 import { ClearChatDto } from "./dto/clearChatsDto";
 import { ConcurrentTaskExec } from "../../common/helpers/classes/concurrentTaskExec";
 export class ChatService {
-  async setUserOnlineStatus(status: OnlineStatus, userId: number | null, connectionId?: string | undefined, isWebUser: boolean = false) {
+  async setUserOnlineStatus(status: OnlineStatus, userId: number | null, connectionId?: string | undefined, isWebUser: boolean = false,platform?:OS,timezone?:string) {
     if (userId) {
-      await database.user.update({ where: { id: userId }, data: isWebUser ? { onlineStatusWeb: status, webConnectionId: connectionId } : { onlineStatus: status, connectionId } });
+      await database.user.update({ where: { id: userId }, data: isWebUser ? { onlineStatusWeb: status, webConnectionId: connectionId,timezone,platform} : { onlineStatus: status, connectionId,timezone,platform} });
       // console.log(`User with id=${userId} is ${status}`);
     } else {
       await database.user.update({

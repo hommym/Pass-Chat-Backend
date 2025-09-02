@@ -13,7 +13,6 @@ type EventName = {
   "registration-email": RegistrationOtpEmailI;
   "update-community-sub-count": { operation: "add" | "sub"; communityId: number };
   "set-community-members-notifications": SaveCommunityNotificationsArgs;
-  "add-to-daily-users": { userId: number; platform: OS; timezone: string };
   "add-to-active-communities": { communityId: number; userId: number; type: CommunityType };
   "update-contacts-roomIds": { roomId: number; contacts: { contact: string; ownerId: number }[] };
   "community-verification-email": CommunityVerificationEmail;
@@ -60,7 +59,6 @@ export class AppEvents {
       this.createListener("login-otp-email", sendLogInEmail);
       this.createListener("update-community-sub-count", communityService.updateCommunitySubCount);
       this.createListener("set-community-members-notifications", chatNotificationService.saveCommunityNotifications);
-      this.createListener("add-to-daily-users", dashboardService.addToDailyUsers);
       this.createListener("add-to-active-communities", dashboardService.addToActiveCommunities);
       this.createListener("update-contacts-roomIds", contactsService.updateContactsRommId);
       this.createListener("community-verification-email", sendCommunityVerificationEmail);
