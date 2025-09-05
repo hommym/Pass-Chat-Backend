@@ -17,7 +17,7 @@ class DashboardService {
     async addToActiveCommunities(args) {
         try {
             const { communityId, userId, type } = args;
-            const currentDate = (0, date_1.getCurrentDate)();
+            const currentDate = (0, date_1.getCurrentDate)(true);
             await objects_1.database.dailyCommunityEngagement.create({ data: { communityId, userId, date: currentDate } });
             await objects_1.database.activeCommunity.upsert({
                 where: { communityId_date: { communityId, date: currentDate } },
@@ -30,8 +30,8 @@ class DashboardService {
         }
     }
     async getNumberOfDailyData(dataType) {
-        const currentDate = (0, date_1.getCurrentDate)();
-        const yesterdayDate = (0, date_1.getYesterdayDate)(currentDate);
+        const currentDate = (0, date_1.getCurrentDate)(true);
+        const yesterdayDate = (0, date_1.getYesterdayDate)(currentDate, true);
         const currentDailyData = dataType === "users"
             ? (await objects_1.database.dailyUser.findMany({ where: { date: currentDate } })).length
             : dataType === "flaggedMessage"

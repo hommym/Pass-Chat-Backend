@@ -16,7 +16,7 @@ export class DashboardService {
   async addToActiveCommunities(args: { communityId: number; userId: number; type: CommunityType }) {
     try {
       const { communityId, userId, type } = args;
-      const currentDate = getCurrentDate();
+      const currentDate = getCurrentDate(true);
       await database.dailyCommunityEngagement.create({ data: { communityId, userId, date: currentDate } });
       await database.activeCommunity.upsert({
         where: { communityId_date: { communityId, date: currentDate } },
@@ -29,8 +29,8 @@ export class DashboardService {
   }
 
   async getNumberOfDailyData(dataType: "users" | "activeCommunities" | "flaggedMessage" | "bannedAccounts") {
-    const currentDate = getCurrentDate();
-    const yesterdayDate = getYesterdayDate(currentDate);
+    const currentDate = getCurrentDate(true);
+    const yesterdayDate = getYesterdayDate(currentDate,true);
 
     const currentDailyData =
       dataType === "users"

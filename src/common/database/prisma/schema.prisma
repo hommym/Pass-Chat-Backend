@@ -393,7 +393,7 @@ model DailyUser {
 model ActiveCommunity {
   id                    Int                   @id @default(autoincrement())
   communityId           Int
-  date                  String
+  date                  DateTime              @db.Date @default(dbgenerated("CURRENT_DATE")) 
   numberOfEngagement    Int                   @default(0)  
   type                  CommunityType
   community             Community             @relation(fields: [communityId], references: [id])                       

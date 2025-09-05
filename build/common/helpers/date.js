@@ -12,7 +12,7 @@ const getCurrentDate = (returnISOForm = false) => {
     return `${year}-${month}-${day}`;
 };
 exports.getCurrentDate = getCurrentDate;
-const getYesterdayDate = (dateString) => {
+const getYesterdayDate = (dateString, returnISOForm = false) => {
     // Parse the input date
     const date = new Date(dateString);
     // Subtract one day (in milliseconds)
@@ -22,6 +22,8 @@ const getYesterdayDate = (dateString) => {
     const month = String(date.getMonth() + 1).padStart(2, "0"); // Ensure 2-digit month
     const day = String(date.getDate()).padStart(2, "0"); // Ensure 2-digit day
     // Return the date in "YYYY-MM-DD" format
+    if (returnISOForm)
+        return date.toISOString();
     return `${year}-${month}-${day}`;
 };
 exports.getYesterdayDate = getYesterdayDate;
