@@ -9,6 +9,7 @@ dotenv_1.default.config();
 const objects_1 = require("./common/constants/objects");
 const checkDbConnection_1 = require("./common/database/checkDbConnection");
 const wsRouter_1 = require("./common/routers/wsRouter");
+const redis_1 = require("./common/libs/redis");
 //ws routes
 (0, wsRouter_1.wsRouter)("/ws");
 const port = process.env.WSSERVER ? process.env.WSSERVER : 4000;
@@ -16,6 +17,7 @@ const startServer = async () => {
     try {
         await (0, checkDbConnection_1.checkDbConnection)();
         objects_1.appEvents.setUpAllListners();
+        await redis_1.redis.connect();
         objects_1.server.listen(port, () => {
             console.log(`Websocket Server listening on port ${port}..`);
         });

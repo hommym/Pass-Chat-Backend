@@ -11,6 +11,7 @@ const httpRouter_1 = require("./common/routers/httpRouter");
 const checkDbConnection_1 = require("./common/database/checkDbConnection");
 const errorHandler_1 = require("./common/middlewares/errorHandler");
 const cors_1 = __importDefault(require("cors"));
+const redis_1 = require("./common/libs/redis");
 dotenv_1.default.config();
 // middlewares
 objects_1.app.use((req, res, next) => {
@@ -33,6 +34,7 @@ const startServer = async () => {
     try {
         await (0, checkDbConnection_1.checkDbConnection)();
         objects_1.appEvents.setUpAllListners();
+        await redis_1.redis.connect();
         objects_1.server.listen(port, () => {
             console.log(`Server listening on port ${port}..`);
         });

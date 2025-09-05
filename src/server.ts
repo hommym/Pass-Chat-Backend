@@ -6,6 +6,7 @@ import { httpRouter } from "./common/routers/httpRouter";
 import { checkDbConnection } from "./common/database/checkDbConnection";
 import { errorHandler } from "./common/middlewares/errorHandler";
 import cors from "cors";
+import { redis } from "./common/libs/redis";
 
 
 dotenv.config();
@@ -36,6 +37,7 @@ const startServer = async () => {
   try {
     await checkDbConnection();
     appEvents.setUpAllListners();
+    await redis.connect()
     server.listen(port, () => {
       console.log(`Server listening on port ${port}..`);
     });
