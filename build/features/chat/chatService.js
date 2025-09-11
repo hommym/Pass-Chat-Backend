@@ -1,23 +1,37 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ChatService = void 0;
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
 const objects_1 = require("../../common/constants/objects");
 const errorHandler_1 = require("../../common/middlewares/errorHandler");
 const chatHandler_1 = require("./ws/chatHandler");
 const date_fns_tz_1 = require("date-fns-tz");
 const concurrentTaskExec_1 = require("../../common/helpers/classes/concurrentTaskExec");
+const redis_1 = require("../../common/libs/redis");
 class ChatService {
+    constructor() {
+        this.port = process.env.WSSERVERPORT;
+    }
     async setUserOnlineStatus(status, userId, connectionId, isWebUser = false, platform, timezone) {
         if (userId) {
-            await objects_1.database.user.update({ where: { id: userId }, data: isWebUser ? { onlineStatusWeb: status, webConnectionId: connectionId, timezone, platform } : { onlineStatus: status, connectionId, timezone, platform } });
-            // console.log(`User with id=${userId} is ${status}`);
+            const updatedData = await objects_1.database.user.update({
+                where: { id: userId },
+                data: isWebUser ? { onlineStatusWeb: status, webConnectionId: connectionId, timezone, platform } : { onlineStatus: status, connectionId, timezone, platform },
+            });
+            // caching user account detail on redis
+            await redis_1.redis.cacheData(`${this.port}:${userId}`, JSON.stringify(updatedData));
         }
         else {
-            await objects_1.database.user.update({
+            const updatedData = await objects_1.database.user.update({
                 where: isWebUser ? { webConnectionId: connectionId } : { connectionId },
                 data: isWebUser ? { onlineStatusWeb: status, webConnectionId: null } : { onlineStatus: status, connectionId: null },
             });
-            //  console.log(`User with id=${user.id} is ${status}`);
+            // removing cached user account detail on redis
+            redis_1.redis.removeCachedData(`${this.port}:${updatedData.id}`);
         }
     }
     async checkChatRoom(roomId, userId = null) {
@@ -25,7 +39,7 @@ class ChatService {
         return await objects_1.database.chatRoom.findUnique({ where: { id: roomId }, include: { community: { include: { members: userId ? { where: { userId: { not: userId } } } : true } } } });
     }
     async checkUsersOnlineStatus(userId, checkForWebUser = false) {
-        const account = await objects_1.database.user.findUnique({ where: { id: userId } });
+        const account = await objects_1.authService.checkAccount(userId);
         if (account) {
             if (account.onlineStatus !== "offline" && !checkForWebUser)
                 return account;
@@ -38,7 +52,7 @@ class ChatService {
         const { roomId, content, dataType, recipientId, senderId, replyTo, roomType, communityId } = message;
         let savedMessage;
         const roomDetails = await this.checkChatRoom(roomId, senderId);
-        const senderDetails = (await objects_1.database.user.findUnique({ where: { id: senderId } }));
+        const senderDetails = (await objects_1.authService.checkAccount(senderId));
         if (!roomDetails)
             throw new errorHandler_1.WsError("No ChatRoom with this id exist");
         else if (!roomType || roomType === "private") {
@@ -136,8 +150,8 @@ class ChatService {
     }
     async getUserStatus(socket, data) {
         const { phone, roomId } = data;
-        const userInfo = await objects_1.database.user.findUnique({ where: { phone } });
-        const { status } = (await objects_1.database.chatRoom.findUnique({ where: { id: roomId } }));
+        const { status, user1Id, user2Id } = (await objects_1.database.chatRoom.findUnique({ where: { id: roomId } }));
+        const userInfo = await objects_1.authService.checkAccount(socket.authUserId != user1Id ? user1Id : user2Id);
         if (!userInfo) {
             throw new errorHandler_1.WsError("No Account with this id exist");
         }
@@ -162,7 +176,7 @@ class ChatService {
             throw new errorHandler_1.WsError("No ChatRoom with this id exist");
         else if (roomDetails.type === "private" && roomDetails.status === "active") {
             const { user1Id, user2Id } = roomDetails;
-            const recipientDetails = await objects_1.database.user.findUnique({ where: { id: user1Id !== userId ? user1Id : user2Id } });
+            const recipientDetails = await objects_1.authService.checkAccount(user1Id !== userId ? user1Id : user2Id);
             if (!recipientDetails)
                 throw new errorHandler_1.WsError("Participants of this ChatRoom do not exist");
             else if (recipientDetails.onlineStatus === "online") {
@@ -317,8 +331,8 @@ class ChatService {
         const roomDetails = message.room;
         if (roomDetails.type === "private") {
             const recipientId = message.recipientId;
-            const recipientAccount = (await objects_1.database.user.findUnique({ where: { id: recipientId } }));
-            const updaterAccount = (await objects_1.database.user.findUnique({ where: { id: userId } }));
+            const recipientAccount = (await objects_1.authService.checkAccount(recipientId));
+            const updaterAccount = (await objects_1.authService.checkAccount(userId));
             const connectionIds = [recipientAccount.connectionId, recipientAccount.webConnectionId, updaterAccount.connectionId, updaterAccount.webConnectionId];
             const platformStatuses = [recipientAccount.onlineStatus, recipientAccount.onlineStatusWeb, updaterAccount.onlineStatus, updaterAccount.onlineStatusWeb];
             for (let i = 0; i < connectionIds.length; i++) {
@@ -357,8 +371,8 @@ class ChatService {
         const roomDetails = message.room;
         if (roomDetails.type === "private") {
             const recipientId = message.recipientId;
-            const recipientAccount = (await objects_1.database.user.findUnique({ where: { id: recipientId } }));
-            const updaterAccount = (await objects_1.database.user.findUnique({ where: { id: userId } }));
+            const recipientAccount = (await objects_1.authService.checkAccount(recipientId));
+            const updaterAccount = (await objects_1.authService.checkAccount(userId));
             const connectionIds = [recipientAccount.connectionId, recipientAccount.webConnectionId, updaterAccount.connectionId, updaterAccount.webConnectionId];
             const platformStatuses = [recipientAccount.onlineStatus, recipientAccount.onlineStatusWeb, updaterAccount.onlineStatus, updaterAccount.onlineStatusWeb];
             for (let i = 0; i < connectionIds.length; i++) {

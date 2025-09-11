@@ -1,5 +1,7 @@
-import { ClearedChatsTracker, Message, OnlineStatus, OS, RoomType } from "@prisma/client";
-import { appEvents, chatNotificationService, communityService, database } from "../../common/constants/objects";
+import dotenv from "dotenv";
+dotenv.config();
+import { Message, OnlineStatus, OS } from "@prisma/client";
+import { appEvents, authService, chatNotificationService, communityService, database } from "../../common/constants/objects";
 import { MessageDto } from "./dto/messageDto";
 import { AppError, WsError } from "../../common/middlewares/errorHandler";
 import { Socket } from "socket.io";
@@ -13,17 +15,25 @@ import { UpdateMessageDto } from "./dto/updateMessageDto";
 import { GetAllMessagesDto } from "./dto/getAllMesaagesDto";
 import { ClearChatDto } from "./dto/clearChatsDto";
 import { ConcurrentTaskExec } from "../../common/helpers/classes/concurrentTaskExec";
+import { redis } from "../../common/libs/redis";
 export class ChatService {
-  async setUserOnlineStatus(status: OnlineStatus, userId: number | null, connectionId?: string | undefined, isWebUser: boolean = false,platform?:OS,timezone?:string) {
+  port = process.env.WSSERVERPORT!;
+  async setUserOnlineStatus(status: OnlineStatus, userId: number | null, connectionId?: string | undefined, isWebUser: boolean = false, platform?: OS, timezone?: string) {
     if (userId) {
-      await database.user.update({ where: { id: userId }, data: isWebUser ? { onlineStatusWeb: status, webConnectionId: connectionId,timezone,platform} : { onlineStatus: status, connectionId,timezone,platform} });
-      // console.log(`User with id=${userId} is ${status}`);
+      const updatedData = await database.user.update({
+        where: { id: userId },
+        data: isWebUser ? { onlineStatusWeb: status, webConnectionId: connectionId, timezone, platform } : { onlineStatus: status, connectionId, timezone, platform },
+      });
+
+      // caching user account detail on redis
+      await redis.cacheData(`${this.port}:${userId}`, JSON.stringify(updatedData));
     } else {
-      await database.user.update({
+      const updatedData = await database.user.update({
         where: isWebUser ? { webConnectionId: connectionId } : { connectionId },
         data: isWebUser ? { onlineStatusWeb: status, webConnectionId: null } : { onlineStatus: status, connectionId: null },
       });
-      //  console.log(`User with id=${user.id} is ${status}`);
+      // removing cached user account detail on redis
+      redis.removeCachedData(`${this.port}:${updatedData.id}`);
     }
   }
 
@@ -33,7 +43,7 @@ export class ChatService {
   }
 
   private async checkUsersOnlineStatus(userId: number, checkForWebUser: boolean = false) {
-    const account = await database.user.findUnique({ where: { id: userId } });
+    const account = await authService.checkAccount(userId);
     if (account) {
       if (account.onlineStatus !== "offline" && !checkForWebUser) return account;
       else if (account.onlineStatusWeb !== "offline") return account;
@@ -45,7 +55,7 @@ export class ChatService {
     const { roomId, content, dataType, recipientId, senderId, replyTo, roomType, communityId } = message;
     let savedMessage: Message;
     const roomDetails = await this.checkChatRoom(roomId, senderId);
-    const senderDetails = (await database.user.findUnique({ where: { id: senderId } }))!;
+    const senderDetails = (await authService.checkAccount(senderId))!;
     if (!roomDetails) throw new WsError("No ChatRoom with this id exist");
     else if (!roomType || roomType === "private") {
       if (!recipientId) throw new WsError("No value passed for recipientId");
@@ -142,9 +152,9 @@ export class ChatService {
 
   async getUserStatus(socket: Socket, data: CheckStatusDto) {
     const { phone, roomId } = data;
-    const userInfo = await database.user.findUnique({ where: { phone } });
 
-    const { status } = (await database.chatRoom.findUnique({ where: { id: roomId } }))!;
+    const { status, user1Id, user2Id } = (await database.chatRoom.findUnique({ where: { id: roomId } }))!;
+    const userInfo = await authService.checkAccount((socket as SocketV1).authUserId != user1Id ? user1Id! : user2Id!);
 
     if (!userInfo) {
       throw new WsError("No Account with this id exist");
@@ -172,7 +182,7 @@ export class ChatService {
     if (!roomDetails) throw new WsError("No ChatRoom with this id exist");
     else if (roomDetails.type === "private" && roomDetails.status === "active") {
       const { user1Id, user2Id } = roomDetails;
-      const recipientDetails = await database.user.findUnique({ where: { id: user1Id !== userId ? user1Id! : user2Id! } });
+      const recipientDetails = await authService.checkAccount(user1Id !== userId ? user1Id! : user2Id!);
       if (!recipientDetails) throw new WsError("Participants of this ChatRoom do not exist");
       else if (recipientDetails.onlineStatus === "online") {
         const recipientConnection = chatRouterWs.sockets.get(recipientDetails.connectionId!);
@@ -335,8 +345,8 @@ export class ChatService {
 
     if (roomDetails.type === "private") {
       const recipientId = message.recipientId!;
-      const recipientAccount = (await database.user.findUnique({ where: { id: recipientId } }))!;
-      const updaterAccount = (await database.user.findUnique({ where: { id: userId } }))!;
+      const recipientAccount = (await authService.checkAccount(recipientId))!;
+      const updaterAccount = (await authService.checkAccount(userId))!;
 
       const connectionIds = [recipientAccount.connectionId, recipientAccount.webConnectionId, updaterAccount.connectionId, updaterAccount.webConnectionId];
       const platformStatuses = [recipientAccount.onlineStatus, recipientAccount.onlineStatusWeb, updaterAccount.onlineStatus, updaterAccount.onlineStatusWeb];
@@ -378,8 +388,8 @@ export class ChatService {
 
     if (roomDetails.type === "private") {
       const recipientId = message.recipientId!;
-      const recipientAccount = (await database.user.findUnique({ where: { id: recipientId } }))!;
-      const updaterAccount = (await database.user.findUnique({ where: { id: userId } }))!;
+      const recipientAccount = (await authService.checkAccount(recipientId))!;
+      const updaterAccount = (await authService.checkAccount(userId))!;
 
       const connectionIds = [recipientAccount.connectionId, recipientAccount.webConnectionId, updaterAccount.connectionId, updaterAccount.webConnectionId];
       const platformStatuses = [recipientAccount.onlineStatus, recipientAccount.onlineStatusWeb, updaterAccount.onlineStatus, updaterAccount.onlineStatusWeb];
