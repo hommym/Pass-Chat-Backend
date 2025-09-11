@@ -19,6 +19,15 @@ class RedisClient {
             this.pool = await redisPool.connect();
             console.log("Redis-Server Ready");
         };
+        this.cacheData = async (key, value) => {
+            await this.client.set(key, value);
+        };
+        this.getCachedData = async (key) => {
+            return await this.client.get(key);
+        };
+        this.removeCachedData = async (key) => {
+            await this.client.del(key); // 1 if removed, 0 if key didn't exist
+        };
         // add a method for geting raw clients from the pool(Add if needed)
     }
     get client() {

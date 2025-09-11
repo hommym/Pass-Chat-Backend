@@ -15,9 +15,21 @@ class RedisClient {
     console.log("Redis-Server Ready");
   };
 
-  public get client() {
+  private get client() {
     if (this.pool && this.pool.isOpen) return this.pool;
     else throw new Error("Redis Server Error");
+  }
+
+  public cacheData=async (key:string,value:string)=>{
+   await this.client.set(key,value);
+  }
+
+  public getCachedData= async (key:string)=>{
+    return await this.client.get(key);
+  }
+
+  public removeCachedData= async (key:string)=>{
+    await this.client.del(key); // 1 if removed, 0 if key didn't exist
   }
 
   // add a method for geting raw clients from the pool(Add if needed)
