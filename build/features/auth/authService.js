@@ -4,6 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
 const objects_1 = require("../../common/constants/objects");
 const errorHandler_1 = require("../../common/middlewares/errorHandler");
 const class_transformer_1 = require("class-transformer");
@@ -15,13 +17,31 @@ const qrcode_1 = __importDefault(require("qrcode"));
 const authHandler_1 = require("./ws/authHandler");
 const chatHandler_1 = require("../chat/ws/chatHandler");
 const date_1 = require("../../common/helpers/date");
+const redis_1 = require("../../common/libs/redis");
 class AuthService {
-    async checkAccount(email) {
-        const account = await objects_1.database.user.findUnique({ where: { email } });
-        if (!account)
-            return null;
-        await objects_1.database.user.update({ where: { email }, data: { recentLoginDate: (0, date_1.getCurrentDate)() } });
-        return account;
+    constructor() {
+        this.port = process.env.WSSERVERPORT;
+    }
+    async checkAccount(filter) {
+        // if filter is a string is an email and if is number is userId
+        let account;
+        if (typeof filter === "string") {
+            account = await objects_1.database.user.findUnique({ where: { email: filter } });
+            if (!account)
+                return null;
+            await objects_1.database.user.update({ where: { email: filter }, data: { recentLoginDate: (0, date_1.getCurrentDate)() } });
+            return account;
+        }
+        else {
+            const cachedAccount = await redis_1.redis.getCachedData(`${this.port}:${filter}`);
+            if (cachedAccount) {
+                console.log("Using cached account");
+                account = JSON.parse(cachedAccount);
+            }
+            else
+                account = await objects_1.database.user.findUnique({ where: { id: filter } });
+            return account;
+        }
     }
     async createUserAccount(phone) {
         return await objects_1.database.user.upsert({ where: { phone }, create: { phone, recentLoginDate: (0, date_1.getCurrentDate)() }, update: { recentLoginDate: (0, date_1.getCurrentDate)() } });

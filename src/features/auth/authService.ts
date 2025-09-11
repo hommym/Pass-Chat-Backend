@@ -1,3 +1,5 @@
+import dotenv from "dotenv";
+dotenv.config();
 import { AccountType, NotificationAction, User } from "@prisma/client";
 import { appEvents, database, randomData } from "../../common/constants/objects";
 import { UserLoginDto } from "./dtos/userLoginDto";
@@ -20,13 +22,29 @@ import { ChangePhoneDto } from "./dtos/changePhoneDto";
 import { chatRouterWs } from "../chat/ws/chatHandler";
 import { Verify2FAOtpDto } from "./dtos/verify2FAOtpDto";
 import { getCurrentDate } from "../../common/helpers/date";
+import { redis } from "../../common/libs/redis";
 
 export class AuthService {
-  async checkAccount(email: string) {
-    const account = await database.user.findUnique({ where: { email } });
-    if (!account) return null;
-    await database.user.update({ where: { email }, data: { recentLoginDate: getCurrentDate() } });
-    return account;
+  port = process.env.WSSERVERPORT!;
+
+  async checkAccount(filter: number): Promise<User | null>;
+  async checkAccount(filter: string): Promise<User | null>;
+  async checkAccount(filter: number | string) {
+    // if filter is a string is an email and if is number is userId
+    let account: User | null;
+    if (typeof filter === "string") {
+      account = await database.user.findUnique({ where: { email: filter } });
+      if (!account) return null;
+      await database.user.update({ where: { email: filter }, data: { recentLoginDate: getCurrentDate() } });
+      return account;
+    } else {
+      const cachedAccount = await redis.getCachedData(`${this.port}:${filter}`);
+      if (cachedAccount) {
+        console.log("Using cached account");
+        account = JSON.parse(cachedAccount);
+      } else account = await database.user.findUnique({ where: { id: filter } });
+      return account;
+    }
   }
 
   async createUserAccount(phone: string) {
