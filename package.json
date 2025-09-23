@@ -2,7 +2,7 @@
   "name": "pass-chat",
   "version": "1.0.0",
   "scripts": {
-    "start": "tsc&nodemon ./build/server.js",
+    "start": "nodemon ./build/server.js",
     "start:file-server": "tsc&nodemon ./build/fileServer.js",
     "start:websocket-server": "tsc&nodemon ./build/websocketServer.js",
     "build": "tsc",
