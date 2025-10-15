@@ -1,14 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.crossMsgRouter = void 0;
+exports.msgRouter = void 0;
 const socket_io_client_1 = require("socket.io-client");
 class WSClient {
     constructor(conUrl) {
-        this.wsServername = "Cross-Msg-Router";
+        this.wsServername = "Msg-Router";
         this.socket = null;
         this.connect = async () => {
             if (!this.connUrl) {
-                throw new Error(`CROSS_MSG_ROUTER_URL env not avialable`);
+                throw new Error(`MSG_ROUTER_URL env not avialable`);
                 return;
             }
             this.socket = (0, socket_io_client_1.io)(this.connUrl);
@@ -27,7 +27,7 @@ class WSClient {
     sendData(data) {
         // event name is request
         if (this.socket && this.socket.connected) {
-            this.socket.emit('request', data); // Changed to emit 'message' event
+            this.socket.emit("request", data); // Changed to emit 'message' event
             console.log(`Data sent to ${this.wsServername} server`, data);
         }
         else {
@@ -35,4 +35,4 @@ class WSClient {
         }
     }
 }
-exports.crossMsgRouter = new WSClient(process.env.CROSS_MSG_ROUTER_URL);
+exports.msgRouter = new WSClient(process.env.MSG_ROUTER_URL);

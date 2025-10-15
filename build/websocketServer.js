@@ -24,7 +24,7 @@ const startServer = async () => {
         await rabitMq_1.rabbitMq.connect();
         await rabitMq_1.rabbitMq.createChannel();
         await rabMqConsumer_1.consumer.init(); // registering rabitmq consumer
-        await wsClient_1.crossMsgRouter.connect(); // connecting to cross server msg router
+        await wsClient_1.msgRouter.connect(); // connecting to cross server msg router
         objects_1.server.listen(port, () => {
             console.log(`Websocket Server listening on port ${port}..`);
         });
