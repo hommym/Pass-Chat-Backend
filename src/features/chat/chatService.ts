@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
-import { Message, OnlineStatus, OS } from "@prisma/client";
+import { Message, OnlineStatus, OS, User } from "@prisma/client";
 import { appEvents, authService, chatNotificationService, communityService, database } from "../../common/constants/objects";
 import { MessageDto } from "./dto/messageDto";
 import { AppError, WsError } from "../../common/middlewares/errorHandler";
@@ -16,6 +16,7 @@ import { GetAllMessagesDto } from "./dto/getAllMesaagesDto";
 import { ClearChatDto } from "./dto/clearChatsDto";
 import { ConcurrentTaskExec } from "../../common/helpers/classes/concurrentTaskExec";
 import { redis } from "../../common/libs/redis";
+import { msgRouter } from "../../common/libs/wsClient";
 export class ChatService {
   port = process.env.WSSERVERPORT!;
   async setUserOnlineStatus(status: OnlineStatus, userId: number | null, connectionId?: string | undefined, isWebUser: boolean = false, platform?: OS, timezone?: string) {
@@ -26,14 +27,14 @@ export class ChatService {
       });
 
       // caching user account detail on redis
-      await redis.cacheData(`${this.port}:${userId}`, JSON.stringify(updatedData));
+      await redis.cacheData(`${this.port}:${updatedData.id}`, JSON.stringify(updatedData));
     } else {
       const updatedData = await database.user.update({
         where: isWebUser ? { webConnectionId: connectionId } : { connectionId },
         data: isWebUser ? { onlineStatusWeb: status, webConnectionId: null } : { onlineStatus: status, connectionId: null },
       });
-      // removing cached user account detail on redis
-      redis.removeCachedData(`${this.port}:${updatedData.id}`);
+      // updating cache on redis
+      await redis.cacheData(`${this.port}:${updatedData.id}`, JSON.stringify(updatedData));
     }
   }
 
@@ -72,7 +73,6 @@ export class ChatService {
         // check if recipient has senders contact and chat room info
         let senderContactInfo = await database.userContact.findUnique({ where: { ownerId_phone: { ownerId: recipientId, phone: senderDetails.phone! } } });
         let doesRecipientKnowSender = true;
-        // console.log(`hello1=${doesRecipientKnowSender},${senderContactInfo?.phone}`);
 
         if (!senderContactInfo) {
           senderContactInfo = await database.userContact.create({ data: { ownerId: recipientId, phone: senderDetails.phone!, roomId } });
@@ -92,23 +92,45 @@ export class ChatService {
               const { bio, fullName, phone, username, profile } = senderDetails;
               const { createdAt, id, type, user1, user2 } = (await database.chatRoom.findUnique({ where: { id: roomId }, include: { user1: true, user2: true } }))!;
               // console.log(`hello3=${doesRecipientKnowSender}`);
-              recipientConnection.emit("response", {
-                action: "newUserInfo",
-                contact: { bio, contactName: fullName, phone, username, roomId, profile, status: "active" },
-                chatRoom: {
-                  roomId: id,
-                  roomType: type,
-                  createdAt,
-                  participants: [
-                    { id: user1!.id, phone: user1!.phone },
-                    { id: user2!.id, phone: user2!.phone },
-                  ],
-                  communityId: null,
-                },
-              });
+              // recipientConnection.emit("response", {
+              //   action: "newUserInfo",
+              //   contact: { bio, contactName: fullName, phone, username, roomId, profile, status: "active" },
+              //   chatRoom: {
+              //     roomId: id,
+              //     roomType: type,
+              //     createdAt,
+              //     participants: [
+              //       { id: user1!.id, phone: user1!.phone },
+              //       { id: user2!.id, phone: user2!.phone },
+              //     ],
+              //     communityId: null,
+              //   },
+              // });
+              msgRouter.sendData(
+                JSON.stringify({
+                  wsEventName: "response",
+                  data: {
+                    recipientId,
+                    action: "newUserInfo",
+                    contact: { bio, contactName: fullName, phone, username, roomId, profile, status: "active" },
+                    chatRoom: {
+                      roomId: id,
+                      roomType: type,
+                      createdAt,
+                      participants: [
+                        { id: user1!.id, phone: user1!.phone },
+                        { id: user2!.id, phone: user2!.phone },
+                      ],
+                      communityId: null,
+                    },
+                  },
+                })
+              );
             }
 
-            recipientConnection.emit("response", { action: "recieveMessage", data: savedMessage });
+            // recipientConnection.emit("response", { action: "recieveMessage", data: savedMessage });
+            // sending data to msg router
+            msgRouter.sendData(JSON.stringify({ wsEventName: "response", data: { recipientId, action: "recieveMessage", data: savedMessage } }));
           } else {
             // when user is not online
             if (!doesRecipientKnowSender) {

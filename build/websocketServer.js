@@ -15,7 +15,7 @@ const wsClient_1 = require("./common/libs/wsClient");
 const rabitMq_1 = require("./common/libs/rabitMq");
 //ws routes
 (0, wsRouter_1.wsRouter)("/ws");
-const port = process.env.WSSERVER ? process.env.WSSERVER : 4000;
+const port = process.env.WSSERVERPORT ? process.env.WSSERVERPORT : 4000;
 const startServer = async () => {
     try {
         await (0, checkDbConnection_1.checkDbConnection)();

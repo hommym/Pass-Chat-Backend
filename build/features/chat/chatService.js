@@ -12,6 +12,7 @@ const chatHandler_1 = require("./ws/chatHandler");
 const date_fns_tz_1 = require("date-fns-tz");
 const concurrentTaskExec_1 = require("../../common/helpers/classes/concurrentTaskExec");
 const redis_1 = require("../../common/libs/redis");
+const wsClient_1 = require("../../common/libs/wsClient");
 class ChatService {
     constructor() {
         this.port = process.env.WSSERVERPORT;
@@ -23,15 +24,15 @@ class ChatService {
                 data: isWebUser ? { onlineStatusWeb: status, webConnectionId: connectionId, timezone, platform } : { onlineStatus: status, connectionId, timezone, platform },
             });
             // caching user account detail on redis
-            await redis_1.redis.cacheData(`${this.port}:${userId}`, JSON.stringify(updatedData));
+            await redis_1.redis.cacheData(`${this.port}:${updatedData.id}`, JSON.stringify(updatedData));
         }
         else {
             const updatedData = await objects_1.database.user.update({
                 where: isWebUser ? { webConnectionId: connectionId } : { connectionId },
                 data: isWebUser ? { onlineStatusWeb: status, webConnectionId: null } : { onlineStatus: status, connectionId: null },
             });
-            // removing cached user account detail on redis
-            redis_1.redis.removeCachedData(`${this.port}:${updatedData.id}`);
+            // updating cache on redis
+            await redis_1.redis.cacheData(`${this.port}:${updatedData.id}`, JSON.stringify(updatedData));
         }
     }
     async checkChatRoom(roomId, userId = null) {
@@ -71,7 +72,6 @@ class ChatService {
                 // check if recipient has senders contact and chat room info
                 let senderContactInfo = await objects_1.database.userContact.findUnique({ where: { ownerId_phone: { ownerId: recipientId, phone: senderDetails.phone } } });
                 let doesRecipientKnowSender = true;
-                // console.log(`hello1=${doesRecipientKnowSender},${senderContactInfo?.phone}`);
                 if (!senderContactInfo) {
                     senderContactInfo = await objects_1.database.userContact.create({ data: { ownerId: recipientId, phone: senderDetails.phone, roomId } });
                     doesRecipientKnowSender = false;
@@ -89,22 +89,42 @@ class ChatService {
                             const { bio, fullName, phone, username, profile } = senderDetails;
                             const { createdAt, id, type, user1, user2 } = (await objects_1.database.chatRoom.findUnique({ where: { id: roomId }, include: { user1: true, user2: true } }));
                             // console.log(`hello3=${doesRecipientKnowSender}`);
-                            recipientConnection.emit("response", {
-                                action: "newUserInfo",
-                                contact: { bio, contactName: fullName, phone, username, roomId, profile, status: "active" },
-                                chatRoom: {
-                                    roomId: id,
-                                    roomType: type,
-                                    createdAt,
-                                    participants: [
-                                        { id: user1.id, phone: user1.phone },
-                                        { id: user2.id, phone: user2.phone },
-                                    ],
-                                    communityId: null,
+                            // recipientConnection.emit("response", {
+                            //   action: "newUserInfo",
+                            //   contact: { bio, contactName: fullName, phone, username, roomId, profile, status: "active" },
+                            //   chatRoom: {
+                            //     roomId: id,
+                            //     roomType: type,
+                            //     createdAt,
+                            //     participants: [
+                            //       { id: user1!.id, phone: user1!.phone },
+                            //       { id: user2!.id, phone: user2!.phone },
+                            //     ],
+                            //     communityId: null,
+                            //   },
+                            // });
+                            wsClient_1.msgRouter.sendData(JSON.stringify({
+                                wsEventName: "response",
+                                data: {
+                                    recipientId,
+                                    action: "newUserInfo",
+                                    contact: { bio, contactName: fullName, phone, username, roomId, profile, status: "active" },
+                                    chatRoom: {
+                                        roomId: id,
+                                        roomType: type,
+                                        createdAt,
+                                        participants: [
+                                            { id: user1.id, phone: user1.phone },
+                                            { id: user2.id, phone: user2.phone },
+                                        ],
+                                        communityId: null,
+                                    },
                                 },
-                            });
+                            }));
                         }
-                        recipientConnection.emit("response", { action: "recieveMessage", data: savedMessage });
+                        // recipientConnection.emit("response", { action: "recieveMessage", data: savedMessage });
+                        // sending data to msg router
+                        wsClient_1.msgRouter.sendData(JSON.stringify({ wsEventName: "response", data: { recipientId, action: "recieveMessage", data: savedMessage } }));
                     }
                     else {
                         // when user is not online

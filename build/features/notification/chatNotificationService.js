@@ -19,6 +19,7 @@ const errorHandler_1 = require("../../common/middlewares/errorHandler");
 const communityChatNotificationsDto_1 = require("./dto/communityChatNotificationsDto");
 const chatHandler_1 = require("../chat/ws/chatHandler");
 const concurrentTaskExec_1 = require("../../common/helpers/classes/concurrentTaskExec");
+const wsClient_1 = require("../../common/libs/wsClient");
 class ChatNotificationService {
     constructor() {
         this.notifyUsersOfAccountUpdate = async (userId) => {
@@ -92,15 +93,16 @@ class ChatNotificationService {
                             community.callRoom = community.callRoom.length !== 0 ? community.callRoom[0] : null;
                         }
                         const response = isNotificationTypeMessage
-                            ? { action: "recieveMessage", data: message }
+                            ? { action: "recieveMessage", data: message, recipientId: userDetails.id }
                             : action === "updateChatRoom"
-                                ? { action: "updateChatRoom", chatRoom }
+                                ? { action: "updateChatRoom", chatRoom, recipientId: userDetails.id }
                                 : action === "comunityInfoUpdate"
-                                    ? { action: "comunityInfoUpdate", senderId: member.id, communityDetails: community }
+                                    ? { action: "comunityInfoUpdate", senderId: member.id, communityDetails: community, recipientId: userDetails.id }
                                     : action === "clearChat"
-                                        ? { action: "clearChat", chatRoomId }
-                                        : { action: "deleteCommunity", communityId };
-                        userConnection.emit("response", response);
+                                        ? { action: "clearChat", chatRoomId, recipientId: userDetails.id }
+                                        : { action: "deleteCommunity", communityId, recipientId: userDetails.id };
+                        // userConnection.emit("response", response);
+                        wsClient_1.msgRouter.sendData(JSON.stringify({ wsEventName: "response", data: response }));
                         continue;
                     }
                 }
@@ -382,16 +384,32 @@ class ChatNotificationService {
         await new concurrentTaskExec_1.ConcurrentTaskExec(contacts.map(async (contact) => {
             const userDetails = (await objects_1.database.user.findUnique({ where: { phone: contact.phone } }));
             const { status } = (await objects_1.database.chatRoom.findUnique({ where: { id: contact.roomId } }));
-            let userConnection;
-            const connectionIds = [userDetails.connectionId, userDetails.webConnectionId];
+            // let userConnection: Socket | undefined;
+            // const connectionIds = [userDetails.connectionId!, userDetails.webConnectionId!];
             const platformStatuses = [userDetails.onlineStatus, userDetails.onlineStatusWeb];
-            for (let i = 0; i < connectionIds.length; i++) {
-                if (platformStatuses[i] !== "offline") {
-                    userConnection = chatHandler_1.chatRouterWs.sockets.get(connectionIds[i]);
-                    if (userConnection && status == "active") {
-                        //send  data notifying the contacts who are online that this user is online or offline(nb: adding lastSeen for offline)
-                        userConnection.emit("response", { action: "checkStatus", roomId: contact.roomId, userStatus: isUserOnline ? "online" : "offline", lastSeen: !isUserOnline ? updatedAt : null });
-                    }
+            for (let i = 0; i < platformStatuses.length; i++) {
+                if (platformStatuses[i] !== "offline" && status == "active") {
+                    wsClient_1.msgRouter.sendData(JSON.stringify({
+                        wsEventName: "response",
+                        data: {
+                            recipientId: userDetails.id,
+                            action: "checkStatus",
+                            roomId: contact.roomId,
+                            userStatus: isUserOnline ? "online" : "offline",
+                            lastSeen: !isUserOnline ? updatedAt : null,
+                        },
+                    }));
+                    // userConnection = chatRouterWs.sockets.get(connectionIds[i]);
+                    // if (userConnection && status == "active") {
+                    //   //send  data notifying the contacts who are online that this user is online or offline(nb: adding lastSeen for offline)
+                    //   // userConnection.emit("response", {
+                    //   //   recipientId:userDetails.id,
+                    //   //   action: "checkStatus",
+                    //   //   roomId: contact.roomId,
+                    //   //   userStatus: isUserOnline ? "online" : "offline",
+                    //   //   lastSeen: !isUserOnline ? updatedAt : null,
+                    //   // });
+                    // }
                 }
             }
         })).executeTasks();

@@ -20,7 +20,7 @@ class RedisClient {
             console.log("Redis-Server Ready");
         };
         this.cacheData = async (key, value) => {
-            await this.client.set(key, value);
+            await this.client.set(key, value, { expiration: { type: "EX", value: 86400 } });
         };
         this.getCachedData = async (key) => {
             return await this.client.get(key);

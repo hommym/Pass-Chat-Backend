@@ -11,6 +11,7 @@ import { CommunityCallNotifier } from "../community/type/communityCallNotifier";
 import { chatRouterWs } from "../chat/ws/chatHandler";
 import { ConcurrentTaskExec } from "../../common/helpers/classes/concurrentTaskExec";
 import { AddMembersDto } from "../community/dto/addMembersDto";
+import { msgRouter } from "../../common/libs/wsClient";
 
 export class ChatNotificationService {
   async saveNotification(
@@ -71,16 +72,17 @@ export class ChatNotificationService {
               }
 
               const response = isNotificationTypeMessage
-                ? { action: "recieveMessage", data: message }
+                ? { action: "recieveMessage", data: message, recipientId: userDetails.id }
                 : action === "updateChatRoom"
-                ? { action: "updateChatRoom", chatRoom }
+                ? { action: "updateChatRoom", chatRoom, recipientId: userDetails.id }
                 : action === "comunityInfoUpdate"
-                ? { action: "comunityInfoUpdate", senderId: member.id, communityDetails: community }
+                ? { action: "comunityInfoUpdate", senderId: member.id, communityDetails: community, recipientId: userDetails.id }
                 : action === "clearChat"
-                ? { action: "clearChat", chatRoomId }
-                : { action: "deleteCommunity", communityId };
+                ? { action: "clearChat", chatRoomId, recipientId: userDetails.id }
+                : { action: "deleteCommunity", communityId, recipientId: userDetails.id };
 
-              userConnection.emit("response", response);
+              // userConnection.emit("response", response);
+              msgRouter.sendData(JSON.stringify({ wsEventName: "response", data: response }));
               continue;
             }
           }
@@ -365,6 +367,7 @@ export class ChatNotificationService {
 
     //get user details
     //get all contacts user chats with
+    
     const { contacts, updatedAt, onlineStatus, onlineStatusWeb, hideOnlineStatus } = (await database.user.findUnique({
       where: { id: userId },
       include: { contacts: { where: { roomId: { not: null }, status: { not: "blocked" } } } },
@@ -375,17 +378,37 @@ export class ChatNotificationService {
       contacts.map(async (contact) => {
         const userDetails = (await database.user.findUnique({ where: { phone: contact.phone } }))!;
         const { status } = (await database.chatRoom.findUnique({ where: { id: contact.roomId! } }))!;
-        let userConnection: Socket | undefined;
-        const connectionIds = [userDetails.connectionId!, userDetails.webConnectionId!];
+        // let userConnection: Socket | undefined;
+        // const connectionIds = [userDetails.connectionId!, userDetails.webConnectionId!];
         const platformStatuses = [userDetails.onlineStatus, userDetails.onlineStatusWeb];
 
-        for (let i = 0; i < connectionIds.length; i++) {
-          if (platformStatuses[i] !== "offline") {
-            userConnection = chatRouterWs.sockets.get(connectionIds[i]);
-            if (userConnection && status == "active") {
-              //send  data notifying the contacts who are online that this user is online or offline(nb: adding lastSeen for offline)
-              userConnection.emit("response", { action: "checkStatus", roomId: contact.roomId, userStatus: isUserOnline ? "online" : "offline", lastSeen: !isUserOnline ? updatedAt : null });
-            }
+        for (let i = 0; i < platformStatuses.length; i++) {
+          if (platformStatuses[i] !== "offline" && status=="active") {
+               msgRouter.sendData(
+                 JSON.stringify({
+                   wsEventName: "response",
+                   data: {
+                     recipientId: userDetails.id,
+                     action: "checkStatus",
+                     roomId: contact.roomId,
+                     userStatus: isUserOnline ? "online" : "offline",
+                     lastSeen: !isUserOnline ? updatedAt : null,
+                   },
+                 })
+               );
+            // userConnection = chatRouterWs.sockets.get(connectionIds[i]);
+            // if (userConnection && status == "active") {
+            //   //send  data notifying the contacts who are online that this user is online or offline(nb: adding lastSeen for offline)
+            //   // userConnection.emit("response", {
+            //   //   recipientId:userDetails.id,
+            //   //   action: "checkStatus",
+            //   //   roomId: contact.roomId,
+            //   //   userStatus: isUserOnline ? "online" : "offline",
+            //   //   lastSeen: !isUserOnline ? updatedAt : null,
+            //   // });
+
+           
+            // }
           }
         }
       })

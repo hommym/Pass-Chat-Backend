@@ -12,7 +12,7 @@ import { rabbitMq } from "./common/libs/rabitMq";
 //ws routes
 wsRouter("/ws");
 
-const port = process.env.WSSERVER ? process.env.WSSERVER : 4000;
+const port = process.env.WSSERVERPORT ? process.env.WSSERVERPORT : 4000;
 
 const startServer = async () => {
   try {

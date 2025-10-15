@@ -21,7 +21,7 @@ class RedisClient {
   }
 
   public cacheData=async (key:string,value:string)=>{
-   await this.client.set(key,value);
+   await this.client.set(key, value, { expiration: { type: "EX", value: 86400 } });
   }
 
   public getCachedData= async (key:string)=>{
